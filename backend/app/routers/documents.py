@@ -10,12 +10,12 @@ from __future__ import annotations
 from typing import Any
 
 from fastapi import APIRouter, Depends, Request
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
 from app.core.db import get_db
 from app.core.security import get_current_user
-from app.models import Document, DocumentRequest, DocumentVersion
+from app.models import Document, DocumentVersion
 
 router = APIRouter(tags=["documents"])
 
@@ -117,18 +117,23 @@ async def request_document(
 
     body = await request.json()
 
-    doc_request = DocumentRequest(
-        tenant_id=tenant_id,
-        client_id=body.get("client_id"),
-        title=body.get("title", ""),
-        description=body.get("description"),
-        due_date=body.get("due_date"),
-        doc_type=body.get("doc_type"),
-        status="pending",
-        requested_by_id=user_id,
-    )
-    db.add(doc_request)
+    result = db.execute(text(
+        "INSERT INTO document_requests (tenant_id, client_id, title, description, doc_type, "
+        "due_date, status, requested_by_id, reminder_count) "
+        "VALUES (CAST(:tenant AS uuid), CAST(:client AS uuid), :title, :desc, :doctype, :due, "
+        "CAST(:status AS document_request_status), CAST(:req AS uuid), :reminders) "
+        "RETURNING id, status"
+    ), {
+        "tenant": str(tenant_id),
+        "client": str(body.get("client_id")) if body.get("client_id") else None,
+        "title": body.get("title", "") or "",
+        "desc": body.get("description"),
+        "doctype": body.get("doc_type"),
+        "due": body.get("due_date"),
+        "status": body.get("status") or "open",
+        "req": str(user_id),
+        "reminders": 0,
+    })
     db.commit()
-    db.refresh(doc_request)
-
-    return {"id": str(doc_request.id), "status": doc_request.status}
+    row = result.fetchone()
+    return {"id": str(row[0]), "status": row[1]}

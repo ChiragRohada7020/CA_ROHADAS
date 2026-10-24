@@ -99,6 +99,7 @@ async def list_document_requests(
 @router.get("/document-requests/missing")
 async def missing_document_requests(
     request: Request,
+    client_id: str | None = None,
     db: Any = Depends(get_db),
 ) -> Any:
     principal = await get_current_user(request, db)
@@ -109,8 +110,10 @@ async def missing_document_requests(
         .where(text(
             "status IN ('open'::document_request_status, 'partially_received'::document_request_status)"
         ))
-        .order_by(DocumentRequest.due_date.asc().nulls_last(), DocumentRequest.created_at.desc())
     )
+    if client_id:
+        stmt = stmt.where(DocumentRequest.client_id == client_id)
+    stmt = stmt.order_by(DocumentRequest.due_date.asc().nulls_last(), DocumentRequest.created_at.desc())
     rows = db.execute(stmt).scalars().all()
     return [_row(r) for r in rows]
 

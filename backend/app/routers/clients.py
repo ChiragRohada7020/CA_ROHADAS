@@ -263,7 +263,7 @@ async def create_client(
 
     principal = await get_current_user(request, db)
     if "client.write" not in principal.permissions and "*:*" not in principal.permissions:
-        raise HTTPException(status_code=403, detail="Permission 'client.write' is required")
+        raise HTTPException(status_code=403, detail="Permission 'client.create' is required")
 
     p = payload if isinstance(payload, dict) else payload.dict()
     client = Client(
@@ -580,7 +580,7 @@ async def update_client(
 
     principal = await get_current_user(request, db)
     if "client.write" not in principal.permissions and "*:*" not in principal.permissions:
-        raise HTTPException(status_code=403, detail="Permission 'client.write' is required")
+        raise HTTPException(status_code=403, detail="Permission 'client.update' is required")
 
     client = db.get(Client, client_id)
     if client is None:
@@ -608,7 +608,7 @@ async def change_client_status(
 
     principal = await get_current_user(request, db)
     if "client.status" not in principal.permissions and "*:*" not in principal.permissions:
-        raise HTTPException(status_code=403, detail="Permission 'client.status' is required")
+        raise HTTPException(status_code=403, detail="Permission 'client.update' is required")
 
     client = db.get(Client, client_id)
     if client is None:
@@ -639,8 +639,8 @@ async def add_contact(
     from app.core.rbac import Permission as Perm
 
     principal = await get_current_user(request, db)
-    if "contact.write" not in principal.permissions and "*:*" not in principal.permissions:
-        raise HTTPException(status_code=403, detail="Permission 'contact.write' is required")
+    if "client.update" not in principal.permissions and "*:*" not in principal.permissions:
+        raise HTTPException(status_code=403, detail="Permission 'client.update' is required")
 
     client = db.get(Client, client_id)
     if client is None:
