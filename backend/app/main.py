@@ -31,11 +31,12 @@ from app.routers.clients import router as clients_router
 from app.routers.compliance import router as compliance_router
 from app.routers.communications import router as communications_router
 from app.routers.documents import router as documents_router
+from app.routers.document_requests import router as document_requests_router
 from app.routers.financial_years import router as financial_years_router
-from app.routers.messaging import router as messaging_router
 from app.routers.notifications import router as notifications_router
 from app.routers.reports import router as reports_router
 from app.routers.services import router as services_router
+from app.routers.task_templates import router as task_templates_router
 from app.routers.tasks import router as tasks_router
 
 from app.mcp_server.server import (
@@ -122,11 +123,12 @@ def create_app() -> FastAPI:
         compliance_router,
         communications_router,
         documents_router,
+        document_requests_router,
         financial_years_router,
-        messaging_router,
         notifications_router,
         reports_router,
         services_router,
+        task_templates_router,
         tasks_router,
     ):
         app.include_router(router, prefix="/api")

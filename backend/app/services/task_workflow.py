@@ -4,11 +4,10 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from app.core.errors import BadRequestError, NotFoundError
-
+from app.core.errors import BadRequestError
 
 _WORKFLOW: dict[str, set[str]] = {
     "not_started": {"assigned", "in_progress", "cancelled"},
@@ -65,21 +64,6 @@ def transition_task(
             if hasattr(task, k):
                 setattr(task, k, v)
 
-    from app.models import TaskStatusHistory
-
-    history = TaskStatusHistory(
-        task_id=task.id,
-        from_status=old_status,
-        to_status=new_status,
-        approval_status=task.approval_status,
-        filing_status=task.filing_status,
-        progress_percent=task.progress_percent,
-        changed_by_id=actor_id,
-        actor_type="user" if actor_id else "system",
-        reason=reason,
-    )
-    db.add(history)
-
     if new_status == "completed":
         task.completed_at = datetime.utcnow()
     elif new_status == "filed":
@@ -89,6 +73,31 @@ def transition_task(
 
     db.commit()
     db.refresh(task)
+
+    actor_type = "user" if actor_id else "system"
+    db.execute(
+        text(
+            "INSERT INTO task_status_history "
+            "(tenant_id, task_id, from_status, to_status, approval_status, filing_status, "
+            " progress_percent, actor_type, changed_by_id, reason) "
+            "VALUES (CAST(:tenant AS uuid), CAST(:task AS uuid), "
+            "CAST(:f AS task_status), CAST(:to AS task_status), "
+            "CAST(:approval AS approval_status), CAST(:filing AS filing_status), "
+            ":progress, :actor, CAST(:actor_id AS uuid), :reason)"
+        ).bindparams(
+            tenant=str(task.tenant_id),
+            task=str(task.id),
+            f=old_status,
+            to=new_status,
+            approval=task.approval_status,
+            filing=task.filing_status,
+            progress=task.progress_percent,
+            actor=actor_type,
+            actor_id=str(actor_id) if actor_id else None,
+             reason=reason,
+        )
+    )
+    db.commit()
     return task
 
 

@@ -67,6 +67,15 @@ class TaskType(str, enum.Enum):
     INTERNAL = "internal"
 
 
+class Frequency(str, enum.Enum):
+    ONE_TIME = "one_time"
+    CUSTOM = "custom"
+    MONTHLY = "monthly"
+    QUARTERLY = "quarterly"
+    HALF_YEARLY = "half_yearly"
+    YEARLY = "yearly"
+
+
 class Task(Base):
     __tablename__ = "tasks"
 
@@ -109,7 +118,7 @@ class Task(Base):
     legal_entity_id = Column(UUID(as_uuid=True), ForeignKey("legal_entities.id"), nullable=True)
     period_key = Column(String(50), nullable=True)
     is_recurring = Column(Boolean, default=False, nullable=False)
-    recurrence_frequency = Column(String(50), nullable=True)
+    recurrence_frequency = Column(Enum(Frequency, name="frequency", native_enum=True, create_type=False), nullable=True)
     recurrence_end_date = Column(DateTime(timezone=True), nullable=True)
     create_next_period = Column(Boolean, default=False, nullable=True)
     reminder_date = Column(DateTime(timezone=True), nullable=True)
