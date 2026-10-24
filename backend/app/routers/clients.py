@@ -87,13 +87,14 @@ async def get_clients_summary(
     ).scalar() or 0
 
     service_counts = db.execute(
-        select(Service.category, func.count(func.distinct(ClientService.client_id)))
+        select(Service.category, func.count(func.distinct(ClientService.client_id)).label("n"))
         .select_from(ClientService)
-        .join(Service)
+        .join(Service, Service.id == ClientService.service_id)
         .where(ClientService.tenant_id == principal.tenant_id)
+        .where(ClientService.is_active.is_(True))
         .group_by(Service.category)
-        .all()
-    ) if False else []
+    ).all()
+    cat_counts = {row.category: int(row.n) for row in service_counts}
 
     return {
         "total": counts.get("active", 0) + counts.get("inactive", 0) + counts.get("prospect", 0) + counts.get("onboarding", 0) + counts.get("on_hold", 0) + counts.get("closed", 0),
@@ -104,10 +105,10 @@ async def get_clients_summary(
         "on_hold": counts.get("on_hold", 0),
         "closed": counts.get("closed", 0),
         "new_this_year": new_this_year,
-        "gst_clients": 0,
-        "itr_clients": 0,
-        "tds_clients": 0,
-        "roc_clients": 0,
+        "gst_clients": cat_counts.get("gst", 0),
+        "itr_clients": cat_counts.get("income_tax", 0),
+        "tds_clients": cat_counts.get("tds", 0),
+        "roc_clients": cat_counts.get("roc", 0),
     }
 
 
@@ -184,8 +185,8 @@ async def list_clients(
                 _select(User.id, User.full_name).where(User.id.in_(all_user_ids))
             ).fetchall()
             for uid, name in user_names:
-                partner_map.setdefault(str(uid), name)
-                manager_map.setdefault(str(uid), name)
+                partner_map[str(uid)] = name
+                manager_map[str(uid)] = name
 
     # Service chips
     service_map: dict[str, list[dict]] = {}
