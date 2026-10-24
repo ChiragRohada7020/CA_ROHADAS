@@ -16,7 +16,7 @@ from __future__ import annotations
 from typing import Any
 
 from fastapi import APIRouter, Depends, Request
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 
 from app.core.db import SessionLocal, get_db
 from app.core.security import get_current_user
@@ -39,7 +39,7 @@ async def get_dashboard(
     month_start = today.replace(day=1)
     year_start = today.replace(month=1, day=1)
     from datetime import timedelta
-    week_end = today + timedelta(days=7)
+    week_end = today + timedelta(days=14)
     next_month = today.replace(day=28) + timedelta(days=5)
 
     open_statuses = ["completed", "filed", "delivered", "cancelled"]
@@ -94,32 +94,49 @@ async def get_dashboard(
         Task.tenant_id == tenant_id, Task.status == "waiting_for_client"
     )).scalar() or 0
 
-    # compliance by category (count of open tasks per category)
-    category_rows = db.execute(
-        select(Task.category, func.count().label("cnt"))
-        .where(Task.tenant_id == tenant_id, Task.status.not_in(open_statuses))
-        .group_by(Task.category)
-    ).all()
+    # Compliance by service category. A task may carry its own `category` or inherit
+    # it from the linked service — coalesce both so the ring is never empty just
+    # because the explicit field was left null at task creation.
+    COMPLETED_STATUSES = {"completed", "filed", "delivered"}
+    compliance_due_soon_end = today + timedelta(days=7)
+    cat_rows = db.execute(text(
+        "SELECT COALESCE(t.category, s.category) AS cat, t.status, t.statutory_due_date "
+        "FROM tasks t LEFT JOIN services s ON s.id = t.service_id "
+        "WHERE t.tenant_id = CAST(:tenant AS uuid) AND t.deleted_at IS NULL "
+        "AND COALESCE(t.category, s.category) IS NOT NULL"
+    ), {"tenant": str(tenant_id)}).fetchall()
+
+    buckets: dict = {}
+    for r in cat_rows:
+        cat = r[0]
+        if cat is None:
+            continue
+        b = buckets.setdefault(cat, {"total": 0, "completed": 0, "overdue": 0, "due_soon": 0})
+        b["total"] += 1
+        if r.status in COMPLETED_STATUSES:
+            b["completed"] += 1
+            continue
+        sdue = r[2]
+        if sdue is not None:
+            if sdue < today:
+                b["overdue"] += 1
+            elif sdue < compliance_due_soon_end:
+                b["due_soon"] += 1
+
     compliance = []
     total_compliance_tasks = 0
-    for cat, cnt in category_rows:
-        if not cat:
-            continue
-        overdue_c = db.execute(select(func.count()).select_from(Task).where(
-            Task.tenant_id == tenant_id, Task.category == cat,
-            Task.statutory_due_date.is_not(None), Task.statutory_due_date < today,
-            Task.status.not_in(open_statuses)
-        )).scalar() or 0
+    for cat, b in buckets.items():
+        in_progress = max(b["total"] - b["completed"] - b["overdue"] - b["due_soon"], 0)
         compliance.append({
             "category": cat,
-            "label": cat.capitalize(),
-            "total": int(cnt),
-            "overdue": int(overdue_c),
-            "due_soon": 0,
-            "in_progress": 0,
-            "completed": 0,
+            "label": cat.replace("_", " ").title(),
+            "total": b["total"],
+            "overdue": b["overdue"],
+            "due_soon": b["due_soon"],
+            "in_progress": in_progress,
+            "completed": b["completed"],
         })
-        total_compliance_tasks += int(cnt)
+        total_compliance_tasks += b["total"]
     compliance.sort(key=lambda x: x["total"], reverse=True)
 
     # tasks_by_status
@@ -291,6 +308,15 @@ async def get_dashboard(
             "created_at": t.completed_at.isoformat() if t.completed_at else None,
         })
 
+    open_doc_requests = db.execute(text(
+        "SELECT count(*) FROM document_requests "
+        "WHERE tenant_id = CAST(:tenant AS uuid) AND status = :st"
+    ), {"tenant": str(tenant_id), "st": "open"}).scalar() or 0
+    clients_missing_docs = db.execute(text(
+        "SELECT count(DISTINCT client_id) FROM document_requests "
+        "WHERE tenant_id = CAST(:tenant AS uuid) AND status = :st AND client_id IS NOT NULL"
+    ), {"tenant": str(tenant_id), "st": "open"}).scalar() or 0
+
     fy = db.execute(select(FinancialYear).where(
         FinancialYear.tenant_id == tenant_id, FinancialYear.is_active.is_(True)
     )).scalars().first()
@@ -315,8 +341,8 @@ async def get_dashboard(
             "awaiting_approval": awaiting_approval,
             "waiting_for_client": waiting_for_client,
             "unverified_deadlines": 0,
-            "clients_with_missing_documents": 0,
-            "open_document_requests": 0,
+            "clients_with_missing_documents": int(clients_missing_docs),
+            "open_document_requests": int(open_doc_requests),
         },
         "tasks_by_status": tasks_by_status,
         "trends": [],
