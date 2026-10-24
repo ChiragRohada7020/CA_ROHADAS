@@ -1,0 +1,55 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "//": [
+    "Vercel Services (beta) deploy the Next.js frontend and the FastAPI backend as",
+    "one project with shared routing. Public routing stays at the top level; build",
+    "and runtime settings belong to each service.",
+    "",
+    "Cron schedules are ALWAYS in UTC. IST is UTC+5:30, so 03:30 UTC is 09:00 IST.",
+    "See docs/DEPLOY.md for the full rationale and the Hobby-plan caveat."
+  ],
+  "services": {
+    "frontend": {
+      "root": "frontend/",
+      "framework": "nextjs"
+    },
+    "backend": {
+      "root": "backend/",
+      "//": "FastAPI compiles to a single Function; main.py exports `app`.",
+      "functions": {
+        "main.py": {
+          "maxDuration": 60,
+          "regions": ["bom1"]
+        }
+      }
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/backend/api/$1"
+    }
+  ],
+  "crons": [
+    {
+      "//": "Recurring work generation. 03:30 UTC = 09:00 IST.",
+      "path": "/api/cron/compliance-autolist",
+      "schedule": "30 3 * * *"
+    },
+    {
+      "//": "Deadline alerts. 04:00 UTC = 09:30 IST.",
+      "path": "/api/cron/deadline-alerts",
+      "schedule": "0 4 * * *"
+    },
+    {
+      "//": "Client document reminders. 04:30 UTC = 10:00 IST.",
+      "path": "/api/cron/document-reminders",
+      "schedule": "30 4 * * *"
+    },
+    {
+      "//": "Notification outbox drain. 05:00 UTC = 10:30 IST.",
+      "path": "/api/cron/notification-outbox",
+      "schedule": "0 5 * * *"
+    }
+  ]
+}

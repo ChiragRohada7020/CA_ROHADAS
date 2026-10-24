@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" role="img" aria-label="CA Practice Manager">
+  <!--
+    A ledger page: a dark card with ruled lines and a check.
+
+    Deliberately geometric rather than lettering — "CA" set in text is unreadable at the
+    16px a browser tab actually renders, and a favicon that turns to mush is worse than
+    a plain square. Ruled lines stay legible at any size.
+  -->
+  <rect width="32" height="32" rx="7" fill="#0f172a" />
+  <g fill="#ffffff">
+    <rect x="8" y="9" width="16" height="2" rx="1" />
+    <rect x="8" y="14" width="16" height="2" rx="1" />
+    <rect x="8" y="19" width="10" height="2" rx="1" />
+  </g>
+  <path
+    d="M18.5 22.5l2.5 2.5 4.5-5"
+    fill="none"
+    stroke="#34d399"
+    stroke-width="2.6"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+</svg>

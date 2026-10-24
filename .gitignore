@@ -1,0 +1,94 @@
+# ── Secrets and local configuration ──
+# Never commit a real .env: it holds the JWT signing key, the cron secret and the
+# database credentials.
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# ── Python ──
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+build/
+dist/
+
+# ── Virtual environments ──
+.venv/
+venv/
+env/
+
+# ── Local blob storage (the development stand-in for object storage) ──
+backend/var/
+
+# ── Node / frontend ──
+node_modules/
+.next/
+# Backup of the Next.js build cache from before a major change.
+.next.bak/
+out/
+.turbo/
+*.tsbuildinfo
+npm-debug.log*
+pnpm-debug.log*
+# Baileys gateway runtime session data — never commit live auth state.
+/baileys-gateway/wa-sessions/
+# Redundant npm install capture logs from debugging sessions.
+/baileys-gateway/npm_install*.txt
+
+# ── Vercel ──
+.vercel
+
+# ── Editors and OS ──
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Local logs and scratch output ──
+*.log
+tmp/
+# Temporary root scripts used during development (e.g. code-append scripts).
+/tmp_*.py
+# Test/benchmark output captured to the working tree.
+/backend_test_results.txt
+/tsc_final.txt
+/backend/tests_after_gateway.txt
+# Service logs plus the ad-hoc .bat launchers dropped in there while debugging.
+/logs/
+
+# ── Stray root artifacts (dev shells / build snapshots) ──
+tasks_out.html
+image.png
+/0/
+/build/
+/dist/
+/PACKAGING.md
+/CA-Manager.spec
+/CA-Manager-Portable.bat
+/installer.iss
+
+# ── Throwaway debugging scripts (root-level, never part of the app) ──
+# Anchored with a leading slash so backend/tests/test_*.py is unaffected.
+/check_logs.py
+/final_test.py
+/fix_syntax.py
+/investigate_error.py
+/restart_clean.py
+/test_direct.py
+/test_reproduce.py
+
+# ── Superseded copies kept locally ──
+# backend/mcp/ was replaced by backend/app/mcp_server/; this is the old backup.
+/backend/ca_mcp_old/
+
+# ── Agent scratch (per-task plans, not shared project config) ──
+/.kilo/plans/

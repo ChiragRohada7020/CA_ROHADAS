@@ -1,0 +1,8 @@
+# MCP Server requirements
+mcp>=1.0.0
+composio>=0.0.1  # Optional - only needed for Composio integrations
+psycopg>=3.0
+SQLAlchemy>=2.0
+fastapi>=0.100
+pytest>=7.0
+openai>=1.0     # Required for mcp_client.py (Kilo Gateway, OpenAI)

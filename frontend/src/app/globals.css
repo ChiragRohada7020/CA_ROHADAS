@@ -1,0 +1,465 @@
+@import "tailwindcss";
+
+/*
+ * The design layer.
+ *
+ * Deliberately small, but not thin: everything a screen needs repeatedly lives here so
+ * that two pages cannot invent two versions of the same control. Colours come from
+ * Tailwind's built-in palette and status colour mapping lives in TypeScript
+ * (`lib/status.ts`), so there are no custom theme tokens to drift out of sync.
+ *
+ * The rule for adding to this file: if a second screen needs it, it belongs here.
+ */
+
+/*
+ * `btn` is declared with `@utility` rather than in `@layer components` because
+ * Tailwind v4 only lets `@apply` reference *utilities* — applying a component class
+ * fails the build with "Cannot apply unknown utility class". Every `.btn-*` below
+ * composes from it.
+ */
+@utility btn {
+  @apply inline-flex cursor-pointer items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium shadow-sm transition;
+  @apply disabled:cursor-not-allowed disabled:opacity-60 disabled:shadow-none;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+   body {
+     @apply bg-[#F5F7FA] text-[#101B3D] antialiased;
+     font-family:
+       ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
+       Arial, "Noto Sans", sans-serif;
+   }
+
+  /* Tabular figures keep numbers aligned in tables and on the stat cards, which
+   * matters when a partner is scanning a column of counts. */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /*
+   * One focus ring, everywhere.
+   *
+   * The browser's default outline is drawn inconsistently across styled controls — it
+   * is clipped by some of them and invisible on others. Declaring it once here means
+   * every button, link, input and checkbox gets the same visible ring, which is what
+   * makes the app usable by keyboard. `:focus-visible` rather than `:focus` keeps it
+   * off for mouse users, who do not need it.
+   */
+  :focus-visible {
+    outline: 2px solid var(--color-sky-600);
+    outline-offset: 2px;
+    border-radius: 0.25rem;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply tracking-tight;
+  }
+}
+
+@layer components {
+  /* ── Surfaces ─────────────────────────────────────────────────────────── */
+
+  .card {
+    @apply rounded-[10px] border border-[#E4E7EC] bg-white;
+  }
+
+  /* ── Dashboard surfaces ────────────────────────────────────────── */
+
+  /* Subtle page-background gradient so the dashboard feels layered,
+     not flat. */
+  .dashboard-page {
+    @apply bg-gradient-to-b from-slate-50 to-white;
+  }
+
+  /* Accent border on the side that colour-codes each section card
+     at a glance, so the eye can skip from one topic to the next. */
+  .dashboard-card {
+    @apply relative border-t transition-colors duration-200;
+  }
+  .dashboard-card--overdue { @apply border-t-rose-200; }
+  .dashboard-card--today { @apply border-t-amber-200; }
+  .dashboard-card--week { @apply border-t-sky-200; }
+  .dashboard-card--review { @apply border-t-violet-200; }
+  .dashboard-card--docs { @apply border-t-emerald-200; }
+  .dashboard-card--compliance { @apply border-t-indigo-200; }
+  .dashboard-card--deadlines { @apply border-t-cyan-200; }
+  .dashboard-card--pipeline { @apply border-t-fuchsia-200; }
+  .dashboard-card--portfolio { @apply border-t-teal-200; }
+  .dashboard-card--financial { @apply border-t-amber-200; }
+  .dashboard-card--at-risk { @apply border-t-rose-200; }
+  .dashboard-card--workload { @apply border-t-indigo-200; }
+  .dashboard-card--activity { @apply border-t-slate-200; }
+
+  /* Headline stat cards get a subtle tint on hover that matches
+     their theme, and a softer shadow lift. */
+  .dashboard-stat {
+    @apply transition-all duration-200;
+  }
+  .dashboard-stat:hover {
+    @apply scale-[1.015] shadow-lg;
+  }
+
+  /* List-row hover that is consistent across tables and ul lists. */
+  .dashboard-row {
+    @apply transition-colors duration-150;
+  }
+  .dashboard-row:hover {
+    @apply bg-slate-50/80;
+  }
+
+  /* Pipeline stage badges get a softer look. */
+  .pipeline-stage {
+    @apply inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium ring-1 ring-inset transition;
+  }
+
+  /* Activity feed items get a dot with a coloured background wash. */
+  .activity-dot {
+    @apply flex h-6 w-6 shrink-0 items-center justify-center rounded-lg ring-1 ring-inset;
+  }
+
+  /* Subtle fade-in for stat cards on first paint. */
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .stat-fade-in {
+    animation: fadeInUp 0.35s ease-out;
+  }
+
+  /* ── Client form: section cards with accent borders ────────────── */
+  .client-section {
+    @apply rounded-xl border border-slate-200 bg-white shadow-sm transition-all duration-200;
+  }
+  .client-section:hover {
+    @apply border-slate-300 shadow-md;
+  }
+  .client-section-header {
+    @apply flex items-center gap-3 border-b border-slate-200 px-5 py-3.5;
+  }
+  .client-section-title {
+    @apply text-sm font-semibold text-slate-800;
+  }
+  .client-section-subtitle {
+    @apply mt-0.5 text-xs text-slate-500;
+  }
+  .client-section-accent-basics {
+    @apply border-t border-sky-200;
+  }
+  .client-section-accent-identifiers {
+    @apply border-t border-indigo-200;
+  }
+  .client-section-accent-address {
+    @apply border-t border-teal-200;
+  }
+   .client-section-accent-staff {
+    @apply border-t border-violet-200;
+  }
+
+  /* ── Team modal: section cards with accent borders ────────────── */
+  .team-section {
+    @apply rounded-xl bg-white transition-all duration-200;
+  }
+  .team-section-header {
+    @apply flex items-start gap-3 border-b border-slate-200 px-5 py-3.5;
+  }
+  .team-section-title {
+    @apply text-sm font-semibold text-slate-800;
+  }
+  .team-section-subtitle {
+    @apply mt-0.5 text-xs text-slate-500;
+  }
+  .team-section-accent-basics {
+    @apply border-t-2 border-sky-200;
+  }
+
+
+  .card-header {
+    @apply flex items-center justify-between gap-3 border-b border-[#E4E7EC] px-4 py-3;
+  }
+
+  .card-title {
+    @apply text-sm font-semibold text-[#172B4D];
+  }
+
+  .card-subtitle {
+    @apply mt-0.5 text-xs text-[#667085];
+  }
+
+  /* For a card whose body is not a table — a table's rows carry their own padding. */
+  .card-body {
+    @apply p-4;
+  }
+
+  /* ── Page structure ───────────────────────────────────────────────────── */
+
+  /*
+   * The page heading. Every screen uses this via `<PageHeader>`, so titles sit at the
+   * same size and baseline wherever you land. Three different heading sizes across the
+   * app was the most visible sign that these screens were built separately.
+   */
+  .page-title {
+    @apply text-xl font-semibold tracking-tight text-[#172B4D];
+  }
+
+  .page-subtitle {
+    @apply mt-1 max-w-3xl text-sm text-[#667085];
+  }
+
+  .section-title {
+    @apply text-xs font-semibold uppercase tracking-wide text-slate-500;
+  }
+
+  /* ── Tables ───────────────────────────────────────────────────────────── */
+
+  /* The scrolling wrapper every table sits in, so a wide table never pushes the
+   * whole page sideways. */
+  .table-wrap {
+    @apply overflow-x-auto;
+  }
+
+  .th {
+    @apply px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-slate-500;
+  }
+
+  .td {
+    @apply px-3 py-2 text-sm text-slate-700;
+  }
+
+  /* Rows share one hover treatment, so "this row is clickable" reads the same on
+   * every list. */
+  .table-row {
+    @apply transition-colors hover:bg-slate-50;
+  }
+
+  /* ── Forms ────────────────────────────────────────────────────────────── */
+
+  .input {
+    @apply w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm
+           text-slate-900 shadow-sm outline-none placeholder:text-slate-400
+           transition-colors duration-150;
+  }
+
+  /*
+   * A native `<select>` ignores most styling on Windows and renders as an OS control
+   * sitting beside a styled text input, which reads as broken.
+   *
+   * This targets `select.input` rather than asking every call site to opt in: there are
+   * fifty-odd selects across the app, and one rule here fixes all of them. The chevron
+   * is an inlined SVG data URI, so there is no extra request and no icon font.
+   */
+  select.input,
+  .select {
+    @apply cursor-pointer appearance-none pr-9;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%2364748b' stroke-width='1.6'%3E%3Cpath d='M6 8l4 4 4-4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.6rem center;
+    background-size: 1rem;
+  }
+
+  /*
+   * One checkbox size and accent, so a checkbox looks the same in a table, in a filter
+   * row and in a form. Set globally for the same reason as the select rule above.
+   */
+  input[type="checkbox"],
+  .checkbox {
+    @apply size-4 cursor-pointer rounded border-slate-300;
+    accent-color: var(--color-sky-600);
+  }
+
+  .label {
+    @apply block text-xs font-medium text-slate-700;
+  }
+
+  .field-hint {
+    @apply mt-1 text-xs text-slate-500;
+  }
+
+  /* ── Buttons ──────────────────────────────────────────────────────────── */
+
+  .btn-primary {
+    @apply btn bg-gradient-to-r from-sky-600 to-indigo-600 text-white shadow-md
+           hover:from-sky-700 hover:to-indigo-700;
+  }
+
+   .btn-ghost {
+    @apply btn border border-slate-300 bg-white text-slate-700 hover:bg-slate-50;
+  }
+
+  .btn-outline {
+    @apply btn border border-[#E2E8F0] bg-white text-[#64748B] hover:bg-[#F6F8FC];
+  }
+
+
+  .btn-danger {
+    @apply btn bg-rose-600 text-white hover:bg-rose-700;
+  }
+
+  /* A secondary action beside a primary one, and toolbar controls. */
+  .btn-sm {
+    @apply btn px-2.5 py-1.5 text-xs;
+  }
+
+  /* A square button holding only an icon, e.g. a row's overflow menu. */
+  .btn-icon {
+    @apply btn size-8 p-0 text-slate-400 shadow-none hover:bg-slate-100 hover:text-slate-700;
+  }
+
+  /* ── Scrollbars ────────────────────────────────────────────────────────── */
+  ::-webkit-scrollbar {
+    @apply h-1.5 w-2;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-slate-100;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply rounded-full border-2 border-slate-100 bg-slate-300;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-slate-400;
+  }
+  /* Only show scrollbars when actually scrolling, for a cleaner look. */
+  .overflow-y-auto {
+    scrollbar-width: thin;
+    scrollbar-color: theme(colors.slate.300) theme(colors.slate.100);
+  }
+
+  /* ── Service dropdown portal ──────────────────────────────── */
+  .service-dropdown-portal {
+    animation: dropdown-appear 0.15s ease-out;
+  }
+  @keyframes dropdown-appear {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── Invoice form: section cards with accent borders ──────── */
+  .invoice-section {
+    @apply rounded-xl border border-slate-200 bg-white shadow-sm transition-all duration-200;
+  }
+  .invoice-section:hover {
+    @apply border-slate-300 shadow-md;
+  }
+  .invoice-section-header {
+    @apply flex items-center gap-3 border-b border-slate-200 px-5 py-3.5;
+  }
+  .invoice-section-title {
+    @apply text-sm font-semibold text-slate-800;
+  }
+  .invoice-section-subtitle {
+    @apply mt-0.5 text-xs text-slate-500;
+  }
+  .invoice-section-accent-client {
+    @apply border-t-2 border-sky-400;
+  }
+  .invoice-section-accent-invoice {
+    @apply border-t-2 border-indigo-400;
+  }
+  .invoice-section-accent-items {
+    @apply border-t-2 border-amber-400;
+  }
+  .invoice-section-accent-gst {
+    @apply border-t-2 border-emerald-400;
+  }
+  .invoice-section-accent-payment {
+    @apply border-t-2 border-rose-400;
+  }
+  .invoice-section-accent-bank {
+    @apply border-t-2 border-purple-400;
+  }
+
+  /* ── Sticky financial summary ─────────────────────────────── */
+  .financial-summary {
+    @apply rounded-xl border border-sky-200/50 bg-gradient-to-b from-sky-50/30 to-white p-4 shadow-sm;
+  }
+
+  /* ── Step progress indicator ──────────────────────────────── */
+  .step-bar {
+    @apply h-1.5 w-full overflow-hidden rounded-full bg-slate-200;
+  }
+  .step-bar-fill {
+    @apply h-full rounded-full bg-gradient-to-r from-sky-500 to-indigo-500 transition-all duration-300;
+  }
+  .step-dot {
+    @apply flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium transition-all duration-200;
+  }
+  .step-dot-complete {
+    @apply bg-sky-100 text-sky-700 ring-2 ring-sky-200;
+  }
+  .step-dot-incomplete {
+    @apply bg-slate-100 text-slate-500 ring-1 ring-slate-200;
+  }
+
+  /* ── Invoice action buttons ──────────────────────────────── */
+  .btn-primary-gradient {
+    @apply btn bg-gradient-to-r from-sky-600 to-indigo-600 text-white shadow-md hover:from-sky-700 hover:to-indigo-700;
+  }
+  .btn-ghost-sky {
+    @apply btn border border-slate-300 bg-white text-slate-700 hover:border-sky-300 hover:bg-sky-50;
+  }
+
+  /* ── Better form input focus ─────────────────────────────── */
+  .input:focus {
+    @apply border-sky-500 ring-2 ring-sky-200;
+  }
+
+  /* ── Professional table styling ──────────────────────────── */
+  .invoice-table th {
+    @apply px-3 py-2.5 text-left text-xs font-medium uppercase tracking-wide text-slate-500;
+  }
+  .invoice-table td {
+    @apply px-3 py-2.5 text-sm text-slate-700;
+  }
+  .invoice-table tbody tr:hover {
+    @apply bg-slate-50/60;
+  }
+  .invoice-table tfoot td {
+    @apply border-t-2 border-slate-900 pt-2.5 font-semibold text-slate-900;
+  }
+}
+
+/*
+ * Printing an invoice must produce the invoice, not the application around it.
+ *
+ * The print route renders without the app shell, so this only has to deal with the
+ * page itself: A4 with a real margin, no background wash (which browsers drop anyway
+ * and which wastes toner), and no page break through a line item.
+ */
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+
+  html,
+  body {
+    background: #fff;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  /* A table row split across a page boundary is unreadable on a printed invoice. */
+  .print-sheet tr,
+  .print-sheet .print-block {
+    break-inside: avoid;
+  }
+
+  .print-sheet {
+    border: 0 !important;
+    box-shadow: none !important;
+  }
+}
