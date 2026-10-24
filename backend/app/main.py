@@ -38,6 +38,8 @@ from app.routers.reports import router as reports_router
 from app.routers.services import router as services_router
 from app.routers.task_templates import router as task_templates_router
 from app.routers.tasks import router as tasks_router
+from app.routers.users import router as users_router
+from app.routers.roles import router as roles_router
 
 from app.mcp_server.server import (
     MCPMount,
@@ -130,6 +132,8 @@ def create_app() -> FastAPI:
         services_router,
         task_templates_router,
         tasks_router,
+        users_router,
+        roles_router,
     ):
         app.include_router(router, prefix="/api")
 

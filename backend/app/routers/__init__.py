@@ -6,7 +6,7 @@ from app.routers.compliance import router as compliance_router
 from app.routers.communications import router as communications_router
 from app.routers.documents import router as documents_router
 from app.routers.financial_years import router as financial_years_router
-from app.routers.messaging import router as messaging_router
+
 from app.routers.notifications import router as notifications_router
 from app.routers.reports import router as reports_router
 from app.routers.services import router as services_router
@@ -21,7 +21,6 @@ __all__ = [
     "communications_router",
     "documents_router",
     "financial_years_router",
-    "messaging_router",
     "notifications_router",
     "reports_router",
     "services_router",
