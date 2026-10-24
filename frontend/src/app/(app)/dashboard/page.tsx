@@ -270,7 +270,7 @@ function ComplianceSummary({
 }) {
   const [selected, setSelected] = useState<string | null>(null);
 
-  if (rows.length === 0) {
+  if (!rows || rows.length === 0) {
     return (
       <Card title="Compliance Summary" className={cn(className, "dashboard-card dashboard-card--compliance")}>
          <EmptyState message="No work has been generated yet." />
@@ -394,7 +394,7 @@ function ComplianceSummary({
 }
 
 function UpcomingDeadlines({ rows }: { rows: FirmDashboard["upcoming_deadlines"] }) {
-  const soon = rows.slice(0, 6);
+  const soon = (rows ?? []).slice(0, 6);
 
   return (
     <Card
@@ -485,12 +485,13 @@ function UpcomingDeadlines({ rows }: { rows: FirmDashboard["upcoming_deadlines"]
  * changes.
  */
 function WorkPipeline({ stages }: { stages: FirmDashboard["pipeline"] }) {
-  const total = stages.reduce((sum, stage) => sum + stage.count, 0);
+  const safeStages = stages ?? [];
+  const total = safeStages.reduce((sum, stage) => sum + stage.count, 0);
 
   return (
     <Card
       title="Work Pipeline"
-      subtitle={`${total} task(s) in flight, across ${stages.length} stages.`}
+      subtitle={`${total} task(s) in flight, across ${safeStages.length} stages.`}
       className="dashboard-card dashboard-card--pipeline"
       action={
         <Link href="/tasks" className="btn-ghost px-2 py-1 text-xs">
@@ -499,7 +500,7 @@ function WorkPipeline({ stages }: { stages: FirmDashboard["pipeline"] }) {
       }
     >
       <div className="flex flex-wrap items-stretch gap-2 p-4">
-        {stages.map((stage, index) => (
+        {safeStages.map((stage, index) => (
           <div key={stage.key} className="flex flex-1 items-center gap-2">
             <Link
               href="/tasks"
@@ -512,7 +513,7 @@ function WorkPipeline({ stages }: { stages: FirmDashboard["pipeline"] }) {
               <p className="tabular text-2xl font-semibold leading-none">{stage.count}</p>
               <p className="mt-1.5 text-xs font-medium leading-tight">{stage.label}</p>
             </Link>
-            {index < stages.length - 1 && (
+            {index < safeStages.length - 1 && (
               <Icon name="chevron-right" className="hidden h-4 w-4 shrink-0 text-slate-300 sm:block" />
             )}
           </div>
@@ -523,29 +524,30 @@ function WorkPipeline({ stages }: { stages: FirmDashboard["pipeline"] }) {
 }
 
 function ClientPortfolio({ portfolio }: { portfolio: FirmDashboard["portfolio"] }) {
+  const p = portfolio ?? {};
   const items: Array<{ icon: IconName; tone: ChipTone; value: number; label: string }> = [
     {
       icon: "clients",
       tone: "info",
-      value: portfolio.clients_active,
+      value: p.clients_active ?? 0,
       label: "Active clients",
     },
     {
       icon: "tasks",
       tone: "progress",
-      value: portfolio.engagements_active,
+      value: p.engagements_active ?? 0,
       label: "Active engagements",
     },
     {
       icon: "user",
       tone: "violet",
-      value: portfolio.new_clients_this_fy,
+      value: p.new_clients_this_fy ?? 0,
       label: "New clients (FY)",
     },
     {
       icon: "clock",
       tone: "neutral",
-      value: portfolio.clients_inactive,
+      value: p.clients_inactive ?? 0,
       label: "Inactive clients",
     },
   ];
@@ -553,7 +555,7 @@ function ClientPortfolio({ portfolio }: { portfolio: FirmDashboard["portfolio"] 
   return (
     <Card
        title="Client Portfolio"
-       subtitle={`${portfolio.clients_total} client(s) on the books.`}
+       subtitle={`${p.clients_total ?? 0} client(s) on the books.`}
        className="dashboard-card dashboard-card--portfolio"
       action={
         <Link href="/clients" className="btn-ghost px-2 py-1 text-xs">
@@ -666,7 +668,7 @@ function FinancialOverview({ financials }: { financials: FirmDashboard["financia
 }
 
 function ClientsNeedingAttention({ rows }: { rows: FirmDashboard["at_risk_clients"] }) {
-  const top = rows.slice(0, 6);
+  const top = (rows ?? []).slice(0, 6);
 
   return (
     <Card
@@ -733,7 +735,7 @@ function ClientsNeedingAttention({ rows }: { rows: FirmDashboard["at_risk_client
 }
 
 function TeamWorkload({ rows }: { rows: FirmDashboard["workload"] }) {
-  const top = [...rows]
+  const top = [...(rows ?? [])]
     .sort((a, b) => b.utilisation_percent - a.utilisation_percent)
     .slice(0, 6);
 
@@ -792,7 +794,7 @@ function TeamWorkload({ rows }: { rows: FirmDashboard["workload"] }) {
 }
 
 function RecentActivity({ rows }: { rows: FirmDashboard["recent_activity"] }) {
-  const top = rows.slice(0, 6);
+  const top = (rows ?? []).slice(0, 6);
 
   return (
     <Card
