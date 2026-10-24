@@ -105,9 +105,9 @@ function ServiceChips({ services }: { services: ClientListItem["services"] }) {
   }
   return (
     <span className="flex flex-wrap gap-1">
-      {services.map((service) => (
+      {services.map((service, index) => (
         <span
-          key={service.code}
+          key={`${service.code}-${index}`}
           title={service.name}
           className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] font-medium text-slate-600"
         >
