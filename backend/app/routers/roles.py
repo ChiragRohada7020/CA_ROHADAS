@@ -3,12 +3,13 @@
 Endpoints:
   GET  /roles              — role list with permissions
   GET  /roles/{id}         — role detail
+  PATCH /roles/{id}        — update role permission grants
 """
 from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Body, Depends, Request
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -34,7 +35,7 @@ async def list_roles(
     items = []
     for r in roles:
         perms = db.execute(
-            select(Permission.code).where(RolePermission.role_id == r.id)
+            select(RolePermission.permission_code).where(RolePermission.role_id == r.id)
         ).scalars().all()
         items.append({
             "id": str(r.id),
@@ -69,7 +70,7 @@ async def get_role(
         raise NotFoundError(f"Role {role_id} not found")
 
     perms = db.execute(
-        select(Permission.code).where(RolePermission.role_id == role.id)
+        select(RolePermission.permission_code).where(RolePermission.role_id == role.id)
     ).scalars().all()
 
     return {
@@ -80,5 +81,49 @@ async def get_role(
         "data_scope": role.data_scope,
         "is_system": role.is_system,
         "is_active": role.is_active,
+        "permissions": list(perms),
+    }
+
+
+@router.patch("/roles/{role_id}")
+async def update_role_permissions(
+    request: Request,
+    role_id: str,
+    payload: Any = Body(...),
+    db: Session = Depends(get_db),
+) -> Any:
+    principal = await get_current_user(request, db)
+    tenant_id = principal.tenant_id
+
+    role = db.get(Role, role_id)
+    if role is None or (role.tenant_id is not None and str(role.tenant_id) != str(tenant_id)):
+        from app.core.errors import NotFoundError
+        raise NotFoundError(f"Role {role_id} not found")
+
+    p = payload if isinstance(payload, dict) else payload.dict()
+    desired = set(p.get("permission_codes", []))
+
+    existing = {
+        rp.permission_code: rp
+        for rp in db.execute(
+            select(RolePermission).where(RolePermission.role_id == role.id)
+        ).scalars().all()
+    }
+
+    for code in desired - set(existing.keys()):
+        db.add(RolePermission(role_id=role.id, permission_code=code, tenant_id=role.tenant_id))
+
+    for code in set(existing.keys()) - desired:
+        db.delete(existing[code])
+
+    db.commit()
+
+    perms = db.execute(
+        select(RolePermission.permission_code).where(RolePermission.role_id == role.id)
+    ).scalars().all()
+    return {
+        "id": str(role.id),
+        "code": role.code,
+        "name": role.name,
         "permissions": list(perms),
     }
