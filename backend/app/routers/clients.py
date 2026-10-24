@@ -27,6 +27,7 @@ from app.core.db import SessionLocal, get_db
 from app.core.errors import NotFoundError
 from app.core.clock import today_local
 from app.core.security import get_current_user
+from sqlalchemy.exc import IntegrityError
 from app.models import (
     Client, ClientEntityLink, Contact, Engagement, Registration,
     ClientService, Document, Task, Invoice, Service,
@@ -262,7 +263,7 @@ async def create_client(
     from app.core.rbac import Permission as Perm
 
     principal = await get_current_user(request, db)
-    if "client.write" not in principal.permissions and "*:*" not in principal.permissions:
+    if "client.create" not in principal.permissions and "*:*" not in principal.permissions:
         raise HTTPException(status_code=403, detail="Permission 'client.create' is required")
 
     p = payload if isinstance(payload, dict) else payload.dict()
@@ -579,7 +580,7 @@ async def update_client(
     from app.core.rbac import Permission as Perm
 
     principal = await get_current_user(request, db)
-    if "client.write" not in principal.permissions and "*:*" not in principal.permissions:
+    if "client.update" not in principal.permissions and "*:*" not in principal.permissions:
         raise HTTPException(status_code=403, detail="Permission 'client.update' is required")
 
     client = db.get(Client, client_id)
@@ -607,7 +608,7 @@ async def change_client_status(
     from app.core.rbac import Permission as Perm
 
     principal = await get_current_user(request, db)
-    if "client.status" not in principal.permissions and "*:*" not in principal.permissions:
+    if "client.update" not in principal.permissions and "*:*" not in principal.permissions:
         raise HTTPException(status_code=403, detail="Permission 'client.update' is required")
 
     client = db.get(Client, client_id)
@@ -661,8 +662,15 @@ async def add_contact(
         is_authorised_signatory=p.get("is_authorised_signatory", False),
     )
     db.add(contact)
-    db.commit()
-    db.refresh(contact)
+    try:
+        db.commit()
+        db.refresh(contact)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="A primary contact already exists for this client",
+        )
 
     return {"id": str(contact.id), "name": contact.name, "role": contact.role}
 
@@ -675,6 +683,9 @@ async def add_registration(
     db: SessionLocal = Depends(get_db),
 ) -> Any:
     principal = await get_current_user(request, db)
+    if "client.update" not in principal.permissions and "*:*" not in principal.permissions:
+        raise HTTPException(status_code=403, detail="Permission 'client.update' is required")
+
     client = db.get(Client, client_id)
     if client is None:
         raise NotFoundError(f"Client {client_id} not found")
@@ -693,8 +704,15 @@ async def add_registration(
         gst_scheme=p.get("gst_scheme"),
     )
     db.add(reg)
-    db.commit()
-    db.refresh(reg)
+    try:
+        db.commit()
+        db.refresh(reg)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail=f"A {reg.registration_type} registration with that number already exists",
+        )
 
     return {"id": str(reg.id), "registration_type": reg.registration_type, "number": reg.number}
 
@@ -720,8 +738,15 @@ async def add_client_service(
         end_date=p.get("end_date"),
     )
     db.add(cs)
-    db.commit()
-    db.refresh(cs)
+    try:
+        db.commit()
+        db.refresh(cs)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="This service is already linked to this client",
+        )
 
     return {"id": str(cs.id), "service_id": str(cs.service_id), "is_active": cs.is_active}
 
@@ -787,15 +812,17 @@ async def get_client_documents(
     db: SessionLocal = Depends(get_db),
 ) -> Any:
     from sqlalchemy import select, func
+    from app.models import DocumentVersion
 
     principal = await get_current_user(request, db)
     rows = db.execute(
-        select(Document)
+        select(Document, DocumentVersion.file_name, DocumentVersion.size_bytes)
+        .outerjoin(DocumentVersion, DocumentVersion.id == Document.current_version_id)
         .where(Document.client_id == client_id)
         .order_by(Document.created_at.desc())
         .limit(limit)
         .offset(offset)
-    ).scalars().all()
+    ).all()
 
     total = db.execute(
         select(func.count(Document.id)).where(Document.client_id == client_id)
@@ -809,12 +836,12 @@ async def get_client_documents(
                 "doc_type": r.doc_type,
                 "category": r.category,
                 "status": r.status,
-                "file_name": r.file_name,
-                "size_bytes": r.size_bytes,
+                "file_name": dv_file_name,
+                "size_bytes": dv_size,
                 "created_at": r.created_at.isoformat() if r.created_at else None,
                 "updated_at": r.updated_at.isoformat() if r.updated_at else None,
             }
-            for r in rows
+            for r, dv_file_name, dv_size in rows
         ],
         "meta": {"total": total, "limit": limit, "offset": offset, "has_more": len(rows) == limit},
     }
