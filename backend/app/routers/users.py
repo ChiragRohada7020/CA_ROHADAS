@@ -58,6 +58,7 @@ def _user_row(u: Any, branch_name: Any) -> dict:
         "date_of_joining": u.date_of_joining.isoformat() if u.date_of_joining else None,
         "weekly_capacity_hours": int(u.weekly_capacity_hours) if u.weekly_capacity_hours else 0,
         "last_login_at": u.last_login_at.isoformat() if u.last_login_at else None,
+        "roles": list(u.roles) if getattr(u, "roles", None) is not None else [],
     }
 
 
@@ -119,8 +120,16 @@ async def list_users(
     params["offset"] = offset
     rows = db.execute(stmt, params).fetchall()
 
+    role_map: dict = {}
+    for uid_s, code in db.execute(text(
+        "SELECT ur.user_id, r.code FROM user_roles ur JOIN roles r ON r.id = ur.role_id "
+        "WHERE r.tenant_id = CAST(:tenant AS uuid)"
+    ), {"tenant": str(tenant_id)}).fetchall():
+        role_map.setdefault(str(uid_s), set()).add(code)
+
     items = []
     for r in rows:
+        roles = sorted(role_map.get(str(r.id), set()))
         u_obj = {
             "id": r.id, "email": r.email, "full_name": r.full_name, "employee_code": r.employee_code,
             "designation": r.designation, "department": r.department, "phone": r.phone,
@@ -128,6 +137,7 @@ async def list_users(
             "status": r.status, "date_of_joining": r.date_of_joining, "weekly_capacity_hours": r.weekly_capacity_hours,
             "last_login_at": r.last_login_at, "skills": r.skills, "system_access": r.system_access,
             "work_location": r.work_location, "created_at": r.created_at, "updated_at": r.updated_at,
+            "roles": roles,
         }
         items.append(_user_row(_UProxy(u_obj), r.branch_name))
 

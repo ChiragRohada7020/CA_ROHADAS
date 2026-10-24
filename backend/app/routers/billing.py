@@ -186,7 +186,8 @@ async def get_invoice_summary(
     }
 
 
-@router.get("/billing/invoices")
+@router.get("/invoices", name="invoices-list", operation_id="list_invoices_alias")
+@router.get("/billing/invoices", name="billing-invoices", operation_id="list_billing_invoices")
 async def list_invoices(
     request: Request,
     search: str | None = None,
@@ -326,7 +327,7 @@ async def get_receivables(
     outstanding_total = 0.0
     overdue_total = 0.0
     by_bucket = {}
-    by_client = []
+    by_client_map: dict = {}
 
     for row in rows:
         outstanding = float(row.total) - float(row.amount_paid)
@@ -336,14 +337,45 @@ async def get_receivables(
             overdue_total += outstanding
         bucket = "current" if days_overdue <= 0 else str(days_overdue)
         by_bucket[bucket] = by_bucket.get(bucket, 0.0) + outstanding
-        by_client.append({
-            "client_id": row.client_id,
+
+        cid = str(row.client_id) if row.client_id else None
+        c = by_client_map.setdefault(cid, {
+            "client_id": cid,
             "client_name": row.client_name or row.client_code or None,
-            "invoice_number": row.invoice_number,
-            "outstanding": round(outstanding, 2),
-            "due_date": row.due_date.isoformat() if row.due_date else None,
-            "days_overdue": days_overdue,
-            "ageing_bucket": row.ageing_bucket or "current",
+            "client_code": row.client_code,
+            "invoice_count": 0,
+            "billed": 0.0,
+            "collected": 0.0,
+            "outstanding": 0.0,
+            "overdue_outstanding": 0.0,
+            "oldest_due_date": row.due_date,
+            "worst_days_overdue": 0,
+        })
+        c["invoice_count"] += 1
+        c["billed"] += float(row.total)
+        c["collected"] += float(row.amount_paid)
+        c["outstanding"] += outstanding
+        if days_overdue > 0:
+            c["overdue_outstanding"] += outstanding
+        if row.due_date is not None:
+            if c["oldest_due_date"] is None or row.due_date < c["oldest_due_date"]:
+                c["oldest_due_date"] = row.due_date
+        if days_overdue > c["worst_days_overdue"]:
+            c["worst_days_overdue"] = days_overdue
+
+    by_client = []
+    for c in by_client_map.values():
+        by_client.append({
+            "client_id": c["client_id"],
+            "client_name": c["client_name"],
+            "client_code": c["client_code"],
+            "invoice_count": c["invoice_count"],
+            "billed": round(c["billed"], 2),
+            "collected": round(c["collected"], 2),
+            "outstanding": round(c["outstanding"], 2),
+            "overdue_outstanding": round(c["overdue_outstanding"], 2),
+            "oldest_due_date": c["oldest_due_date"].isoformat() if c["oldest_due_date"] else None,
+            "worst_days_overdue": c["worst_days_overdue"],
         })
 
     collected_stmt = select(func.coalesce(func.sum(Payment.amount), 0)).select_from(Payment).join(Invoice).where(

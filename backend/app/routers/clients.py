@@ -353,10 +353,11 @@ async def get_client(
     ).scalars().all()
 
     services = db.execute(
-        select(ClientService)
+        select(ClientService, Service)
+        .join(Service, Service.id == ClientService.service_id)
         .where(ClientService.client_id == client_id)
-        .where(ClientService.is_active.is_(True))
-    ).scalars().all()
+        .where(ClientService.tenant_id == principal.tenant_id)
+    ).all()
 
     engagements = db.execute(
         select(Engagement).where(Engagement.client_id == client_id)
@@ -444,14 +445,25 @@ async def get_client(
         ],
         "services": [
             {
-                "id": str(s.id),
-                "service_id": str(s.service_id) if s.service_id else None,
-                "engagement_id": str(s.engagement_id) if s.engagement_id else None,
-                "is_active": s.is_active,
-                "start_date": s.start_date.isoformat() if s.start_date else None,
-                "end_date": s.end_date.isoformat() if s.end_date else None,
+                "id": str(cs.id),
+                "client_id": str(cs.client_id),
+                "service_id": str(cs.service_id) if cs.service_id else None,
+                "engagement_id": str(cs.engagement_id) if cs.engagement_id else None,
+                "is_active": cs.is_active,
+                "start_date": cs.start_date.isoformat() if cs.start_date else None,
+                "end_date": cs.end_date.isoformat() if cs.end_date else None,
+                "service": {
+                    "id": str(s.id), "code": s.code, "name": s.name, "category": s.category,
+                    "description": s.description, "is_recurring": bool(s.is_recurring),
+                    "default_frequency": s.default_frequency, "default_priority": s.default_priority,
+                    "default_fee_model": s.default_fee_model,
+                    "standard_fee": float(s.standard_fee) if s.standard_fee is not None else None,
+                    "sac_code": s.sac_code, "is_active": bool(s.is_active),
+                    "sort_order": int(s.sort_order) if s.sort_order is not None else 0,
+                    "client_count": 0,
+                } if s is not None else None,
             }
-            for s in services
+            for cs, s in services
         ],
         "engagements": [
             {

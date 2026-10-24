@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import Any
 
 from fastapi import APIRouter, Depends, Request
-from sqlalchemy import func, select
+from sqlalchemy import String, cast, func, select
 
 from app.core.db import SessionLocal, get_db
 from app.core.security import get_current_user
@@ -33,7 +33,7 @@ async def get_unread_count(
         .where(
             Notification.tenant_id == tenant_id,
             Notification.user_id == user_id,
-            Notification.status == "unread",
+            cast(Notification.status, String) == "unread",
         )
     ).scalar() or 0
 
