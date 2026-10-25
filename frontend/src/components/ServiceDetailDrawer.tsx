@@ -50,7 +50,7 @@ export function ServiceDetailDrawer({
   });
 
   const row = service.data;
-  const steps = row?.templates.flatMap((tpl) => tpl.steps) ?? [];
+  const steps = row?.templates?.flatMap((tpl) => tpl.steps) ?? [];
 
   const tabs: Array<{ key: DrawerTab; label: string; count?: number }> = [
     { key: "overview", label: "Overview" },

@@ -12,6 +12,8 @@ from typing import Any, AsyncIterator
 from fastapi import HTTPException, status
 from httpx import AsyncClient, HTTPStatusError, TimeoutException
 
+from app.core.config import settings
+
 
 _SYSTEM_PROMPT = """You are CA Assistant, an expert clerk for an Indian CA firm.
 You work directly on the firm's live records through your tools (MCP), under the
@@ -31,7 +33,7 @@ Rules:
 
 _PROVIDERS = {
     "kilo": {
-        "url": "https://gateway.kilo.ai/v1/chat/completions",
+        "url": "https://ai-gateway.kilo.ai/api/v1/chat/completions",
         "header_prefix": "Bearer",
     },
     "openai": {
@@ -67,11 +69,14 @@ async def call_chat(
     tools: list[dict[str, Any]] | None = None,
     temperature: float = 0.7,
     max_tokens: int = 4096,
-) -> AsyncIterator[str]:
+) -> AsyncIterator[dict[str, Any]]:
     """Stream chat completions from the configured AI provider.
 
-    Yields raw text tokens as they arrive. Raises ``HTTPException`` if the
-    provider is unconfigured or the call fails.
+    Yields structured events:
+      {"type": "content",    "data": str}
+      {"type": "tool_calls", "data": [{"name": str, "arguments": str}]}
+
+    Raises ``HTTPException`` if the provider is unconfigured or the call fails.
     """
     if not api_key:
         raise HTTPException(
@@ -93,7 +98,9 @@ async def call_chat(
             payload["tools"] = tools
             payload["tool_choice"] = "auto"
 
-        async with AsyncClient(timeout=120.0) as client:
+        async with AsyncClient(
+            timeout=120.0, verify=settings.ENVIRONMENT != "development"
+        ) as client:
             try:
                 async with client.stream(
                     "POST",
@@ -110,20 +117,39 @@ async def call_chat(
                             status_code=status.HTTP_502_BAD_GATEWAY,
                             detail=f"AI provider error: {resp.status_code} {body[:500]}",
                         )
+                    tool_calls: dict[int, dict[str, str]] = {}
                     async for line in resp.aiter_lines():
                         if not line.strip():
                             continue
                         if line.startswith("data:"):
                             chunk = line[5:].strip()
                             if chunk == "[DONE]":
-                                return
+                                break
                             try:
                                 data = json.loads(chunk)
-                                content = data.get("choices", [{}])[0].get("delta", {}).get("content")
-                                if content:
-                                    yield content
-                            except (json.JSONDecodeError, KeyError):
+                            except json.JSONDecodeError:
                                 continue
+                            delta = data.get("choices", [{}])[0].get("delta", {})
+                            content = delta.get("content")
+                            if content:
+                                yield {"type": "content", "data": content}
+
+                            for tc in delta.get("tool_calls", []):
+                                idx = tc.get("index", 0)
+                                if idx not in tool_calls:
+                                    tool_calls[idx] = {"name": "", "arguments": ""}
+                                func = tc.get("function", {})
+                                if func.get("name"):
+                                    tool_calls[idx]["name"] = func["name"]
+                                if func.get("arguments"):
+                                    tool_calls[idx]["arguments"] += func["arguments"]
+
+                    if tool_calls:
+                        yield {"type": "tool_calls", "data": [
+                            {"name": tc["name"], "arguments": tc["arguments"]}
+                            for tc in tool_calls.values()
+                            if tc["name"]
+                        ]}
             except TimeoutException:
                 raise HTTPException(
                     status_code=status.HTTP_504_GATEWAY_TIMEOUT,
@@ -136,7 +162,6 @@ async def call_chat(
                 )
 
     elif provider == "anthropic":
-        # Claude uses a different streaming format
         payload = {
             "model": model,
             "max_tokens": max_tokens,
@@ -148,7 +173,9 @@ async def call_chat(
         if tools:
             payload["tools"] = tools
 
-        async with AsyncClient(timeout=120.0) as client:
+        async with AsyncClient(
+            timeout=120.0, verify=settings.ENVIRONMENT != "development"
+        ) as client:
             try:
                 async with client.stream(
                     "POST",
@@ -166,21 +193,45 @@ async def call_chat(
                             status_code=status.HTTP_502_BAD_GATEWAY,
                             detail=f"AI provider error: {resp.status_code} {body[:500]}",
                         )
+                    tool_calls: dict[int, dict[str, str]] = {}
                     async for line in resp.aiter_lines():
                         if not line.strip():
                             continue
                         if line.startswith("data:"):
                             chunk = line[5:].strip()
                             if chunk == "[DONE]":
-                                return
+                                break
                             try:
                                 data = json.loads(chunk)
-                                if data.get("type") == "content_block_delta":
-                                    content = data.get("delta", {}).get("text")
-                                    if content:
-                                        yield content
-                            except (json.JSONDecodeError, KeyError):
+                            except json.JSONDecodeError:
                                 continue
+
+                            if data.get("type") == "content_block_delta":
+                                delta = data.get("delta", {})
+                                text = delta.get("text")
+                                if text:
+                                    yield {"type": "content", "data": text}
+
+                            if data.get("type") == "content_block_start":
+                                cb = data.get("content_block", {})
+                                if cb.get("type") == "tool_use":
+                                    idx = data.get("index", 0)
+                                    if idx not in tool_calls:
+                                        tool_calls[idx] = {"name": cb.get("name", ""), "arguments": ""}
+
+                            if data.get("type") == "content_block_delta":
+                                idx = data.get("index", 0)
+                                delta = data.get("delta", {})
+                                partial = delta.get("partial_json", "")
+                                if idx in tool_calls and partial:
+                                    tool_calls[idx]["arguments"] += partial
+
+                    if tool_calls:
+                        yield {"type": "tool_calls", "data": [
+                            {"name": tc["name"], "arguments": tc["arguments"]}
+                            for tc in tool_calls.values()
+                            if tc["name"]
+                        ]}
             except TimeoutException:
                 raise HTTPException(
                     status_code=status.HTTP_504_GATEWAY_TIMEOUT,

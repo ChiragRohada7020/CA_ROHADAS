@@ -9,10 +9,12 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
+from sqlalchemy.orm import Session
 
 from app.assistant.chat import handle_chat_stream
 from app.assistant.sessions import clear_session
+from app.core.db import get_db
 
 router = APIRouter(tags=["assistant"])
 
@@ -20,10 +22,12 @@ router = APIRouter(tags=["assistant"])
 @router.post("/assistant/chat/stream")
 async def assistant_chat_stream(
     request: Request,
+    db: Session = Depends(get_db),
 ) -> Any:
     body = await request.json()
     return await handle_chat_stream(
         request,
+        db=db,
         message=body.get("message", ""),
         session_id=body.get("session_id"),
         confirm=body.get("confirm", False),
@@ -34,12 +38,14 @@ async def assistant_chat_stream(
 @router.get("/assistant/chat/stream")
 async def assistant_chat_stream_get(
     request: Request,
+    db: Session = Depends(get_db),
     session_id: str | None = None,
     message: str | None = None,
     confirm: bool = False,
 ) -> Any:
     return await handle_chat_stream(
         request,
+        db=db,
         message=message or "",
         session_id=session_id,
         confirm=confirm,
@@ -49,10 +55,12 @@ async def assistant_chat_stream_get(
 @router.post("/assistant/chat")
 async def assistant_chat(
     request: Request,
+    db: Session = Depends(get_db),
 ) -> Any:
     body = await request.json()
     streaming_response = await handle_chat_stream(
         request,
+        db=db,
         message=body.get("message", ""),
         session_id=body.get("session_id"),
     )

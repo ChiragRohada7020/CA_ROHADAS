@@ -16,8 +16,9 @@ import logging
 from datetime import datetime
 from typing import Any, AsyncIterator
 
-from fastapi import HTTPException, Request, status
+from fastapi import HTTPException, Request, status, Depends
 from fastapi.responses import StreamingResponse
+from sqlalchemy.orm import Session
 
 from app.assistant import ai
 from app.assistant.sessions import (
@@ -27,6 +28,7 @@ from app.assistant.sessions import (
 )
 from app.assistant.transport import MCPTransport
 from app.core.config import settings
+from app.core.db import get_db
 
 logger = logging.getLogger("ca_software.assistant")
 
@@ -57,6 +59,7 @@ def _emit_error(sse: SSE, message: str, status_code: int = 500) -> str:
 async def handle_chat_stream(
     request: Request,
     *,
+    db: Session,
     message: str,
     session_id: str | None = None,
     confirm: bool = False,
@@ -69,7 +72,7 @@ async def handle_chat_stream(
 
         try:
             from app.core.security import get_current_user
-            principal = await get_current_user(request)
+            principal = await get_current_user(request, db)
         except HTTPException:
             yield sse.error("Not authenticated", 401)
             return
@@ -167,15 +170,18 @@ async def handle_chat_stream(
         tool_calls_from_ai: list[dict[str, Any]] = []
 
         try:
-            async for token in ai.call_chat(
+            async for event in ai.call_chat(
                 provider=settings.AI_PROVIDER,
                 api_key=settings.AI_API_KEY,
                 model=settings.AI_MODEL,
                 messages=messages,
                 tools=tools_schema,
             ):
-                response_buffer += token
-                yield sse.text(token)
+                if event["type"] == "content":
+                    response_buffer += event["data"]
+                    yield sse.text(event["data"])
+                elif event["type"] == "tool_calls":
+                    tool_calls_from_ai.extend(event["data"])
         except HTTPException as exc:
             yield sse.error(
                 f"AI provider error: {exc.detail}",
@@ -190,24 +196,41 @@ async def handle_chat_stream(
         # Parse any tool calls from the AI response
         if tool_calls_from_ai:
             for tc in tool_calls_from_ai:
+                tool_name = tc["name"]
+                tool_args_str = tc.get("arguments", "") or ""
+                try:
+                    tool_args_obj = json.loads(tool_args_str) if tool_args_str else {}
+                except json.JSONDecodeError:
+                    tool_args_obj = {"raw": tool_args_str}
+
                 yield sse.event("tool_start", {
-                    "tool": tc["tool"],
-                    "arguments": tc.get("arguments", {}),
+                    "tool": tool_name,
+                    "arguments": tool_args_obj,
                 })
                 try:
                     async with MCPTransport.for_request(request) as mcp_client:
-                        result = await mcp_client.call_tool(tc["tool"], tc.get("arguments", {}))
+                        result = await mcp_client.call_tool(tool_name, tool_args_obj)
                     result_text = _extract_tool_result(result)
+                    mcp_results.append({
+                        "tool": tool_name,
+                        "result": result_text,
+                    })
                     yield sse.event("tool_end", {
-                        "tool": tc["tool"],
+                        "tool": tool_name,
                         "status": "ok",
                         "count": len(result_text.split("\n")) if result_text else 0,
                     })
                 except Exception as exc:
+                    logger.warning("MCP tool %s failed: %s", tool_name, exc)
                     yield sse.event("tool_end", {
-                        "tool": tc["tool"],
+                        "tool": tool_name,
                         "status": "error",
                         "message": str(exc),
+                    })
+                    mcp_results.append({
+                        "tool": tool_name,
+                        "result": f"Error: {exc}",
+                        "error": True,
                     })
 
         add_message(session.id, {"role": "assistant", "content": full_response})
@@ -223,9 +246,13 @@ async def handle_chat_stream(
             } if tool_names else None,
         })
 
-    return _iter_with_done(
-        _stream(),
-        request,
+    return StreamingResponse(
+        _iter_with_done(
+            _stream(),
+            request,
+        ),
+        media_type="text/event-stream",
+        headers={"cache-control": "no-cache", "connection": "keep-alive"},
     )
 
 
@@ -289,7 +316,7 @@ def _get_tool_schema() -> list[dict[str, Any]]:
             "function": {
                 "name": t.name,
                 "description": t.description or "",
-                "parameters": t.inputSchema or {},
+                "parameters": t.input_schema or {},
             },
         }
         for t in schemas

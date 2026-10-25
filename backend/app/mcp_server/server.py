@@ -327,40 +327,35 @@ async def _tool_create_task(db, arguments: dict[str, Any]) -> str:
     from app.models import Task
     import json
     from app.core.clock import today_local
-    from app.core.db import SessionLocal
 
-    db = SessionLocal()
-    try:
-        now = today_local()
-        prefix = f"T{now.strftime('%y%m')}:"
+    now = today_local()
+    prefix = f"T{now.strftime('%y%m')}:"
 
-        task = Task(
-            tenant_id="00000000-0000-0000-0000-000000000000",
-            task_code=prefix + "0001",
-            title=arguments.get("title", arguments.get("name", "")),
-            client_id=arguments.get("client_id"),
-            description=arguments.get("description", ""),
-            category=arguments.get("category", "compliance"),
-            priority=arguments.get("priority", "normal"),
-            statutory_due_date=arguments.get("statutory_due_date"),
-            service_id=arguments.get("service_id"),
-            financial_year_id=arguments.get("financial_year_id"),
-            tags=",".join(arguments.get("tags") or []),
-            status="not_started",
-            filing_status="not_required",
-        )
-        db.add(task)
-        db.commit()
-        db.refresh(task)
+    task = Task(
+        tenant_id=arguments.get("tenant_id", "00000000-0000-0000-0000-000000000000"),
+        task_code=prefix + "0001",
+        title=arguments.get("title", arguments.get("name", "")),
+        client_id=arguments.get("client_id"),
+        description=arguments.get("description", ""),
+        category=arguments.get("category", "compliance"),
+        priority=arguments.get("priority", "normal"),
+        statutory_due_date=arguments.get("statutory_due_date"),
+        service_id=arguments.get("service_id"),
+        financial_year_id=arguments.get("financial_year_id"),
+        tags=",".join(arguments.get("tags") or []),
+        status="not_started",
+        filing_status="not_required",
+    )
+    db.add(task)
+    db.commit()
+    db.refresh(task)
 
-        return json.dumps({
-            "id": str(task.id),
-            "task_code": task.task_code,
-            "title": task.title,
-            "status": task.status,
-        })
-    finally:
-        db.close()
+    return json.dumps({
+        "id": str(task.id),
+        "task_code": task.task_code,
+        "title": task.title,
+        "status": task.status,
+    })
 
 
 async def _tool_list_fy(db, arguments: dict[str, Any]) -> str:

@@ -103,7 +103,7 @@ export async function streamAssistantTurn(
   onEvent: (event: AssistantEvent) => void,
   signal?: AbortSignal,
 ): Promise<AssistantPayload> {
-  const response = await fetch("/api/assistant/chat", {
+  const response = await fetch("/api/assistant/chat/stream", {
     method: "POST",
     headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
     credentials: "include",
