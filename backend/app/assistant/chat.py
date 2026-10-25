@@ -187,41 +187,48 @@ async def handle_chat_stream(
 
         add_message(session.id, {"role": "user", "content": message})
 
-        # ── Call the AI provider ───────────────────────────────────────────
+        # ── AI conversation loop ─────────────────────────────────────────────
+        # The AI may return content, tool_calls, or both. If it returns tool_calls,
+        # we execute them and call the AI again with the results. This loop
+        # continues until the AI returns no more tool_calls.
         tools_schema = _get_tool_schema()
         response_buffer = ""
-        tool_calls_from_ai: list[dict[str, Any]] = []
+        ai_tool_call_counter = 0
+        max_iterations = 5
 
-        try:
-            async for event in ai.call_chat(
-                provider=settings.AI_PROVIDER,
-                api_key=settings.AI_API_KEY,
-                model=settings.AI_MODEL,
-                messages=messages,
-                tools=tools_schema,
-            ):
-                if event["type"] == "content":
-                    response_buffer += event["data"]
-                    yield sse.text(event["data"])
-                elif event["type"] == "tool_calls":
-                    tool_calls_from_ai.extend(event["data"])
-        except HTTPException as exc:
-            yield sse.error(
-                f"AI provider error: {exc.detail}",
-                exc.status_code,
-            )
-            return
+        for iteration in range(max_iterations):
+            tool_calls_from_ai: list[dict[str, Any]] = []
 
-        # ── If AI returned tool calls, execute them and do a follow-up call ──
-        if tool_calls_from_ai:
-            # Add an assistant message with the AI's tool_calls so the
-            # conversation flow is correct for the OpenAI chat format.
+            try:
+                async for event in ai.call_chat(
+                    provider=settings.AI_PROVIDER,
+                    api_key=settings.AI_API_KEY,
+                    model=settings.AI_MODEL,
+                    messages=messages,
+                    tools=tools_schema,
+                ):
+                    if event["type"] == "content":
+                        response_buffer += event["data"]
+                        yield sse.text(event["data"])
+                    elif event["type"] == "tool_calls":
+                        tool_calls_from_ai.extend(event["data"])
+            except HTTPException as exc:
+                yield sse.error(
+                    f"AI provider error: {exc.detail}",
+                    exc.status_code,
+                )
+                return
+
+            if not tool_calls_from_ai:
+                break  # AI returned content (and no more tool calls) → done
+
+            # ── Execute the AI's tool calls ──────────────────────────────
             messages.append({
                 "role": "assistant",
                 "content": "",
                 "tool_calls": [
                     {
-                        "id": f"ai_call_{i}",
+                        "id": f"ai_call_{iteration}_{i}",
                         "type": "function",
                         "function": {
                             "name": tc["name"],
@@ -250,7 +257,7 @@ async def handle_chat_stream(
                     result_text = _extract_tool_result(result)
                     messages.append({
                         "role": "tool",
-                        "tool_call_id": f"ai_call_{i}",
+                        "tool_call_id": f"ai_call_{iteration}_{i}",
                         "content": result_text,
                     })
                     mcp_results.append({
@@ -266,7 +273,7 @@ async def handle_chat_stream(
                     logger.warning("MCP tool %s failed: %s", tool_name, exc)
                     messages.append({
                         "role": "tool",
-                        "tool_call_id": f"ai_call_{i}",
+                        "tool_call_id": f"ai_call_{iteration}_{i}",
                         "content": f"Error: {exc}",
                     })
                     mcp_results.append({
@@ -279,30 +286,12 @@ async def handle_chat_stream(
                         "status": "error",
                         "message": str(exc),
                     })
+            ai_tool_call_counter += 1
 
-            # ── Second AI call: generate the final response text ───────────
-            response_buffer = ""
-            try:
-                async for event in ai.call_chat(
-                    provider=settings.AI_PROVIDER,
-                    api_key=settings.AI_API_KEY,
-                    model=settings.AI_MODEL,
-                    messages=messages,
-                    tools=tools_schema,
-                ):
-                    if event["type"] == "content":
-                        response_buffer += event["data"]
-                        yield sse.text(event["data"])
-            except HTTPException as exc:
-                yield sse.error(
-                    f"AI provider error: {exc.detail}",
-                    exc.status_code,
-                )
-                return
+        if not response_buffer.strip():
+            response_buffer = "I couldn't generate a response. Please try rephrasing your question."
 
-        full_response = response_buffer.strip()
-        if not full_response:
-            full_response = "I couldn't generate a response. Please try rephrasing your question."
+        full_response = response_buffer
 
         add_message(session.id, {"role": "assistant", "content": full_response})
 
@@ -362,7 +351,7 @@ def _intent_to_tool_calls(message: str) -> list[dict[str, Any]]:
     calls: list[dict[str, Any]] = []
     msg_lower = message.lower()
 
-    if any(w in msg_lower for w in ["task", "overdue", "due", "deadline", "pending", "ready for"]):
+    if any(w in msg_lower for w in ["task", "overdue", "due", "deadline", "pending", "ready for", "team member", "best", "assignee", "assigned"]):
         calls.append({"tool": "list_tasks", "arguments": {"limit": 50}})
 
     if any(w in msg_lower for w in ["client", "customer", "customer"]):
