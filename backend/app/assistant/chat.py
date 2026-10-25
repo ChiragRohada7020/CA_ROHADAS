@@ -41,6 +41,10 @@ class SSE:
         self._sent = False
 
     def event(self, event_type: str, data: Any) -> str:
+        if isinstance(data, dict):
+            data = {"type": event_type, **data}
+        else:
+            data = {"type": event_type, "data": data}
         payload = json.dumps(data, default=str)
         return f"event: {event_type}\ndata: {payload}\n\n"
 
@@ -154,13 +158,32 @@ async def handle_chat_stream(
                         "error": True,
                     })
 
-        # ── Build AI messages with tool results ────────────────────────────
-        for mr in mcp_results:
+        # ── Build AI messages with intent-based tool results ─────────────────
+        # OpenAI chat format requires an assistant message with ``tool_calls``
+        # before each ``tool`` role message, plus a ``tool_call_id`` linking
+        # them.  The intent-detector tools are synthetic, so we fabricate IDs.
+        if mcp_results:
             messages.append({
-                "role": "tool",
-                "tool_call_name": mr["tool"],
-                "content": mr["result"],
+                "role": "assistant",
+                "content": "",
+                "tool_calls": [
+                    {
+                        "id": f"intentional_call_{i}",
+                        "type": "function",
+                        "function": {
+                            "name": mr["tool"],
+                            "arguments": json.dumps(tool_calls[i].get("arguments", {})) if i < len(tool_calls) else "{}",
+                        },
+                    }
+                    for i, mr in enumerate(mcp_results)
+                ],
             })
+            for i, mr in enumerate(mcp_results):
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": f"intentional_call_{i}",
+                    "content": mr["result"],
+                })
 
         add_message(session.id, {"role": "user", "content": message})
 
@@ -189,13 +212,27 @@ async def handle_chat_stream(
             )
             return
 
-        full_response = response_buffer.strip()
-        if not full_response:
-            full_response = "I couldn't generate a response. Please try rephrasing your question."
-
-        # Parse any tool calls from the AI response
+        # ── If AI returned tool calls, execute them and do a follow-up call ──
         if tool_calls_from_ai:
-            for tc in tool_calls_from_ai:
+            # Add an assistant message with the AI's tool_calls so the
+            # conversation flow is correct for the OpenAI chat format.
+            messages.append({
+                "role": "assistant",
+                "content": "",
+                "tool_calls": [
+                    {
+                        "id": f"ai_call_{i}",
+                        "type": "function",
+                        "function": {
+                            "name": tc["name"],
+                            "arguments": tc.get("arguments", ""),
+                        },
+                    }
+                    for i, tc in enumerate(tool_calls_from_ai)
+                ],
+            })
+
+            for i, tc in enumerate(tool_calls_from_ai):
                 tool_name = tc["name"]
                 tool_args_str = tc.get("arguments", "") or ""
                 try:
@@ -211,6 +248,11 @@ async def handle_chat_stream(
                     async with MCPTransport.for_request(request) as mcp_client:
                         result = await mcp_client.call_tool(tool_name, tool_args_obj)
                     result_text = _extract_tool_result(result)
+                    messages.append({
+                        "role": "tool",
+                        "tool_call_id": f"ai_call_{i}",
+                        "content": result_text,
+                    })
                     mcp_results.append({
                         "tool": tool_name,
                         "result": result_text,
@@ -222,28 +264,59 @@ async def handle_chat_stream(
                     })
                 except Exception as exc:
                     logger.warning("MCP tool %s failed: %s", tool_name, exc)
-                    yield sse.event("tool_end", {
-                        "tool": tool_name,
-                        "status": "error",
-                        "message": str(exc),
+                    messages.append({
+                        "role": "tool",
+                        "tool_call_id": f"ai_call_{i}",
+                        "content": f"Error: {exc}",
                     })
                     mcp_results.append({
                         "tool": tool_name,
                         "result": f"Error: {exc}",
                         "error": True,
                     })
+                    yield sse.event("tool_end", {
+                        "tool": tool_name,
+                        "status": "error",
+                        "message": str(exc),
+                    })
+
+            # ── Second AI call: generate the final response text ───────────
+            response_buffer = ""
+            try:
+                async for event in ai.call_chat(
+                    provider=settings.AI_PROVIDER,
+                    api_key=settings.AI_API_KEY,
+                    model=settings.AI_MODEL,
+                    messages=messages,
+                    tools=tools_schema,
+                ):
+                    if event["type"] == "content":
+                        response_buffer += event["data"]
+                        yield sse.text(event["data"])
+            except HTTPException as exc:
+                yield sse.error(
+                    f"AI provider error: {exc.detail}",
+                    exc.status_code,
+                )
+                return
+
+        full_response = response_buffer.strip()
+        if not full_response:
+            full_response = "I couldn't generate a response. Please try rephrasing your question."
 
         add_message(session.id, {"role": "assistant", "content": full_response})
 
         tool_names = [mr["tool"] for mr in mcp_results]
         yield sse.event("done", {
-            "success": True,
-            "response": full_response,
-            "session_id": session.id,
-            "tool_calls": {
-                "count": len(tool_names),
-                "tools": [{"tool": t} for t in tool_names],
-            } if tool_names else None,
+            "payload": {
+                "success": True,
+                "response": full_response,
+                "session_id": session.id,
+                "tool_calls": {
+                    "count": len(tool_names),
+                    "tools": [{"tool": t} for t in tool_names],
+                } if tool_names else None,
+            },
         })
 
     return StreamingResponse(
