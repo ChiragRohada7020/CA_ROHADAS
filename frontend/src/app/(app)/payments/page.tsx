@@ -609,7 +609,7 @@ export default function PaymentsPage() {
                                 }}
                                 className="flex w-full items-center gap-3 px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
                               >
-                                <Icon name="edit" className="h-4 w-4" />
+                                <Icon name="pencil" className="h-4 w-4" />
                                 Edit
                               </button>
                             </div>

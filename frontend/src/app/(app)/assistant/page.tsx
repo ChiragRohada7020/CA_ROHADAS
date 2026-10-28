@@ -186,15 +186,8 @@ export default function AssistantPage() {
     if (typeof window === "undefined" || !window.speechSynthesis) return;
     window.speechSynthesis.cancel();
     // Clean markdown and make it conversational
-    const cleanText = text
-      .replace(/\[\[.*?\]\]/g, "")
-      .replace(/\*\*(.*?)\*\*/g, "$1")
-      .replace(/\*(.*?)\*/g, "$1")
-      .replace(/#{1,6}\s+/g, "")
-      .replace(/
-+/g, ". ")
-      .replace(/\s+/g, " ")
-      .trim();
+        let cleanText = text.replace(/\[\[.*?\]\]/g, "").replace(/\*\*(.*?)\*\*/g, "$1").replace(/\*(.*?)\*/g, "$1").replace(/#{1,6}\s+/g, "");
+    cleanText = cleanText.split("\n").join(". ").replace(/\s+/g, " ").trim();
     const utterance = new SpeechSynthesisUtterance(cleanText.slice(0, 200));
     utterance.lang = "en-IN";
     utterance.rate = 0.9;
