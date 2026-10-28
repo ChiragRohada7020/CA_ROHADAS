@@ -39,6 +39,7 @@ export function VoiceAssistant({ open, onClose }: { open: boolean; onClose: () =
       setError(null);
     };
     
+    let lastFinal = "";
     recognition.onresult = (event: any) => {
       let interim = "";
       let final = "";
@@ -48,7 +49,9 @@ export function VoiceAssistant({ open, onClose }: { open: boolean; onClose: () =
         else interim += t;
       }
       setTranscript(final || interim);
-      if (final) {
+      if (final && final !== lastFinal && final.trim()) {
+        lastFinal = final;
+        try { recognition.stop(); } catch {}
         handleUserSpeech(final);
       }
     };
@@ -80,6 +83,9 @@ export function VoiceAssistant({ open, onClose }: { open: boolean; onClose: () =
   const handleUserSpeech = async (text: string) => {
     if (!text.trim() || !isActiveRef.current) return;
     setState("thinking");
+    if (recognitionRef.current) {
+      try { recognitionRef.current.stop(); } catch {}
+    }
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 30000);
