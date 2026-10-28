@@ -51,3 +51,98 @@ export function useSignOut() {
 export function hasPermission(session: TokenResponse | undefined, code: string): boolean {
   return Boolean(session?.permissions?.includes(code));
 }
+
+/**
+ * Returns true when the caller should see a UI section or field.
+ *
+ * Permission logic:
+ *  - `firm_owner` role or `*:*` wildcard → always true (firm owner has full access)
+ *  - explicit grant of `code` → true
+ *  - otherwise → false
+ *
+ * Field-level permissions (e.g. `client.read.sensitive`) are NOT auto-granted
+ * from parent permissions (e.g. `client.read`). They must be explicitly granted
+ * via the role or a per-user override so that the owner can selectively restrict
+ * sensitive data.
+ */
+export function canSee(session: TokenResponse | undefined, code: string): boolean {
+  if (!session) {
+    return true; // avoid flicker during session loading
+  }
+  const perms = session.permissions ?? [];
+  const roles = session.roles ?? [];
+
+  // Owner and system admin always see everything
+  if (roles.includes("firm_owner") || roles.includes("system_admin")) {
+    return true;
+  }
+  if (perms.includes("*:*")) {
+    return true;
+  }
+
+  // Exact match
+  if (perms.includes(code)) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Returns true when the user can see a section — used by `usePermissions`.
+ *
+ * This variant supports hierarchical matching: `invoice.read.financial` is
+ * visible if the user has `invoice.read`. Use `canSee` for strict checks where
+ * field-level permissions must be explicit.
+ */
+export function canSeeSection(session: TokenResponse | undefined, code: string): boolean {
+  if (!session) {
+    return true;
+  }
+  const perms = session.permissions ?? [];
+  const roles = session.roles ?? [];
+
+  if (roles.includes("firm_owner") || roles.includes("system_admin")) {
+    return true;
+  }
+  if (perms.includes("*:*")) {
+    return true;
+  }
+  if (perms.includes(code)) {
+    return true;
+  }
+
+  // Hierarchical match for section-level permissions
+  const parts = code.split(".");
+  while (parts.length > 1) {
+    parts.pop();
+    if (perms.includes(parts.join("."))) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Hook: returns a convenience set of permission checks for the current session.
+ */
+export function usePermissions() {
+  const { data: session } = useSession();
+  const perms = session?.permissions ?? [];
+  const roles = session?.roles ?? [];
+
+  const check = (code: string) => {
+    if (roles.includes("firm_owner") || roles.includes("system_admin")) return true;
+    if (perms.includes("*:*")) return true;
+    if (perms.includes(code)) return true;
+    const parts = code.split(".");
+    while (parts.length > 1) {
+      parts.pop();
+      if (perms.includes(parts.join("."))) return true;
+    }
+    return false;
+  };
+
+  return { permissions: perms, roles, canSee: check };
+}

@@ -8,20 +8,7 @@ import { Icon } from "@/components/Icon";
 import { Modal } from "@/components/ui";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/format";
-import type { BranchRow, Page, RolesResponse, UserCreatePayload, UserDetailRow } from "@/lib/types";
-
-const ROLE_OPTIONS: Array<{ value: string; label: string }> = [
-  { value: "admin", label: "Admin" },
-  { value: "manager", label: "Manager" },
-  { value: "senior_associate", label: "Senior Associate" },
-  { value: "ca_senior", label: "CA Senior" },
-  { value: "article_assistant", label: "Article Assistant" },
-  { value: "accounts_staff", label: "Accounts Staff" },
-  { value: "accountant", label: "Accountant" },
-  { value: "partner", label: "Partner" },
-  { value: "branch_partner", label: "Branch Partner" },
-  { value: "firm_owner", label: "Firm Owner" },
-];
+import type { BranchRow, Page, RolesResponse, UserCreatePayload, UserDetailRow, UserListItem } from "@/lib/types";
 
 const DEPARTMENTS = [
   "Taxation",
@@ -54,10 +41,20 @@ export function CreateTeamMemberModal({
   const [isPartner, setIsPartner] = useState(false);
   const [roleCode, setRoleCode] = useState("");
   const [temporaryPassword, setTemporaryPassword] = useState("");
+  const [reportingToId, setReportingToId] = useState("");
 
   const branches = useQuery({
     queryKey: ["users", "branches"],
     queryFn: () => api.get<BranchRow[]>("/branches"),
+  });
+
+  const team = useQuery({
+    queryKey: ["users", "directory"],
+    queryFn: () =>
+      api.get<Page<UserListItem>>(
+        "/users?limit=200&include_inactive=true",
+      ),
+    staleTime: 3 * 60 * 1000,
   });
 
   const roles = useQuery({
@@ -66,11 +63,23 @@ export function CreateTeamMemberModal({
     retry: (count) => count < 2,
   });
 
-  // Build the role picker from the live roles API instead of a hardcoded list.
-  // Falls back to ROLE_OPTIONS if the query hasn't resolved yet or has errored.
-  const roleOptions: Array<{ value: string; label: string }> = roles.data
-    ? roles.data.roles.map((r) => ({ value: r.code, label: r.name }))
-    : ROLE_OPTIONS;
+  // The role picker is built from the roles the caller is actually allowed to
+  // assign, as reported by the API. While the query is resolving there is
+  // nothing to show, so the picker is disabled rather than offering a list
+  // the backend would refuse.
+  const assignable = roles.data?.assignable ?? [];
+  const roleOptions: Array<{ value: string; label: string }> = assignable
+    .map((code) => {
+      const match = roles.data?.roles.find((r) => r.code === code);
+      return { value: code, label: match?.name ?? code };
+    })
+    .sort((a, b) => a.label.localeCompare(b.label));
+
+  const reportingOptions: Array<{ value: string; label: string }> = (
+    team.data?.items ?? []
+  )
+    .filter((u) => u.id !== roleCode)
+    .map((u) => ({ value: u.id, label: `${u.full_name} (${u.email})` }));
 
   const create = useMutation({
     mutationFn: (payload: UserCreatePayload) => api.post<UserDetailRow>("/users", payload),
@@ -108,6 +117,7 @@ export function CreateTeamMemberModal({
       setWeeklyCapacity("");
       setIsPartner(false);
       setRoleCode("");
+      setReportingToId("");
       setTemporaryPassword("");
     }
   }, [open]);
@@ -127,6 +137,7 @@ export function CreateTeamMemberModal({
     if (weeklyCapacity.trim()) payload.weekly_capacity_hours = Number(weeklyCapacity);
     if (isPartner) payload.is_partner = true;
     if (roleCode) payload.role_code = roleCode as UserCreatePayload["role_code"];
+    if (reportingToId) payload.reporting_to_id = reportingToId;
     if (temporaryPassword.trim()) payload.password = temporaryPassword;
     create.mutate(payload);
   }
@@ -240,7 +251,21 @@ export function CreateTeamMemberModal({
               onChange={setRoleCode}
               placeholder="No role assigned"
               options={roleOptions}
-              hint="Roles grant bundles of permissions. The staff member can still be added without one."
+              disabled={roles.isPending}
+              hint={
+                roles.isError
+                  ? "Couldn't load roles — sign out and back in, or refresh the page."
+                  : "Roles grant bundles of permissions. Only roles you are allowed to assign appear here."
+              }
+            />
+            <SelectField
+              label="Reports to"
+              value={reportingToId}
+              onChange={setReportingToId}
+              placeholder="No manager set"
+              disabled={team.isPending}
+              options={reportingOptions}
+              hint="The manager this member reports to. Used for workload and approval routing."
             />
             <TextField
               label="Temporary password (optional)"

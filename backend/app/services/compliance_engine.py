@@ -8,6 +8,7 @@ into actual workflow tasks.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import date, timedelta
 from typing import Any
 
 from sqlalchemy import select
@@ -20,6 +21,102 @@ class DeadlineResult:
     statutory_due_date: str | None
     reason: str
     required_registration: str | None
+
+
+def _get_required_registration(rule: ComplianceRule) -> str | None:
+    """Read the required registration type from the rule's ``applicability_rule`` field.
+
+    The ``ComplianceRule`` model does not have a dedicated ``required_registration``
+    column; the ``applicability_rule`` Text field stores the condition that
+    determines whether a rule applies. When it is non-empty it is treated as
+    the registration type the client must hold. ``None`` means the rule
+    applies to all clients regardless of registration.
+    """
+    val = getattr(rule, "applicability_rule", None)
+    if val and isinstance(val, str) and val.strip():
+        return val.strip()
+    return None
+
+
+def _compute_next_due_date(rule: ComplianceRule, today: date, *,
+                           db: Session | None = None,
+                           financial_year_id: str | None = None) -> date | None:
+    """Compute the next statutory due date for a compliance rule.
+
+    Strategy (in priority order):
+    1. If ``db`` is provided, look up an active ``Period`` row for this rule
+       whose ``[start_date, end_date]`` brackets ``today``. Return ``end_date``
+       as the statutory due date.
+    2. Fall back to frequency-based computation from ``default_frequency``
+       anchored on the financial year (if provided) or ``today``.
+    3. Return ``None`` when the frequency is missing or unsupported.
+    """
+    # 1. Try period-based lookup
+    if db is not None:
+        from app.models import Period
+        stmt = (
+            select(Period)
+            .where(Period.compliance_rule_id == rule.id)
+            .where(Period.start_date <= today)
+            .where(Period.end_date >= today)
+            .where(Period.is_active.is_(True))
+        )
+        if financial_year_id:
+            stmt = stmt.where(Period.tenant_id == rule.tenant_id)
+        period = db.execute(stmt).scalars().first()
+        if period and period.end_date:
+            return period.end_date.date() if hasattr(period.end_date, "date") else period.end_date
+
+    # 2. Frequency-based fallback
+    freq = getattr(rule, "default_frequency", None)
+    if not freq:
+        return None
+
+    fy_start: date | None = None
+    if db is not None and financial_year_id:
+        from app.models import FinancialYear
+        fy = db.get(FinancialYear, financial_year_id)
+        if fy and fy.start_date:
+            fy_start = fy.start_date.date() if hasattr(fy.start_date, "date") else fy.start_date
+
+    anchor = fy_start or today
+
+    freq_lower = freq.lower().strip()
+    if freq_lower in ("monthly", "month", "monthly"):
+        # End of the current month
+        if anchor.month == 12:
+            next_month = date(anchor.year + 1, 1, 1)
+        else:
+            next_month = date(anchor.year, anchor.month + 1, 1)
+        return next_month - timedelta(days=1)
+    elif freq_lower in ("quarterly", "quarter"):
+        quarter = ((anchor.month - 1) // 3) * 3 + 1
+        q_end_month = quarter + 2
+        if q_end_month > 12:
+            q_end = date(anchor.year + 1, q_end_month - 12, 1) - timedelta(days=1)
+        else:
+            q_end = date(anchor.year, q_end_month + 1, 1) - timedelta(days=1)
+        return q_end
+    elif freq_lower in ("half_yearly", "half-yearly", "semi_yearly", "semi-yearly"):
+        if anchor.month <= 6:
+            return date(anchor.year, 6, 30)
+        else:
+            return date(anchor.year, 12, 31)
+    elif freq_lower in ("yearly", "annual", "year"):
+        # End of the financial year containing the anchor date
+        if fy_start:
+            fy_end = fy_start.replace(year=fy_start.year + 1) - timedelta(days=1)
+            # If anchor is before FY end, use this FY; else next FY end
+            if anchor <= fy_end:
+                return fy_end
+            else:
+                fy_end_next = fy_start.replace(year=fy_start.year + 2) - timedelta(days=1)
+                return fy_end_next
+        else:
+            # Calendar year end
+            return date(anchor.year, 12, 31)
+    else:
+        return None
 
 
 def evaluate_rule_for_client(
@@ -37,7 +134,6 @@ def evaluate_rule_for_client(
     from the rule's frequency template, or ``None`` when the rule doesn't apply.
     """
     from app.models import (
-        ClientEntityLink,
         ComplianceRule,
         FinancialYear,
         Registration,
@@ -48,18 +144,13 @@ def evaluate_rule_for_client(
     if rule is None:
         return DeadlineResult(False, None, f"Rule {rule_id} not found", None)
 
-    required_reg = rule.required_registration
+    required_reg = _get_required_registration(rule)
     if required_reg:
-        entity_links = db.execute(
-            select(ClientEntityLink.legal_entity_id)
-            .where(ClientEntityLink.client_id == client_id)
-            .where(ClientEntityLink.is_active.is_(True))
-        ).scalars().all()
-
         reg_found = db.execute(
             select(Registration.registration_type)
             .where(Registration.client_id == client_id)
             .where(Registration.status == "active")
+            .where(Registration.tenant_id == rule.tenant_id)
         ).scalars().all()
 
         all_reg_types = set(reg_found)
@@ -72,7 +163,7 @@ def evaluate_rule_for_client(
             )
 
     today = today_local()
-    due_date = rule.compute_next_due_date(today=today)
+    due_date = _compute_next_due_date(rule, today, db=db, financial_year_id=financial_year_id)
 
     return DeadlineResult(
         applies=True,

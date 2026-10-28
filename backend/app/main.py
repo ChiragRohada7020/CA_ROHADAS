@@ -27,12 +27,16 @@ from app.core.clock import today_local
 from app.routers.assistant import router as assistant_router
 from app.routers.auth import router as auth_router
 from app.routers.billing import router as billing_router
+from app.routers.credit_notes import router as credit_notes_router
+from app.routers.invoice_pdf import router as invoice_pdf_router
 from app.routers.clients import router as clients_router
 from app.routers.compliance import router as compliance_router
 from app.routers.communications import router as communications_router
 from app.routers.documents import router as documents_router
 from app.routers.document_requests import router as document_requests_router
 from app.routers.financial_years import router as financial_years_router
+from app.routers.imports import router as imports_router
+from app.routers.integrations import router as integrations_router
 from app.routers.notifications import router as notifications_router
 from app.routers.reports import router as reports_router
 from app.routers.services import router as services_router
@@ -40,6 +44,8 @@ from app.routers.task_templates import router as task_templates_router
 from app.routers.tasks import router as tasks_router
 from app.routers.users import router as users_router
 from app.routers.roles import router as roles_router
+from app.routers.whatsapp import router as whatsapp_router
+from app.routers.documents import public_share_router
 
 from app.mcp_server.server import (
     MCPMount,
@@ -85,7 +91,7 @@ def create_app() -> FastAPI:
         from fastapi.responses import JSONResponse
         return JSONResponse(
             status_code=exc.status_code,
-            content={"error": exc.message, "code": exc.code, "details": exc.details},
+            content={"error": {"code": exc.code, "message": exc.message, "details": exc.details}},
         )
 
     @app.exception_handler(Exception)
@@ -121,12 +127,16 @@ def create_app() -> FastAPI:
         auth_router,
         assistant_router,
         billing_router,
+        credit_notes_router,
+        invoice_pdf_router,
         clients_router,
         compliance_router,
         communications_router,
         documents_router,
         document_requests_router,
         financial_years_router,
+        imports_router,
+        integrations_router,
         notifications_router,
         reports_router,
         services_router,
@@ -134,8 +144,10 @@ def create_app() -> FastAPI:
         tasks_router,
         users_router,
         roles_router,
+        whatsapp_router,
     ):
         app.include_router(router, prefix="/api")
+    app.include_router(public_share_router)
 
     # ── MCP server mount ─────────────────────────────────────────────────
     _session_manager = get_session_manager()

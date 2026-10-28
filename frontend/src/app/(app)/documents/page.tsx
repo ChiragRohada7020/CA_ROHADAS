@@ -301,7 +301,7 @@ export default function DocumentsPage() {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
-                          {clientDocs.data!.items.map((doc) => (
+                          {(clientDocs.data?.items ?? []).map((doc) => (
                             <tr
                               key={doc.id}
                               className="cursor-pointer hover:bg-slate-50"
@@ -335,7 +335,7 @@ export default function DocumentsPage() {
                   </div>
                 )}
 
-                {pending.data.length > 0 && (
+                {(pending.data?.length ?? 0) > 0 && (
                   <div>
                     <div className="border-b border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600">
                       Outstanding requests

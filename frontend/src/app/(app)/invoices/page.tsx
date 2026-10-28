@@ -1,10 +1,12 @@
 ﻿"use client";
 
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { motion, type Variants } from "framer-motion";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useRef, useState } from "react";
 
-import { GenerateInvoicesPanel, NewInvoiceForm } from "@/components/BillingForms";
+import { GenerateInvoicesPanel, NewInvoiceForm, InvoiceRowActions } from "@/components/BillingForms";
+import { CreditNoteList } from "@/components/CreditNoteList";
 import { InvoiceDetailDrawer } from "@/components/InvoiceDetailDrawer";
 import {
   Badge,
@@ -57,6 +59,26 @@ const AGEING_FILL: Record<string, string> = {
   "90+": "bg-rose-700",
 };
 
+const STAGGER_CHILDREN: Variants = {
+  hidden: { opacity: 0, y: 10 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.3, ease: "easeOut" },
+  },
+};
+
+const STAGGER_PARENT = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.05,
+      delayChildren: 0.05,
+    },
+  },
+};
+
 export default function BillingPage() {
   const paging = usePaging(10);
   const { filters, updateFilter, offset, setOffset, limit, page } = paging;
@@ -65,7 +87,26 @@ export default function BillingPage() {
   const [tab, setTab] = useState("all");
   const [adding, setAdding] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const queryClient = useQueryClient();
   const [openInvoiceId, setOpenInvoiceId] = useState<string | null>(null);
+  const [openTab, setOpenTab] = useState<string>("lines");
+
+  const issueReceipt = useMutation({
+    mutationFn: (invoiceId: string) => api.post(`/invoices/${invoiceId}/receipt`),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["invoice"] });
+    },
+  });
+
+  // Auto-open the new-invoice popup when ?new=1 is present in the URL.
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("new") === "1") {
+        setAdding(true);
+      }
+    }
+  }, []);
 
   const scope = {
     search,
@@ -133,11 +174,11 @@ export default function BillingPage() {
             >
               Bulk Actions
             </button>
-            <Link href="/invoices/new">
+            <Link href="/invoices?new=1">
               <button
                 type="button"
                 className="btn-primary"
-                onClick={() => setAdding(!adding)}
+                onClick={() => setAdding(true)}
               >
                 <Icon name="plus" className="h-4 w-4" />
                 {adding ? "Cancel" : "Create Invoice"}
@@ -162,6 +203,7 @@ export default function BillingPage() {
       {generating && <GenerateInvoicesPanel />}
       {adding && (
         <NewInvoiceForm
+          onClose={() => setAdding(false)}
           onDone={(invoiceId) => {
             setAdding(false);
             setOpenInvoiceId(invoiceId);
@@ -173,27 +215,31 @@ export default function BillingPage() {
           {TABS.map((entry) => {
             const isActive = entry.key === tab;
             return (
-              <button
+              <motion.button
                 key={entry.key}
                 type="button"
                 onClick={() => changeTab(entry.key)}
                 className={cn(
-                  "-mb-px cursor-pointer border-b-2 px-3 py-2 text-sm font-medium transition-colors",
+                  "relative cursor-pointer border-b-2 px-3 py-2 text-sm font-medium transition-colors",
                   isActive
                     ? "border-sky-600 text-sky-700"
                     : "border-transparent text-slate-500 hover:text-slate-800",
                 )}
+                whileTap={{ scale: 0.97 }}
               >
                 {entry.label}
-                <span
+                <motion.span
                   className={cn(
                     "tabular ml-1.5 rounded px-1.5 py-0.5 text-[10px]",
                     isActive ? "bg-sky-100 text-sky-700" : "bg-slate-100 text-slate-500",
                   )}
+                  initial={{ scale: 0.8, opacity: 0.5 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 25 }}
                 >
                   {s?.tab_counts[entry.key] ?? 0}
-                </span>
-              </button>
+                </motion.span>
+              </motion.button>
             );
           })}
         </div>
@@ -252,10 +298,7 @@ export default function BillingPage() {
 
 
         {showingCreditNotes ? (
-          <EmptyState
-            title="Credit notes"
-            message="Credit notes are raised from an invoice's page. None have been issued for these clients yet."
-          />
+          <CreditNoteList />
         ) : invoices.isPending ? (
           <LoadingState label="Loading invoices…" />
         ) : invoices.isError ? (
@@ -273,54 +316,59 @@ export default function BillingPage() {
             <table className="w-full min-w-[72rem]">
               <thead className="bg-slate-50">
                 <tr>
-                  <th className="th w-8">
-                    <input type="checkbox" aria-label="Select all invoices on this page" />
-                  </th>
                   <th className="th w-10">#</th>
-                  <th className="th">Invoice No.</th>
-                  <th className="th">Date</th>
-                  <th className="th">Client</th>
-                  <th className="th">Services</th>
+                  <th className="th">Invoice</th>
+                  <th className="th">Service</th>
                   <th className="th text-right">Amount</th>
                   <th className="th text-right">Paid</th>
                   <th className="th text-right">Balance</th>
                   <th className="th">Status</th>
                   <th className="th">Due Date</th>
+                  <th className="th w-10 text-center">Payments</th>
                   <th className="th w-12" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {rows.map((invoice, index) => (
-                  <tr key={invoice.id} className="hover:bg-slate-50">
-                    <td className="td">
-                      <input
-                        type="checkbox"
-                        aria-label={`Select ${invoice.invoice_number ?? "draft"}`}
-                      />
-                    </td>
-                    <td className="td tabular text-xs text-slate-400">
+                  <motion.tr
+                    key={invoice.id}
+                    className="dashboard-row"
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.15, ease: "easeOut", delay: index * 0.03 }}
+                  >
+                    <td className="td tabular text-center text-xs text-slate-400">
                       {offset + index + 1}
                     </td>
-                    <td className="td">
-                      <button
-                        type="button"
-                        className="font-medium text-slate-900 underline-offset-2 hover:text-sky-700 hover:underline"
-                        onClick={() => setOpenInvoiceId(invoice.id)}
-                      >
-                        {invoice.invoice_number ?? "(draft)"}
-                      </button>
+                    <td className="td min-w-[200px]">
+                      <div className="flex flex-col">
+                        <button
+                          type="button"
+                          className="text-left font-medium text-slate-900 underline-offset-2 hover:text-sky-700 hover:underline"
+                          onClick={() => setOpenInvoiceId(invoice.id)}
+                        >
+                          {invoice.invoice_number ?? "(draft)"}
+                        </button>
+                        <span className="mt-0.5 text-xs text-slate-600">{invoice.client_name ?? "—"}</span>
+                      </div>
                     </td>
-                    <td className="td text-xs text-slate-600">
-                      {formatDate(invoice.invoice_date)}
-                    </td>
-                    <td className="td text-xs text-slate-700">
-                      {invoice.client_name ?? "—"}
-                    </td>
-                    <td className="td text-xs text-slate-600">
+                    <td className="td min-w-[160px]">
                       {invoice.services.length === 0 ? (
                         <span className="text-slate-300">—</span>
                       ) : (
-                        <span className="line-clamp-2">{invoice.services.join(", ")}</span>
+                        <div className="flex flex-wrap gap-1">
+                          {invoice.services.slice(0, 2).map((svc) => (
+                            <span key={svc} className="inline-flex items-center rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600">
+                              {svc}
+                            </span>
+                          ))}
+                          {invoice.services.length > 2 && (
+                            <span className="inline-flex items-center rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500">
+                              +{invoice.services.length - 2}
+                            </span>
+                          )}
+                        </div>
                       )}
                     </td>
                     <td className="td tabular text-right text-slate-700">
@@ -356,17 +404,35 @@ export default function BillingPage() {
                     >
                       {formatDate(invoice.due_date)}
                     </td>
-                    <td className="td text-right">
+                    <td className="td text-center">
                       <button
                         type="button"
-                        className="rounded px-1.5 py-0.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-                        onClick={() => setOpenInvoiceId(invoice.id)}
-                        aria-label="Open invoice"
+                        className="inline-flex items-center justify-center rounded p-1 text-slate-400 hover:bg-emerald-50 hover:text-emerald-700"
+                        aria-label="Record payment"
+                        title="Record payment"
+                        onClick={() => {
+                          setOpenInvoiceId(invoice.id);
+                          setOpenTab("payments");
+                        }}
                       >
-                        ⋮
+                        <Icon name="wallet" className="h-4 w-4" />
                       </button>
                     </td>
-                  </tr>
+                    <td className="td text-right">
+                      <InvoiceRowActions
+                        invoice={invoice}
+                        onOpen={() => setOpenInvoiceId(invoice.id)}
+                        onChanged={() => {
+                          void queryClient.invalidateQueries({ queryKey: ["invoices"] });
+                          void queryClient.invalidateQueries({ queryKey: ["invoices", "summary"] });
+                        }}
+                        receiptBtn={invoice.status === "paid" ? {
+                          pending: issueReceipt.isPending,
+                          on: () => issueReceipt.mutate(invoice.id),
+                        } : undefined}
+                      />
+                    </td>
+                  </motion.tr>
                 ))}
               </tbody>
             </table>
@@ -433,8 +499,14 @@ export default function BillingPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {(s?.recent_payments ?? []).slice(0, 6).map((payment) => (
-                  <tr key={payment.id} className="hover:bg-slate-50">
+                {(s?.recent_payments ?? []).slice(0, 6).map((payment, index) => (
+                  <motion.tr
+                    key={payment.id}
+                    className="dashboard-row"
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.3, ease: "easeOut", delay: 0.1 + index * 0.03 }}
+                  >
                     <td className="td text-xs text-slate-600">
                       {formatDate(payment.paid_on)}
                     </td>
@@ -445,7 +517,7 @@ export default function BillingPage() {
                       {formatMoney(payment.amount)}
                     </td>
                     <td className="td text-xs text-slate-500">{humanise(payment.method)}</td>
-                  </tr>
+                  </motion.tr>
                 ))}
               </tbody>
             </table>
@@ -456,7 +528,11 @@ export default function BillingPage() {
       {openInvoiceId && (
         <InvoiceDetailDrawer
           invoiceId={openInvoiceId}
-          onClose={() => setOpenInvoiceId(null)}
+          onClose={() => {
+            setOpenInvoiceId(null);
+            setOpenTab("lines");
+          }}
+          initialTab={openTab as any}
         />
       )}
     </div>
@@ -497,18 +573,24 @@ function SummaryTiles({ summary }: { summary: BillingSummary | undefined }) {
   ];
 
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-      {tiles.map((tile) => (
-        <StatCard
-          key={tile.label}
-          icon={<Icon name={tile.icon} className="h-5 w-5" />}
-          tone={tile.tone}
-          label={tile.label}
-          value={tile.value}
-          hint={tile.hint}
-        />
-      ))}
-    </div>
+      <motion.div
+        className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4"
+        variants={STAGGER_PARENT}
+        initial="hidden"
+        animate="visible"
+      >
+        {tiles.map((tile) => (
+          <motion.div key={tile.label} variants={STAGGER_CHILDREN}>
+            <StatCard
+              icon={<Icon name={tile.icon} className="h-5 w-5" />}
+              tone={tile.tone}
+              label={tile.label}
+              value={tile.value}
+              hint={tile.hint}
+            />
+          </motion.div>
+        ))}
+      </motion.div>
   );
 }
 
@@ -529,19 +611,29 @@ function AgeingPanel({ summary }: { summary: BillingSummary | undefined }) {
   }
 
   return (
-    <div className="p-4">
+    <motion.div
+      className="p-4"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3, ease: "easeOut", delay: 0.3 }}
+    >
       <div className="flex h-40 items-end gap-3">
         {buckets.map((row) => (
           <div key={row.bucket} className="flex min-w-0 flex-1 flex-col items-center gap-1">
             <span className="tabular text-[11px] font-medium text-slate-600">
               {row.amount > 0 ? formatMoney(row.amount) : "—"}
             </span>
-            <div
+            <motion.div
               className={cn(
-                "w-full rounded-t transition-all",
+                "w-full rounded-t",
                 row.amount > 0 ? (AGEING_FILL[row.bucket] ?? "bg-slate-400") : "bg-slate-100",
               )}
-              style={{ height: `${Math.max((row.amount / peak) * 100, row.amount > 0 ? 4 : 2)}%` }}
+              initial={{ height: 0, opacity: 0 }}
+              animate={{
+                height: `${Math.max((row.amount / peak) * 100, row.amount > 0 ? 4 : 2)}%`,
+                opacity: 1,
+              }}
+              transition={{ duration: 0.5, ease: "easeOut", delay: 0.1 }}
               title={`${row.label}: ${formatMoney(row.amount)} across ${row.count} invoice(s)`}
             />
           </div>
@@ -555,7 +647,7 @@ function AgeingPanel({ summary }: { summary: BillingSummary | undefined }) {
           </div>
         ))}
       </div>
-    </div>
+    </motion.div>
   );
 }
 

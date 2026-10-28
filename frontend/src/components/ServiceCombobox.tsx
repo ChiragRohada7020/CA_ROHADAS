@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState, useMemo, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "@/components/Icon";
+import { cn } from "@/lib/format";
 import type { ClientServiceRow, Page, ServiceRow } from "@/lib/types";
 import { api, buildQuery } from "@/lib/api";
 
@@ -47,6 +48,7 @@ interface DropdownPosition {
 function measurePosition(
   trigger: HTMLElement,
   itemCount: number,
+  minWidth = 280,
 ): DropdownPosition | null {
   if (!trigger) return null;
   const rect = trigger.getBoundingClientRect();
@@ -61,19 +63,33 @@ function measurePosition(
     top = rect.bottom + 4;
   }
 
-  return {
-    top,
-    left: rect.left,
-    width: Math.round(rect.width),
-  };
+  // The dropdown is allowed to be wider than the trigger so every option is
+  // readable in full, then clamped to the viewport so long service names are
+  // never clipped by the screen edge.
+  let width = Math.max(minWidth, Math.round(rect.width));
+  let left = rect.left;
+
+  if (left + width > window.innerWidth) {
+    if (rect.right - width < 4) {
+      // Not enough room on either side; clamp to the viewport.
+      width = Math.min(window.innerWidth - 8, Math.max(minWidth, width));
+      left = 4;
+    } else {
+      left = rect.right - width;
+    }
+  }
+
+  return { top, left, width };
 }
 
 function ServiceOptionRow({
   opt,
   onSelect,
+  dark = false,
 }: {
   opt: ServiceOption;
   onSelect: (opt: ServiceOption) => void;
+  dark?: boolean;
 }) {
   const categoryLabel: Record<string, string> = {
     gst: "GST",
@@ -89,7 +105,12 @@ function ServiceOptionRow({
   return (
     <button
       type="button"
-      className="group w-full px-3 py-2 text-left text-sm hover:bg-slate-50 focus:outline-none focus:bg-sky-50"
+      className={cn(
+        "group w-full px-3 py-2 text-left text-sm focus:outline-none",
+        dark
+          ? "hover:bg-[var(--h-dark-surface-1)]"
+          : "hover:bg-slate-50 focus:bg-sky-50",
+      )}
       onMouseDown={(e) => {
         e.preventDefault();
         onSelect(opt);
@@ -97,17 +118,17 @@ function ServiceOptionRow({
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
-          <div className="font-medium text-slate-900 group-hover:text-sky-800">{opt.name}</div>
-          <div className="mt-0.5 flex flex-wrap items-center gap-1 text-xs text-slate-500">
-            <span className="font-mono">{opt.code}</span>
-            <span>· SAC: {opt.sac_code}</span>
+          <div className={cn("font-medium", dark ? "text-[var(--h-dark-text-primary)] group-hover:text-[var(--h-brand-600)]" : "text-slate-900 group-hover:text-sky-800")}>{opt.name}</div>
+          <div className="mt-0.5 flex flex-wrap items-center gap-1 text-xs">
+            <span className={cn("font-mono", dark ? "text-[var(--h-dark-text-secondary)]" : "text-slate-500")}>{opt.code}</span>
+            <span className={dark ? "text-[var(--h-dark-text-secondary)]" : "text-slate-500"}>· SAC: {opt.sac_code}</span>
             {opt.standard_fee != null && (
-              <span className="font-mono">· ₹{opt.standard_fee.toLocaleString("en-IN")}</span>
+              <span className="font-mono" style={{ color: dark ? "var(--h-dark-text-secondary)" : undefined }}>· ₹{opt.standard_fee.toLocaleString("en-IN")}</span>
             )}
           </div>
         </div>
         {opt.category && categoryLabel[opt.category] && (
-          <span className="text-xs font-medium text-sky-700">
+          <span className={cn("text-xs font-medium", dark ? "text-[var(--h-brand-600)]" : "text-sky-700")}>
             {categoryLabel[opt.category]}
           </span>
         )}
@@ -138,12 +159,19 @@ export function ServiceCombobox({
   clientServices,
   loading: isLoading,
   placeholder = "Search services…",
+  dark = false,
+  size = "default",
+  dropdownMinWidth = 280,
 }: {
   value: string;
   onChange: (service: ServiceOption | null) => void;
   clientServices: ServiceOption[];
   loading?: boolean;
   placeholder?: string;
+  dark?: boolean;
+  size?: "default" | "lg";
+  /** Minimum pixel width for the dropdown, so long options are never truncated. */
+  dropdownMinWidth?: number;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -183,6 +211,25 @@ export function ServiceCombobox({
   const selected = value ? clientServices.find((s) => s.id === value) ?? null : null;
   const hasServices = clientServices.length > 0;
 
+  // Larger variant for create-invoice primary search field
+  const isLg = size === "lg";
+  const inputCls = dark
+    ? cn(
+        "w-full rounded-md border outline-none",
+        isLg ? "px-4 py-3 text-lg" : "px-3 py-2.5 text-base",
+        "border-[var(--h-dark-border-color)] bg-[var(--h-dark-surface-1)] text-[var(--h-dark-text-primary)] placeholder:text-[var(--h-dark-text-tertiary)]",
+        isLg && "pl-9",
+      )
+    : cn(
+        "w-full rounded-md border outline-none input",
+        isLg ? "py-3 pl-10 pr-3 text-lg" : "py-2.5 pl-8 pr-3 text-sm",
+      );
+  const iconCls = cn(
+    "absolute top-1/2 -translate-y-1/2",
+    isLg ? "left-3 h-5 w-5" : "left-2.5 h-4 w-4",
+    dark ? "text-[var(--h-dark-text-tertiary)]" : "text-slate-400",
+  );
+
   const allOptions: ServiceOption[] = useMemo(() => {
     const clientOpts = clientFiltered;
     const globalOpts = globalResults?.items?.length
@@ -210,7 +257,7 @@ export function ServiceCombobox({
     }
 
     const updatePos = () => {
-      const pos = measurePosition(inputRef.current!, allOptions.length);
+      const pos = measurePosition(inputRef.current!, allOptions.length, dropdownMinWidth);
       setDropdownPos(pos);
     };
 
@@ -297,7 +344,7 @@ export function ServiceCombobox({
     return (
       <input
         type="text"
-        className="input py-2 text-sm text-slate-400"
+        className={inputCls}
         placeholder="Loading services…"
         disabled
         aria-label="Loading services"
@@ -310,11 +357,11 @@ export function ServiceCombobox({
     return (
       <div className="relative" ref={containerRef}>
         <div className="relative">
-          <Icon name="search" className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <Icon name="search" className={iconCls} />
           <input
             ref={inputRef}
             type="text"
-            className="input py-2 pr-3 pl-8 text-sm"
+            className={inputCls}
             placeholder="Search services…"
             value={open ? query : selected?.name ?? ""}
             onChange={handleInputChange}
@@ -330,20 +377,25 @@ export function ServiceCombobox({
           <>
             {createPortal(
               <div
-                 className="fixed z-[9999] overflow-y-auto rounded-lg border-2 border-slate-200 bg-white py-1 shadow-xl service-dropdown-portal"
-                 ref={dropdownRef}
-                 style={{
-                   top: dropdownPos.top,
-                   left: dropdownPos.left,
-                   width: dropdownPos.width,
+                className={cn(
+                  "fixed z-[9999] overflow-y-auto rounded-lg border-2 py-1 shadow-xl service-dropdown-portal",
+                  dark
+                    ? "border-[var(--h-dark-border-color)] bg-[var(--h-dark-surface-0)]"
+                    : "border-slate-200 bg-white",
+                )}
+                ref={dropdownRef}
+                style={{
+                  top: dropdownPos.top,
+                  left: dropdownPos.left,
+                  width: dropdownPos.width,
                   maxHeight: MAX_DROPDOWN_HEIGHT,
                 }}
               >
                 {isGlobalFetching ? (
-                  <p className="px-3 py-2 text-sm text-slate-500">Searching…</p>
+                  <p className={cn("px-3 py-2 text-sm", dark ? "text-[var(--h-dark-text-tertiary)]" : "text-slate-500")}>Searching…</p>
                 ) : globalResults?.items?.length ? (
                   <>
-                    <p className="px-3 pb-1 text-xs text-slate-500">
+                    <p className={cn("px-3 pb-1 text-xs", dark ? "text-[var(--h-dark-text-tertiary)]" : "text-slate-500")}>
                       {globalResults.items.length} result{globalResults.items.length === 1 ? "" : "s"}
                     </p>
                     {globalResults.items.map((opt: ServiceRow) => (
@@ -358,11 +410,12 @@ export function ServiceCombobox({
                           category: opt.category,
                         }}
                         onSelect={handleSelect}
+                        dark={dark}
                       />
                     ))}
                   </>
                 ) : query.trim() ? (
-                  <p className="px-3 py-2 text-sm text-slate-500">No matching services</p>
+                  <p className={cn("px-3 py-2 text-sm", dark ? "text-[var(--h-dark-text-tertiary)]" : "text-slate-500")}>No matching services</p>
                 ) : null}
               </div>,
               document.body,
@@ -377,11 +430,11 @@ export function ServiceCombobox({
   return (
     <div className="relative" ref={containerRef}>
       <div className="relative">
-        <Icon name="search" className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+        <Icon name="search" className={iconCls} />
         <input
           ref={inputRef}
           type="text"
-          className="input py-2 pr-3 pl-8 text-sm"
+          className={inputCls}
           placeholder={selected?.name ?? placeholder}
           value={open ? query : selected?.name ?? ""}
           onChange={handleInputChange}
@@ -394,7 +447,12 @@ export function ServiceCombobox({
         <>
           {createPortal(
             <div
-              className="fixed z-[9999] overflow-y-auto rounded-lg border-2 border-slate-200 bg-white py-1 shadow-xl service-dropdown-portal"
+              className={cn(
+                "fixed z-[9999] overflow-y-auto rounded-lg border-2 py-1 shadow-xl service-dropdown-portal",
+                dark
+                  ? "border-[var(--h-dark-border-color)] bg-[var(--h-dark-surface-0)]"
+                  : "border-slate-200 bg-white",
+              )}
               ref={dropdownRef}
               style={{
                 top: dropdownPos.top,
@@ -404,7 +462,7 @@ export function ServiceCombobox({
               }}
             >
               {clientFiltered.length > 0 && query.trim() && (
-                <p className="px-3 pb-1 text-xs text-slate-500">
+                <p className={cn("px-3 pb-1 text-xs", dark ? "text-[var(--h-dark-text-tertiary)]" : "text-slate-500")}>
                   {clientFiltered.length} client service{clientFiltered.length === 1 ? "" : "s"}
                 </p>
               )}
@@ -415,6 +473,7 @@ export function ServiceCombobox({
                       key={opt.id}
                       opt={opt}
                       onSelect={handleSelect}
+                      dark={dark}
                     />
                   ))}
                 </>
@@ -424,7 +483,12 @@ export function ServiceCombobox({
               {query.trim() && clientFiltered.length === 0 && !globalSearch && (
                 <button
                   type="button"
-                  className="w-full px-3 py-1.5 text-left text-xs text-sky-700 hover:bg-sky-50"
+                  className={cn(
+                    "w-full px-3 py-1.5 text-left text-xs",
+                    dark
+                      ? "text-[var(--h-brand-600)] hover:bg-[var(--h-dark-surface-1)]"
+                      : "text-sky-700 hover:bg-sky-50",
+                  )}
                   onMouseDown={(e) => {
                     e.preventDefault();
                     setGlobalSearch(true);
@@ -438,10 +502,10 @@ export function ServiceCombobox({
               {globalSearch && needsGlobal && (
                 <>
                   {isGlobalFetching ? (
-                    <p className="px-3 py-2 text-sm text-slate-500">Searching all services…</p>
+                    <p className={cn("px-3 py-2 text-sm", dark ? "text-[var(--h-dark-text-tertiary)]" : "text-slate-500")}>Searching all services…</p>
                   ) : allOptions.length > clientFiltered.length ? (
                     <>
-                      <p className="px-3 pb-1 text-xs text-slate-500">
+                      <p className={cn("px-3 pb-1 text-xs", dark ? "text-[var(--h-dark-text-tertiary)]" : "text-slate-500")}>
                         {allOptions.length - clientFiltered.length} more from all services
                       </p>
                       {allOptions
@@ -451,11 +515,12 @@ export function ServiceCombobox({
                             key={opt.id}
                             opt={opt}
                             onSelect={handleSelect}
+                            dark={dark}
                           />
                         ))}
                     </>
                   ) : allOptions.length === 0 ? (
-                    <p className="px-3 py-2 text-sm text-slate-500">No services found</p>
+                    <p className={cn("px-3 py-2 text-sm", dark ? "text-[var(--h-dark-text-tertiary)]" : "text-slate-500")}>No services found</p>
                   ) : null}
                 </>
               )}

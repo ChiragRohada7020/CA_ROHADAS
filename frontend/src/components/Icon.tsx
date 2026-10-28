@@ -49,9 +49,11 @@ export type IconName =
   | "folder"
   | "folder-open"
   | "more-vertical"
+  | "ellipsis"
   | "x"
   | "link"
   | "eye"
+  | "eye-off"
   | "history"
   | "filter"
   | "crown"
@@ -315,6 +317,13 @@ const PATHS: Record<IconName, React.ReactNode> = {
       <circle cx="12" cy="18.5" r="1.4" fill="currentColor" stroke="none" />
     </>
   ),
+  ellipsis: (
+    <>
+      <circle cx="2" cy="12" r="2.25" fill="currentColor" transform="scale(0.85)" />
+      <circle cx="12" cy="12" r="2.25" fill="currentColor" transform="scale(0.85)" />
+      <circle cx="22" cy="12" r="2.25" fill="currentColor" transform="scale(0.85)" />
+    </>
+  ),
   x: (
     <>
       <path d="M6 6l12 12M18 6L6 18" />
@@ -330,6 +339,14 @@ const PATHS: Record<IconName, React.ReactNode> = {
     <>
       <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" />
       <circle cx="12" cy="12" r="3" />
+    </>
+  ),
+  "eye-off": (
+    <>
+      <path d="M1 1l22 22" />
+      <path d="M2.5 9.5S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" />
+      <circle cx="12" cy="12" r="3" />
+      <path d="M16.5 16.5L1 1" />
     </>
   ),
   history: (

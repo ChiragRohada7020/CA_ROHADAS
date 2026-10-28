@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useRef, useState } from "react";
 
 import {
   Badge,
@@ -16,6 +16,7 @@ import {
 } from "@/components/ui";
 import { Avatar, DonutChart, MiniBar } from "@/components/charts";
 import { Icon } from "@/components/Icon";
+import { EditTeamMemberModal } from "@/components/EditTeamMemberModal";
 import { MemberDetailDrawer } from "@/components/MemberDetailDrawer";
 import { CreateTeamMemberModal } from "@/components/CreateTeamMemberModal";
 import { ApiError, api, buildQuery } from "@/lib/api";
@@ -178,7 +179,30 @@ export default function TeamPage() {
 
   const [tab, setTab] = useState("all");
   const [openMemberId, setOpenMemberId] = useState<string | null>(null);
+  const [menuMemberId, setMenuMemberId] = useState<string | null>(null);
+  const [editMemberId, setEditMemberId] = useState<string | null>(null);
   const [showAddMember, setShowAddMember] = useState(false);
+
+   const queryClient = useQueryClient();
+
+   const removeMutation = useMutation({
+    mutationFn: (id: string) => api.delete<{ id: string }>(`/users/${id}`),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["users"] });
+    },
+  });
+
+  // Close the action menu when clicking outside it.
+  const menuRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    function onDocumentClick(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuMemberId(null);
+      }
+    }
+    document.addEventListener("click", onDocumentClick);
+    return () => document.removeEventListener("click", onDocumentClick);
+  }, []);
 
   const scope = {
     search,
@@ -222,7 +246,10 @@ export default function TeamPage() {
   const hasFilters = Object.values(filters).some(Boolean);
   const leave = s?.leave ?? null;
   const session = useSession();
-  const canViewRoles = hasPermission(session.data, "role.view");
+  const canViewRoles = hasPermission(session.data, "role.read");
+  const canManagePerms = hasPermission(session.data, "user.permission.manage");
+  const canAddMember = hasPermission(session.data, "user.write");
+  const canDelete = canAddMember;
 
   return (
     <div className="space-y-4">
@@ -231,10 +258,18 @@ export default function TeamPage() {
         subtitle="Manage your team, roles, workload and performance."
         action={
           <div className="flex items-center gap-2">
+            {canManagePerms ? (
+              <Link
+                href="/team/permissions"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-sky-600 px-3 py-1.5 text-sm font-medium text-white shadow-sm transition hover:bg-sky-700"
+              >
+                Per-User Permissions
+              </Link>
+            ) : null}
             {canViewRoles ? (
               <Link
                 href="/team/roles"
-                className="text-xs font-medium text-slate-600 hover:text-sky-700"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-sky-600 px-3 py-1.5 text-sm font-medium text-white shadow-sm transition hover:bg-sky-700"
               >
                 Roles & Permissions
               </Link>
@@ -246,14 +281,23 @@ export default function TeamPage() {
                 Roles & Permissions
               </span>
             )}
-            <button
-              type="button"
-              className="btn-primary"
-              onClick={() => setShowAddMember(true)}
-            >
-              <Icon name="plus" className="h-4 w-4" />
-              Add Member
-            </button>
+            {canAddMember ? (
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={() => setShowAddMember(true)}
+              >
+                <Icon name="plus" className="h-4 w-4" />
+                Add Member
+              </button>
+            ) : (
+              <span
+                className="text-xs font-medium text-slate-400"
+                title="You do not have permission to add team members."
+              >
+                Add Member
+              </span>
+            )}
           </div>
         }
       />
@@ -456,14 +500,58 @@ export default function TeamPage() {
                         </Badge>
                       </td>
                       <td className="td text-right">
-                        <button
-                          type="button"
-                          className="rounded px-1.5 py-0.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-                          onClick={() => setOpenMemberId(person.id)}
-                          aria-label={`Open ${person.full_name}`}
-                        >
-                          ⋮
-                        </button>
+                        <div className="relative inline-block">
+                          <button
+                            type="button"
+                            className="relative rounded px-1.5 py-0.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                            onClick={() => setMenuMemberId(menuMemberId === person.id ? null : person.id)}
+                            aria-label={`Actions for ${person.full_name}`}
+                          >
+                            ⋮
+                          </button>
+                          {menuMemberId === person.id && (
+                            <div ref={menuRef} className="absolute right-0 z-20 mt-1 w-40 origin-top-right rounded-md border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-800">
+                              <button
+                                type="button"
+                                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-slate-100"
+                                onClick={() => {
+                                  setMenuMemberId(null);
+                                  setOpenMemberId(person.id);
+                                }}
+                              >
+                                <Icon name="eye" className="h-4 w-4" />
+                                Details
+                              </button>
+                              <button
+                                type="button"
+                                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-slate-100"
+                                onClick={() => {
+                                  setMenuMemberId(null);
+                                  setEditMemberId(person.id);
+                                }}
+                                disabled={!canDelete}
+                              >
+                                <Icon name="pencil" className="h-4 w-4" />
+                                Edit
+                              </button>
+                              <button
+                                type="button"
+                                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-rose-700 hover:bg-rose-50"
+                                onClick={async () => {
+                                  setMenuMemberId(null);
+                                  const ok = confirm(`Deactivate ${person.full_name}?`);
+                                  if (ok) {
+                                    await removeMutation.mutateAsync(person.id);
+                                  }
+                                }}
+                                disabled={!canDelete}
+                              >
+                                <Icon name="trash" className="h-4 w-4" />
+                                Delete
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
@@ -626,6 +714,13 @@ export default function TeamPage() {
         <MemberDetailDrawer
           memberId={openMemberId}
           onClose={() => setOpenMemberId(null)}
+        />
+      )}
+
+      {editMemberId && (
+        <EditTeamMemberModal
+          memberId={editMemberId}
+          onClose={() => setEditMemberId(null)}
         />
       )}
 

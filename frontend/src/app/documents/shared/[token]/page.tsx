@@ -96,7 +96,7 @@ export default function SharedDocumentPage() {
 
   return (
     <div className="mx-auto max-w-lg px-6 py-24">
-      <div className="rounded-xl border border-slate-200 bg-white p-6 text-center shadow-sm">
+      <div className="rounded-xl border border-slate-200 force-light bg-white p-6 text-center shadow-sm">
         <span
           aria-hidden
           className="mx-auto flex size-12 items-center justify-center rounded-full bg-sky-50 text-sky-600"

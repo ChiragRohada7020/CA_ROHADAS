@@ -1,17 +1,29 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import Link from "next/link";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useRef, useState } from "react";
 
 import {
   Badge,
+  Button,
   Card,
+  ConfirmDialog,
   EmptyState,
   ErrorState,
-  LoadingState,
   PageHeader,
   Pagination,
+  Select,
+  SearchInput,
+  Skeleton,
   StatCard,
+  Table,
+  TableBody,
+  TableCell,
+  TableHeader,
+  TableHead,
+  TableRow,
+  useToast,
 } from "@/components/ui";
 import { AddServiceForm, FREQUENCIES } from "@/components/ServiceForms";
 import { ServiceDetailDrawer } from "@/components/ServiceDetailDrawer";
@@ -105,7 +117,23 @@ function CategoryBadge({
  * appears on the dashboard, the client list and the team screen, and a copy per screen is
  * how four subtly different tiles end up in one product.
  */
-function SummaryTiles({ summary }: { summary: ServiceSummary | undefined }) {
+function SummaryTiles({
+  summary,
+  pending,
+}: {
+  summary: ServiceSummary | undefined;
+  pending: boolean;
+}) {
+  if (pending) {
+    return (
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <Skeleton key={index} className="h-20 w-full rounded-xl" />
+        ))}
+      </div>
+    );
+  }
+
   const tiles = [
     {
       icon: "check-circle" as const,
@@ -153,7 +181,122 @@ function SummaryTiles({ summary }: { summary: ServiceSummary | undefined }) {
   );
 }
 
+/**
+ * The row's overflow menu. Mirrors `tasks/RowActionsMenu`: a `more-vertical` button that
+ * opens a `role="menu"` dropdown, closes on outside click or Escape, and offers the
+ * actions a catalogue row actually supports. Retire is a PATCH setting `is_active: false`
+ * on the catalogue service — there is no DELETE endpoint for a service row.
+ */
+function RowActionsMenu({
+  row,
+  onOpen,
+  onRetire,
+  onView,
+}: {
+  row: ServiceRow;
+  onOpen: () => void;
+  onRetire: () => void;
+  onView: (id: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [confirmRetire, setConfirmRetire] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onOutside(event: MouseEvent) {
+      if (ref.current && !ref.current.contains(event.target as Node)) setOpen(false);
+    }
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("mousedown", onOutside);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onOutside);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative inline-block">
+      <button
+        type="button"
+        className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+        onClick={(event) => {
+          event.stopPropagation();
+          setOpen((current) => !current);
+        }}
+        aria-label={`More actions for ${row.name}`}
+      >
+        <Icon name="more-vertical" className="h-4 w-4" />
+      </button>
+      {open && (
+        <div
+          role="menu"
+          className="absolute right-0 top-full z-30 mt-1 w-44 overflow-hidden rounded-md border border-slate-200 bg-white py-1 shadow-lg"
+        >
+          <button
+            type="button"
+            role="menuitem"
+            className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-slate-700 hover:bg-slate-50"
+            onClick={(event) => {
+              event.stopPropagation();
+              setOpen(false);
+              onOpen();
+            }}
+          >
+            <Icon name="eye" className="h-3 w-3" />
+            Open service
+          </button>
+          <Link
+            href={`/services/${row.id}`}
+            role="menuitem"
+            className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-slate-700 hover:bg-slate-50"
+            onClick={() => {
+              setOpen(false);
+              onView(row.id);
+            }}
+          >
+            <Icon name="file-text" className="h-3 w-3" />
+            View full page
+          </Link>
+          <div className="my-1 border-t border-slate-100" />
+          <button
+            type="button"
+            role="menuitem"
+            className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-rose-700 hover:bg-rose-50"
+            onClick={(event) => {
+              event.stopPropagation();
+              setOpen(false);
+              setConfirmRetire(true);
+            }}
+          >
+            <Icon name="trash" className="h-3 w-3" />
+            Retire…
+          </button>
+        </div>
+      )}
+      <ConfirmDialog
+        open={confirmRetire}
+        onClose={() => setConfirmRetire(false)}
+        onConfirm={() => {
+          setConfirmRetire(false);
+          onRetire();
+        }}
+        title="Retire this service?"
+        description={`Retired services hide from pickers but keep their history. "${row.name}" will no longer appear in catalogues.`}
+        confirmText="Retire"
+        cancelText="Cancel"
+        variant="danger"
+      />
+    </div>
+  );
+}
+
 export default function ServicesPage() {
+  const queryClient = useQueryClient();
+  const toast = useToast();
   const paging = usePaging(10);
   const { filters, updateFilter, offset, setOffset, limit, page } = paging;
   const search = useDebouncedValue(filters.search ?? "");
@@ -162,6 +305,10 @@ export default function ServicesPage() {
   const [openServiceId, setOpenServiceId] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkRetireOpen, setBulkRetireOpen] = useState(false);
+  const [bulkCategory, setBulkCategory] = useState("");
+  const [bulkMenuOpen, setBulkMenuOpen] = useState(false);
+  const bulkMenuRef = useRef<HTMLDivElement>(null);
 
   const activeTab = TABS.find((row) => row.key === tab) ?? TABS[0];
 
@@ -228,7 +375,78 @@ export default function ServicesPage() {
     setSelected(new Set());
   }
 
+  /** Retire a catalogue service by PATCHing `is_active: false`. The backend has no
+ *  DELETE endpoint for a service row — retiring is an update, not a removal. */
+  async function retireOne(id: string): Promise<boolean> {
+    try {
+      await api.patch(`/services/${id}`, { is_active: false });
+      toast.push({ type: "success", message: "Service retired." });
+      void queryClient.invalidateQueries({ queryKey: ["services"] });
+      return true;
+    } catch {
+      toast.push({ type: "error", message: "Could not retire service." });
+      return false;
+    }
+  }
+
+  function bulkRetire() {
+    selected.forEach(retireOne);
+    setBulkRetireOpen(false);
+    setSelected(new Set());
+  }
+
+  /** Change the category of every selected service. Uses `Promise.allSettled` so a single
+   *  failure does not block the others, then reports successes and failures in a toast. */
+  async function bulkChangeCategory(
+    selectedIds: Set<string>,
+    newCategory: string,
+  ) {
+    if (!newCategory || selectedIds.size === 0) return;
+    const ids = Array.from(selectedIds);
+    const results = await Promise.allSettled(
+      ids.map((id) => api.patch(`/services/${id}`, { category: newCategory })),
+    );
+    const successes = results.filter((r) => r.status === "fulfilled").length;
+    const failures = results.length - successes;
+    if (failures > 0) {
+      toast.push({
+        type: "error",
+        message: `Could not update category for ${failures} service(s).`,
+      });
+    } else {
+      toast.push({ type: "success", message: `${successes} service(s) updated.` });
+    }
+    void queryClient.invalidateQueries({ queryKey: ["services"] });
+    setSelected(new Set());
+    setBulkCategory("");
+    setBulkMenuOpen(false);
+  }
+
   const hasFilters = Object.values(filters).some(Boolean);
+
+  function onTabKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
+    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight" && event.key !== "Home" && event.key !== "End") return;
+    event.preventDefault();
+    const order = TABS.map((entry) => entry.key);
+    const current = order.indexOf(tab);
+    let next = current;
+    if (event.key === "ArrowLeft") next = Math.max(0, current - 1);
+    else if (event.key === "ArrowRight") next = Math.min(order.length - 1, current + 1);
+    else if (event.key === "Home") next = 0;
+    else if (event.key === "End") next = order.length - 1;
+    if (next !== current) changeTab(order[next]);
+  }
+
+  useEffect(() => {
+    if (!bulkMenuOpen) return;
+    function onOutside(event: MouseEvent) {
+      if (bulkMenuRef.current && !bulkMenuRef.current.contains(event.target as Node)) {
+        setBulkMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", onOutside);
+    return () => document.removeEventListener("mousedown", onOutside);
+  }, [bulkMenuOpen]);
 
   return (
     <div className="space-y-4">
@@ -236,14 +454,13 @@ export default function ServicesPage() {
         title="Services"
         subtitle="Manage your service catalogue, client assignments and recurring work."
         action={
-          <button type="button" className="btn-primary" onClick={() => setAdding(true)}>
-            <Icon name="plus" className="h-4 w-4" />
+          <Button icon={<Icon name="plus" className="h-4 w-4" />} onClick={() => setAdding(true)}>
             Add Service
-          </button>
+          </Button>
         }
       />
 
-      <SummaryTiles summary={s} />
+      <SummaryTiles summary={s} pending={summary.isPending} />
 
       {adding && (
         <Card title="Add a service" subtitle="It joins the catalogue and every picker">
@@ -252,13 +469,21 @@ export default function ServicesPage() {
       )}
 
       <Card>
-        <div className="flex flex-wrap items-center gap-1 border-b border-slate-200 px-3 pt-2">
+        <div
+          role="tablist"
+          aria-label="Service catalogue tabs"
+          className="flex flex-wrap items-center gap-1 border-b border-slate-200 px-3 pt-2"
+          onKeyDown={onTabKeyDown}
+        >
           {TABS.map((entry) => {
             const isActive = entry.key === tab;
             return (
               <button
                 key={entry.key}
                 type="button"
+                role="tab"
+                aria-selected={isActive}
+                tabIndex={isActive ? 0 : -1}
                 onClick={() => changeTab(entry.key)}
                 className={cn(
                   "-mb-px border-b-2 px-3 py-2 text-sm font-medium transition-colors",
@@ -282,52 +507,42 @@ export default function ServicesPage() {
         </div>
 
         <div className="grid grid-cols-2 gap-2 border-b border-slate-200 p-3 md:grid-cols-4">
-          <label className="col-span-2 block">
-            <input
-              className="input py-1.5"
-              type="search"
+          <div className="col-span-2 block">
+            <SearchInput
               value={filters.search ?? ""}
-              onChange={(event) => updateFilter("search", event.target.value)}
+              onChange={(value) => updateFilter("search", value)}
               placeholder="Search services…"
+              hideLabel
               aria-label="Search services"
             />
-          </label>
-          <select
-            className="input py-1.5"
+          </div>
+          <Select
+            label="Category"
             value={filters.category ?? ""}
-            onChange={(event) => updateFilter("category", event.target.value)}
-            aria-label="Category"
-          >
-            <option value="">Category</option>
-            {(categories.data ?? []).map((row) => (
-              <option key={row.value} value={row.value}>
-                {row.label}
-              </option>
-            ))}
-          </select>
-          <select
-            className="input py-1.5"
+            onChange={(value) => updateFilter("category", value)}
+            options={categories.data ?? []}
+            placeholder="Category"
+            hideLabel
+          />
+          <Select
+            label="Frequency"
             value={filters.frequency ?? ""}
-            onChange={(event) => updateFilter("frequency", event.target.value)}
-            aria-label="Frequency"
-          >
-            <option value="">Frequency</option>
-            {FREQUENCIES.map((entry) => (
-              <option key={entry.value} value={entry.value}>
-                {entry.label}
-              </option>
-            ))}
-          </select>
-          <select
-            className="input py-1.5"
+            onChange={(value) => updateFilter("frequency", value)}
+            options={FREQUENCIES}
+            placeholder="Frequency"
+            hideLabel
+          />
+          <Select
+            label="Status"
             value={filters.status ?? ""}
-            onChange={(event) => updateFilter("status", event.target.value)}
-            aria-label="Status"
-          >
-            <option value="">Status</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-          </select>
+            onChange={(value) => updateFilter("status", value)}
+            options={[
+              { value: "active", label: "Active" },
+              { value: "inactive", label: "Inactive" },
+            ]}
+            placeholder="Status"
+            hideLabel
+          />
         </div>
 
         {hasFilters && (
@@ -335,34 +550,98 @@ export default function ServicesPage() {
             <p className="text-xs text-slate-600">
               Showing {services.data?.meta.total ?? 0} of {s?.total_services ?? 0} services
             </p>
-            <button
-              type="button"
-              className="text-xs font-medium text-sky-700 hover:underline"
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => {
                 paging.clearFilters();
                 setSelected(new Set());
               }}
             >
               Clear
-            </button>
+            </Button>
           </div>
         )}
 
         {selected.size > 0 && (
           <div className="flex items-center justify-between gap-3 border-b border-slate-200 bg-sky-50 px-3 py-2">
             <p className="text-xs font-medium text-sky-900">{selected.size} selected</p>
-            <button
-              type="button"
-              className="text-xs font-medium text-sky-700 hover:underline"
-              onClick={() => setSelected(new Set())}
-            >
-              Clear selection
-            </button>
+            <div className="flex items-center gap-2">
+              <div ref={bulkMenuRef} className="relative">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  icon={<Icon name="chevron-down" className="h-3 w-3" />}
+                  iconPosition="right"
+                  onClick={() => setBulkMenuOpen((open) => !open)}
+                >
+                  Bulk actions
+                </Button>
+                {bulkMenuOpen && (
+                  <div
+                    role="menu"
+                    className="absolute right-0 top-full z-30 mt-1 w-48 overflow-hidden rounded-md border border-slate-200 bg-white py-1 shadow-lg"
+                  >
+                    <button
+                      type="button"
+                      role="menuitem"
+                      disabled={selected.size === 0}
+                      className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                      onClick={() => {
+                        setBulkMenuOpen(false);
+                        setBulkRetireOpen(true);
+                      }}
+                    >
+                      Retire…
+                    </button>
+                    <div className="px-3 py-1.5">
+                      <Select
+                        label="Change category"
+                        value={bulkCategory}
+                        onChange={(value) => bulkChangeCategory(selected, value)}
+                        options={categories.data ?? []}
+                        placeholder="Change category…"
+                        hideLabel
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      disabled
+                      aria-label="Export not available yet"
+                      className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-slate-400 disabled:cursor-not-allowed"
+                    >
+                      Export codes
+                    </button>
+                  </div>
+                )}
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSelected(new Set())}
+              >
+                Clear selection
+              </Button>
+            </div>
           </div>
         )}
 
         {services.isPending ? (
-          <LoadingState label="Loading the catalogue…" />
+          <div className="divide-y divide-slate-100">
+            {Array.from({ length: 6 }).map((_, index) => (
+              <div key={index} className="flex items-center gap-3 px-4 py-3">
+                <Skeleton className="size-4 rounded" variant="rectangular" />
+                <Skeleton className="h-3 w-10" variant="text" />
+                <Skeleton className="h-4 w-40" variant="text" />
+                <Skeleton className="h-3 w-16" variant="text" />
+                <Skeleton className="h-3 w-12" variant="text" />
+                <Skeleton className="h-3 w-16" variant="text" />
+                <Skeleton className="size-4 rounded-full" variant="circular" />
+                <Skeleton className="h-3 w-8" variant="text" />
+              </div>
+            ))}
+          </div>
         ) : services.isError ? (
           <ErrorState
             message={
@@ -370,51 +649,81 @@ export default function ServicesPage() {
                 ? services.error.message
                 : "Could not load the service catalogue."
             }
+            action={
+              <Button variant="ghost" size="sm" onClick={() => services.refetch()}>
+                Retry
+              </Button>
+            }
           />
         ) : rows.length === 0 ? (
           <EmptyState
+            title={
+              hasFilters || tab !== "all" ? undefined : "No services in the catalogue yet."
+            }
             message={
               hasFilters || tab !== "all"
-                ? "No services match these filters. Try another tab or clear them."
-                : "No services in the catalogue yet. Add your first one to start attaching it to clients."
+                ? "No services match those filters. Try another tab, or clear them."
+                : "Add your first one to start attaching it to clients."
+            }
+            action={
+              hasFilters || tab !== "all" ? (
+                <Button variant="ghost" size="sm" onClick={() => paging.clearFilters()}>
+                  Clear filters
+                </Button>
+              ) : (
+                <Button
+                  icon={<Icon name="plus" className="h-4 w-4" />}
+                  onClick={() => setAdding(true)}
+                >
+                  Add service
+                </Button>
+              )
             }
           />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[64rem]">
-              <thead className="bg-slate-50">
+            <Table className="min-w-[64rem]">
+              <TableHeader>
                 <tr>
-                  <th className="th w-8">
+                  <TableHead className="w-8">
                     <input
                       type="checkbox"
                       checked={allSelected}
                       onChange={toggleAll}
                       aria-label="Select all services on this page"
                     />
-                  </th>
-                  <th className="th w-10">#</th>
-                  <th className="th">Service Name</th>
-                  <th className="th">Category</th>
-                  <th className="th">Frequency</th>
-                  <th className="th text-right">Default Fee</th>
-                  <th className="th text-right">Assigned Clients</th>
-                  <th className="th">Status</th>
-                  <th className="th w-12" />
+                  </TableHead>
+                  <TableHead className="w-10">#</TableHead>
+                  <TableHead>Service Name</TableHead>
+                  <TableHead>Category</TableHead>
+                  <TableHead>Frequency</TableHead>
+                  <TableHead className="text-right">Default Fee</TableHead>
+                  <TableHead className="text-right">Assigned Clients</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="w-12" />
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
+              </TableHeader>
+              <TableBody>
                 {rows.map((row, index) => (
-                  <tr key={row.id} className="hover:bg-slate-50">
-                    <td className="td">
+                  <TableRow
+                    key={row.id}
+                    className={cn(
+                      "hover:bg-slate-50",
+                      selected.has(row.id) && "bg-[#F0F9FF]",
+                    )}
+                  >
+                    <TableCell>
                       <input
                         type="checkbox"
                         checked={selected.has(row.id)}
                         onChange={() => toggleOne(row.id)}
                         aria-label={`Select ${row.name}`}
                       />
-                    </td>
-                    <td className="td tabular text-xs text-slate-400">{offset + index + 1}</td>
-                    <td className="td">
+                    </TableCell>
+                    <TableCell className="tabular text-xs text-slate-400">
+                      {offset + index + 1}
+                    </TableCell>
+                    <TableCell>
                       <button
                         type="button"
                         className="text-left font-medium text-slate-900 underline-offset-2 hover:text-sky-700 hover:underline"
@@ -425,21 +734,21 @@ export default function ServicesPage() {
                       <span className="block font-mono text-[10px] text-slate-400">
                         {row.code}
                       </span>
-                    </td>
-                    <td className="td">
+                    </TableCell>
+                    <TableCell>
                       <CategoryBadge category={row.category} labels={categoryLabels} />
-                    </td>
-                    <td className="td text-xs text-slate-600">
+                    </TableCell>
+                    <TableCell className="text-xs text-slate-600">
                       {row.default_frequency ? humanise(row.default_frequency) : "One-off"}
-                    </td>
-                    <td className="td tabular text-right text-slate-700">
+                    </TableCell>
+                    <TableCell className="tabular text-right text-slate-700">
                       {row.standard_fee == null ? (
                         <span className="text-slate-300">—</span>
                       ) : (
                         rupees(row.standard_fee)
                       )}
-                    </td>
-                    <td className="td text-right">
+                    </TableCell>
+                    <TableCell className="text-right">
                       <span
                         className={cn(
                           "tabular inline-block min-w-7 rounded px-1.5 py-0.5 text-xs",
@@ -450,26 +759,24 @@ export default function ServicesPage() {
                       >
                         {row.client_count}
                       </span>
-                    </td>
-                    <td className="td">
+                    </TableCell>
+                    <TableCell>
                       <Badge tone={row.is_active ? "success" : "neutral"}>
                         {row.is_active ? "Active" : "Inactive"}
                       </Badge>
-                    </td>
-                    <td className="td text-right">
-                      <button
-                        type="button"
-                        className="rounded px-1.5 py-0.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-                        onClick={() => setOpenServiceId(row.id)}
-                        aria-label={`Open ${row.name}`}
-                      >
-                        ⋮
-                      </button>
-                    </td>
-                  </tr>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <RowActionsMenu
+                        row={row}
+                        onOpen={() => setOpenServiceId(row.id)}
+                        onRetire={() => retireOne(row.id)}
+                        onView={() => {}}
+                      />
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         )}
 
@@ -494,18 +801,9 @@ export default function ServicesPage() {
         <Card
           title="Service Categories"
           subtitle="How the catalogue is spread"
-          action={
-            <button
-              type="button"
-              className="text-xs font-medium text-sky-700 hover:underline"
-              onClick={() => setAdding(true)}
-            >
-              + Add Category
-            </button>
-          }
         >
           {(s?.by_category.length ?? 0) === 0 ? (
-            <p className="px-3 py-4 text-sm text-slate-500">No categories in use yet.</p>
+            <EmptyState message="No categories in use yet." />
           ) : (
             <ul className="divide-y divide-slate-100">
               {s?.by_category.map((row) => (
@@ -537,31 +835,32 @@ export default function ServicesPage() {
           title="Assignment Summary"
           subtitle="What each service is worth a year"
           action={
-            <button
-              type="button"
-              className="text-xs font-medium text-sky-700 hover:underline"
-              onClick={() => setOpenServiceId(s?.assignments[0]?.service_id ?? null)}
+            <Button
+              variant="ghost"
+              size="sm"
               disabled={!s?.assignments.length}
+              aria-label={s?.assignments.length ? "View all assignments" : "No assignments to view"}
+              onClick={() => setOpenServiceId(s?.assignments[0]?.service_id ?? null)}
             >
               View All
-            </button>
+            </Button>
           }
         >
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[32rem]">
-              <thead className="bg-slate-50">
+            <Table className="min-w-[32rem]">
+              <TableHeader>
                 <tr>
-                  <th className="th">Service</th>
-                  <th className="th text-right">Total Clients</th>
-                  <th className="th text-right">Active</th>
-                  <th className="th text-right">Inactive</th>
-                  <th className="th text-right">Annual Fees</th>
+                  <TableHead>Service</TableHead>
+                  <TableHead className="text-right">Total Clients</TableHead>
+                  <TableHead className="text-right">Active</TableHead>
+                  <TableHead className="text-right">Inactive</TableHead>
+                  <TableHead className="text-right">Annual Fees</TableHead>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
+              </TableHeader>
+              <TableBody>
                 {s?.assignments.slice(0, 6).map((row) => (
-                  <tr key={row.service_id} className="hover:bg-slate-50">
-                    <td className="td">
+                  <TableRow key={row.service_id} className="hover:bg-slate-50">
+                    <TableCell>
                       <button
                         type="button"
                         className="font-medium text-slate-900 underline-offset-2 hover:text-sky-700 hover:underline"
@@ -569,35 +868,48 @@ export default function ServicesPage() {
                       >
                         {row.code}
                       </button>
-                    </td>
-                    <td className="td tabular text-right text-slate-700">{row.total_clients}</td>
-                    <td className="td tabular text-right font-medium text-emerald-700">
+                    </TableCell>
+                    <TableCell className="tabular text-right text-slate-700">
+                      {row.total_clients}
+                    </TableCell>
+                    <TableCell className="tabular text-right font-medium text-emerald-700">
                       {row.active_clients}
-                    </td>
-                    <td className="td tabular text-right text-slate-500">
+                    </TableCell>
+                    <TableCell className="tabular text-right text-slate-500">
                       {row.inactive_clients}
-                    </td>
-                    <td className="td tabular text-right text-slate-700">
+                    </TableCell>
+                    <TableCell className="tabular text-right text-slate-700">
                       {row.annual_fees === 0 ? (
                         <span className="text-slate-300">—</span>
                       ) : (
                         rupees(row.annual_fees)
                       )}
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
                 {(s?.assignments.length ?? 0) === 0 && (
-                  <tr>
-                    <td className="td py-6 text-center text-sm text-slate-500" colSpan={5}>
-                      Nothing in the catalogue yet.
-                    </td>
-                  </tr>
+                  <TableRow>
+                    <TableCell colSpan={5} className="py-6">
+                      <EmptyState message="Nothing in the catalogue yet." />
+                    </TableCell>
+                  </TableRow>
                 )}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         </Card>
       </div>
+
+      <ConfirmDialog
+        open={bulkRetireOpen}
+        onClose={() => setBulkRetireOpen(false)}
+        onConfirm={bulkRetire}
+        title="Retire selected services?"
+        description={`Retired services hide from pickers but keep their history. ${selected.size} selected.`}
+        confirmText="Retire"
+        cancelText="Cancel"
+        variant="danger"
+      />
 
       {openServiceId && (
         <ServiceDetailDrawer

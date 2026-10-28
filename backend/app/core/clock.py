@@ -7,16 +7,14 @@ calculation in the app goes through ``today_local`` instead.
 """
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 try:
     from zoneinfo import ZoneInfo
 
     IST = ZoneInfo("Asia/Kolkata")
 except ImportError:  # pragma: no cover - fallback when tzdata is missing
-    from datetime import timezone, timedelta as _td
-
-    IST = timezone(_td(hours=5, minutes=30))
+    IST = timezone(timedelta(hours=5, minutes=30))
 
 
 def today_local() -> date:
@@ -31,7 +29,7 @@ def now_local() -> datetime:
 
 def now_utc() -> datetime:
     """Return the current datetime in UTC."""
-    return datetime.now(timezone.utc) if hasattr(timezone, "utc") else datetime.utcnow()
+    return datetime.now(timezone.utc)
 
 
 def ist_from_utc(dt: datetime) -> datetime:

@@ -1,17 +1,18 @@
 ﻿"use client";
 
+import { motion } from "framer-motion";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 import { useEffect, useState, useMemo } from "react";
 
 import { InvoiceLineTable, blankLine, type DraftLine } from "@/components/InvoiceLineTable";
 import { LiveInvoicePreview, type PreviewFormState } from "@/components/LiveInvoicePreview";
 import { Icon } from "@/components/Icon";
+import { ServiceCombobox, flattenClientServices, type ServiceOption } from "@/components/ServiceCombobox";
 import { FormError, FormSuccess, SelectField, TextAreaField, TextField } from "@/components/form";
-import { Badge, Modal } from "@/components/ui";
 import { api, buildQuery } from "@/lib/api";
 import { addDays, formatMoney, todayInIST } from "@/lib/format";
 import { computeTotals, resolveTax } from "@/lib/billing";
-import { invoiceStatusLabel, invoiceStatusTone } from "@/lib/status";
 import type {
   ClientDetail,
   ClientListItem,
@@ -25,6 +26,7 @@ import type {
 interface CreateInvoiceFormProps {
   initial?: InvoiceDetail;
   onDone?: (invoice: InvoiceDetail) => void;
+  onClose?: () => void;
 }
 
 interface BankDetails {
@@ -68,6 +70,7 @@ function toPartyDetails(client: ClientDetail | null): PartyDetails | null {
     pincode: client.pincode ?? null,
     email: primaryContact?.email ?? null,
     phone: primaryContact?.phone ?? null,
+    whatsapp_number: null,
   };
 }
 
@@ -80,6 +83,7 @@ interface InvoicePayload {
   tax_rate?: number;
   notes?: string | null;
   terms?: string | null;
+  bank_details?: Record<string, string | null>;
   issue: boolean;
 }
 
@@ -89,8 +93,19 @@ interface Step {
   complete: boolean;
 }
 
-export function CreateInvoiceForm({ initial, onDone }: CreateInvoiceFormProps) {
+const SECTION_VARIANTS = {
+  hidden: { opacity: 0, y: 10 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.3, ease: "easeOut" },
+  },
+};
+
+/** Full-page invoice creation with a live split-pane preview. */
+export function CreateInvoiceForm({ initial, onDone, onClose }: CreateInvoiceFormProps) {
   const queryClient = useQueryClient();
+  const router = useRouter();
   const isEdit = !!initial;
   const today = todayInIST();
 
@@ -108,7 +123,6 @@ export function CreateInvoiceForm({ initial, onDone }: CreateInvoiceFormProps) {
   const [notes, setNotes] = useState(initial?.notes ?? "");
   const [terms, setTerms] = useState(initial?.terms ?? "");
   const [saved, setSaved] = useState<string | null>(null);
-  const [showPreview, setShowPreview] = useState(false);
 
   const [bankDetails, setBankDetails] = useState<BankDetails>({
     bank_name: "",
@@ -135,10 +149,10 @@ export function CreateInvoiceForm({ initial, onDone }: CreateInvoiceFormProps) {
 
   const clientDetail = selectedClientDetail.data;
 
-  const clientServices = useMemo(() => {
-    const { flattenClientServices } = require("@/components/ServiceCombobox");
-    return flattenClientServices(clientDetail?.services);
-  }, [clientDetail?.services]);
+  const clientServices = useMemo(
+    () => flattenClientServices(clientDetail?.services),
+    [clientDetail?.services],
+  );
 
   // ── Firm billing settings ────────────────────────────────
   const firm = useQuery({
@@ -190,7 +204,7 @@ export function CreateInvoiceForm({ initial, onDone }: CreateInvoiceFormProps) {
   const usableLines = lines.filter((line) => line.description.trim().length > 0);
   const financialYear = computeFinancialYear(invoiceDate);
   const invoiceNumberPreview =
-    isEdit && initial ? initial.invoice_number ?? "(draft)" : "(draft) — not yet numbered";
+    isEdit && initial ? initial.invoice_number ?? "(draft)" : "(draft)";
   const canSave = clientId !== "" && usableLines.length > 0 && dueDate >= invoiceDate;
   const activeMutation = create.isPending || update.isPending || issue.isPending;
 
@@ -213,12 +227,6 @@ export function CreateInvoiceForm({ initial, onDone }: CreateInvoiceFormProps) {
     () => computeTotals(lines, taxRate, taxType),
     [lines, taxRate, taxType],
   );
-
-  const taxResolution = useMemo(() => {
-    const firmState = firm.data?.state_code ?? null;
-    const clientState = clientDetail?.state_code ?? null;
-    return resolveTax(firmState, clientState, taxRate);
-  }, [firm.data?.state_code, clientDetail?.state_code, taxRate]);
 
   function toPreviewState(): PreviewFormState {
     return {
@@ -306,6 +314,14 @@ export function CreateInvoiceForm({ initial, onDone }: CreateInvoiceFormProps) {
       notes: notes.trim() || null,
       terms: terms.trim() || null,
       issue: false,
+      bank_details: {
+        bank_name: bankDetails.bank_name.trim() || null,
+        account_name: bankDetails.account_name.trim() || null,
+        account_number: bankDetails.account_number.trim() || null,
+        ifsc_code: bankDetails.ifsc_code.trim() || null,
+        upi_id: bankDetails.upi_id.trim() || null,
+        payment_reference: bankDetails.payment_reference.trim() || null,
+      },
     };
   }
 
@@ -330,293 +346,112 @@ export function CreateInvoiceForm({ initial, onDone }: CreateInvoiceFormProps) {
     }
   }
 
+  function handleClose() {
+    onClose?.();
+  }
+
   const clientOptions = (clients.data?.items ?? []).map((row) => ({
     value: row.id,
     label: `${row.client_code} · ${row.trade_name || row.legal_name}`,
   }));
 
+  function handleServiceSelect(key: string, service: ServiceOption | null) {
+    if (!service) return;
+    updateLine(key, {
+      description: service.name,
+      sac_code: service.sac_code,
+      unit_price: Number(service.standard_fee ?? 0),
+      service_id: service.id,
+    });
+  }
+
   return (
-    <div className="space-y-4">
-      {/* ── Header ── */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="page-title">
-            {isEdit ? (initial!.invoice_number ?? "Edit invoice") : "Create Invoice"}
-          </h1>
-          <p className="page-subtitle">
-            {isEdit
-              ? "Edit this draft before issuing. Issued invoices cannot be edited."
-              : "Generate a GST-compliant invoice for your client."}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Badge tone={invoiceStatusTone(initial?.status ?? "draft")}>
-            {invoiceStatusLabel(initial?.status ?? "draft")}
-          </Badge>
-        </div>
-      </div>
-
-      {/* ── Progress indicator ── */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between text-xs text-slate-500">
-          <span>
-            {stepsComplete}/{steps.length} sections complete
-          </span>
-          <span className="font-medium text-slate-600">
-            {canSave ? "Ready to save" : "Complete the form to continue"}
-          </span>
-        </div>
-        <div className="step-bar">
-          <div
-            className="step-bar-fill"
-            style={{ width: `${(stepsComplete / steps.length) * 100}%` }}
-          />
-        </div>
-        <div className="flex items-center justify-between">
-          {steps.map((step, index) => (
-            <div key={step.label} className="flex items-center gap-1.5">
-              <div
-                className={`step-dot ${step.complete ? "step-dot-complete" : "step-dot-incomplete"}`}
-              >
-                {step.complete ? (
-                  <Icon name="check-circle" className="h-3 w-3" />
-                ) : (
-                  <Icon name={step.icon} className="h-3 w-3" />
-                )}
-              </div>
-              <span
-                className={`text-xs font-medium ${step.complete ? "text-slate-900" : "text-slate-400"}`}
-              >
-                {step.label}
-              </span>
-              {index < steps.length - 1 && (
-                <div className="mx-2 hidden h-0.5 w-6 bg-slate-200 sm:block" />
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* ── Sticky Financial Summary ── */}
-      <div className="sticky top-0 z-10 mb-4">
-        <div className="financial-summary">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-sm font-semibold text-slate-800">Financial Summary</h3>
-              <p className="text-xs text-slate-500">
-                {usableLines.length > 0
-                  ? `${taxResolution.reason.split(" → ")[0]} tax applied`
-                  : "Add line items to see totals"}
-              </p>
-            </div>
-            {usableLines.length > 0 && (
-              <div className="text-right">
-                <p className="text-xs text-slate-500">Total</p>
-                <p className="tabular text-2xl font-bold text-sky-700">
-                  {formatMoney(totals.total)}
-                </p>
-              </div>
-            )}
-          </div>
-
-          {usableLines.length > 0 && (
-            <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
-              <div className="flex justify-between">
-                <span className="text-slate-600">Subtotal</span>
-                <span className="tabular font-medium">{formatMoney(totals.subtotal)}</span>
-              </div>
-              {totals.discountTotal > 0 && (
-                <div className="flex justify-between">
-                  <span className="text-slate-600">Discount</span>
-                  <span className="tabular font-medium">−{formatMoney(totals.discountTotal)}</span>
-                </div>
-              )}
-              <div className="flex justify-between">
-                <span className="text-slate-600">Taxable</span>
-                <span className="tabular font-medium">{formatMoney(totals.taxableTotal)}</span>
-              </div>
-              {totals.cgst > 0 && (
-                <>
-                  <div className="flex justify-between">
-                    <span className="text-slate-600">CGST</span>
-                    <span className="tabular font-medium">{formatMoney(totals.cgst)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-600">SGST</span>
-                    <span className="tabular font-medium">{formatMoney(totals.sgst)}</span>
-                  </div>
-                </>
-              )}
-              {totals.igst > 0 && (
-                <div className="flex justify-between">
-                  <span className="text-slate-600">IGST</span>
-                  <span className="tabular font-medium">{formatMoney(totals.igst)}</span>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div className="h-px bg-slate-200" />
-
-      {/* ── Client Details & Invoice Information (side by side) ── */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        {/* ── Client Details ── */}
-        <div className="invoice-section invoice-section-accent-client">
-          <div className="invoice-section-header">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-sky-50 text-sky-600">
-              <Icon name="user" className="h-4 w-4" />
-            </div>
-            <div>
-              <h3 className="invoice-section-title">Client Details</h3>
-              <p className="invoice-section-subtitle">Who the invoice is billed to</p>
-            </div>
-          </div>
-          <div className="p-5">
+    <div className="flex h-[calc(100vh-4rem)] flex-col gap-4 md:flex-row">
+      {/* Left: Form */}
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          handleSaveAndSend();
+        }}
+        aria-label="Invoice form"
+        className="flex w-full flex-col gap-4 overflow-y-auto pr-2"
+      >
+        {/* Top row: customer, dates */}
+        <motion.div
+          className="grid grid-cols-1 gap-3 sm:grid-cols-3"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, ease: "easeOut", delay: 0.05 }}
+        >
+          <div>
             <SelectField
-              label="Client"
+              label="Customer"
               value={clientId}
               onChange={setClientId}
               options={clientOptions}
-              placeholder="Choose a client"
+              placeholder="Search customer…"
               required
-              hint="The client's state decides CGST+SGST versus IGST."
+              hint={selectedClientDetail.isPending ? "Loading…" : undefined}
+              error={selectedClientDetail.isError ? "Could not load client details" : undefined}
             />
-
-            {selectedClientDetail.isPending && clientId && (
-              <p className="mt-2 text-sm text-slate-500">Loading client details…</p>
-            )}
-
-            {clientDetail && (
-              <div className="mt-3 rounded-md border border-slate-200 bg-slate-50 p-3">
-                <div className="flex items-start gap-3">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-sm font-bold text-sky-600 ring-1 ring-sky-200">
-                    {(clientDetail.trade_name ?? clientDetail.legal_name ?? "?").charAt(0)}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="font-medium text-slate-900">
-                      {clientDetail.trade_name ?? clientDetail.legal_name ?? "Unnamed"}
-                    </p>
-                    {clientDetail.gstin && (
-                      <p className="mt-0.5 text-xs text-slate-600">
-                        GSTIN: <span className="font-mono">{clientDetail.gstin}</span>
-                      </p>
-                    )}
-                    {clientDetail.address_line1 && (
-                      <p className="text-xs text-slate-500">
-                        {clientDetail.address_line1}
-                        {clientDetail.address_line2 && `, ${clientDetail.address_line2}`}
-                      </p>
-                    )}
-                    <p className="text-xs text-slate-500">
-                      {[clientDetail.city, clientDetail.state].filter(Boolean).join(", ")}{" "}
-                      {clientDetail.state_code && (
-                        <span className="font-mono">({clientDetail.state_code})</span>
-                      )}
-                      {clientDetail.pincode && ` — ${clientDetail.pincode}`}
-                    </p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  className="btn-ghost-sky mt-2 px-2 py-1 text-xs"
-                  onClick={() => setShowPreview(true)}
-                >
-                  <Icon name="pencil" className="h-3 w-3" />
-                  <span className="ml-1">Edit client details</span>
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* ── Invoice Information (with GST rate) ── */}
-        <div className="invoice-section invoice-section-accent-invoice">
-          <div className="invoice-section-header">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
-              <Icon name="calendar" className="h-4 w-4" />
-            </div>
-            <div>
-              <h3 className="invoice-section-title">Invoice Information</h3>
-              <p className="invoice-section-subtitle">Date, type, tax rate, and financial year</p>
-            </div>
-          </div>
-          <div className="p-5 space-y-3">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <TextField
-                label="Invoice date"
-                type="date"
-                value={invoiceDate}
-                onChange={setInvoiceDate}
-                required
-                hint={`Financial year: ${financialYear}`}
-              />
-              <TextField
-                label="Due date"
-                type="date"
-                value={dueDate}
-                onChange={setDueDate}
-                required
-                hint={`Default: ${DEFAULT_CREDIT_DAYS} days after invoice date`}
-              />
-            </div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <TextField
-                label="GST rate (%)"
-                type="number"
-                value={String(taxRate)}
-                onChange={(value) => setTaxRate(Math.max(0, Number(value)))}
-                hint="Defaults to the firm's configured rate (18%)."
-                maxLength={5}
-              />
-              <SelectField
-                label="Invoice type"
-                value={invoiceType}
-                onChange={setInvoiceType}
-                options={INVOICE_TYPES}
-                required
-              />
-            </div>
-
-            {/* Tax resolution hint */}
-            <div className="rounded-md bg-slate-50 p-3 ring-1 ring-inset ring-slate-200">
-              <p className="text-xs font-medium text-slate-700">Tax resolution</p>
-              <ul className="mt-1 space-y-0.5 text-xs text-slate-600">
-                <li>
-                  Firm state: <span className="font-medium">{firm.data?.state_code ?? "not set"}</span>
-                </li>
-                <li>
-                  Client state: <span className="font-medium">{clientDetail?.state_code ?? "—"}</span>
-                </li>
-                <li>
-                  Tax type:{" "}
-                  <span className="font-medium">
-                    {clientDetail && firm.data
-                      ? clientDetail.state_code === firm.data.state_code
-                        ? "Intra-state (CGST + SGST)"
-                        : "Inter-state (IGST)"
-                      : "Computed on save"}
-                  </span>
-                </li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Items & Services ── */}
-      <div className="invoice-section invoice-section-accent-items">
-        <div className="invoice-section-header">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
-            <Icon name="tag" className="h-4 w-4" />
           </div>
           <div>
-            <h3 className="invoice-section-title">Items & Services</h3>
-            <p className="invoice-section-subtitle">What your client is being charged for</p>
+            <TextField
+              label="Date"
+              type="date"
+              value={invoiceDate}
+              onChange={setInvoiceDate}
+              required
+            />
           </div>
-        </div>
-        <div className="p-5">
+          <div>
+            <TextField
+              label="Due date"
+              type="date"
+              value={dueDate}
+              onChange={setDueDate}
+              required
+              hint={dueDate < invoiceDate ? "Must be after the invoice date" : undefined}
+            />
+          </div>
+        </motion.div>
+
+        {/* Tax rate + invoice type */}
+        <motion.div
+          className="grid grid-cols-1 gap-3 sm:grid-cols-2"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, ease: "easeOut", delay: 0.1 }}
+        >
+          <div>
+            <TextField
+              label="Tax rate (%)"
+              type="number"
+              value={String(taxRate)}
+              onChange={(v) => setTaxRate(Number(v) || 0)}
+              hint={taxType === "inter_state" ? "Inter-state tax (IGST)" : "Intra-state tax (CGST + SGST)"}
+            />
+          </div>
+          <div>
+            <SelectField
+              label="Invoice type"
+              value={invoiceType}
+              onChange={setInvoiceType}
+              options={INVOICE_TYPES}
+            />
+          </div>
+        </motion.div>
+
+        {/* Line items */}
+        <motion.section
+          className="space-y-2"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, ease: "easeOut", delay: 0.15 }}
+        >
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            Line Items
+          </h3>
           <InvoiceLineTable
             lines={lines}
             taxRate={taxRate}
@@ -624,172 +459,246 @@ export function CreateInvoiceForm({ initial, onDone }: CreateInvoiceFormProps) {
             onAdd={addLine}
             onRemove={removeLine}
             clientServices={clientServices}
-            clientServicesLoading={selectedClientDetail.isPending}
+            clientServicesLoading={selectedClientDetail.isPending && !!clientId}
           />
-          {usableLines.length > 0 && (
-            <button
-              type="button"
-              className="btn-ghost-sky px-2 py-1 text-xs"
-              onClick={() => alert("Load lines from a saved service template (Phase 2)")}
-            >
-              <Icon name="file-text" className="h-3 w-3" />
-              <span className="ml-1">Load from service template</span>
-            </button>
-          )}
-        </div>
-      </div>
+        </motion.section>
 
-      {/* ── Payment & Notes + Bank Details (side by side) ── */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        {/* ── Payment & Notes ── */}
-        <div className="invoice-section invoice-section-accent-payment">
-          <div className="invoice-section-header">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-rose-50 text-rose-600">
-              <Icon name="share" className="h-4 w-4" />
+        {/* Totals summary */}
+        <motion.div
+          className="flex justify-end"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, ease: "easeOut", delay: 0.2 }}
+        >
+          <motion.div
+            className="w-64 space-y-1.5 rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900/30"
+            whileHover={{ scale: 1.01, boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }}
+            transition={{ type: "spring", stiffness: 400, damping: 25 }}
+          >
+            <div className="flex justify-between text-sm">
+              <span className="text-slate-600 dark:text-slate-400">Subtotal</span>
+              <motion.span
+                className="tabular-nums font-medium text-slate-900 dark:text-slate-200"
+                initial={{ opacity: 0.5 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.2 }}
+              >
+                {formatMoney(totals.subtotal)}
+              </motion.span>
             </div>
-            <div>
-              <h3 className="invoice-section-title">Payment & Notes</h3>
-              <p className="invoice-section-subtitle">Terms, notes, and payment instructions</p>
+            {totals.discountTotal > 0 && (
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-600 dark:text-slate-400">Discount</span>
+                <span className="tabular-nums text-emerald-600">−{formatMoney(totals.discountTotal)}</span>
+              </div>
+            )}
+            <div className="flex justify-between text-sm">
+              <span className="text-slate-600 dark:text-slate-400">Tax</span>
+              <motion.span
+                className="tabular-nums text-slate-900 dark:text-slate-200"
+                initial={{ opacity: 0.5 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.2 }}
+              >
+                {formatMoney(totals.cgst + totals.sgst + totals.igst)}
+              </motion.span>
             </div>
-          </div>
-          <div className="p-5 space-y-4">
-            <TextAreaField
-              label="Payment terms"
-              value={terms}
-              onChange={setTerms}
-              rows={3}
-              maxLength={2000}
-              hint="Printed on the invoice. Include bank details here or in the section below."
+            <div className="border-t border-slate-200 pt-1.5 dark:border-slate-700">
+              <div className="flex justify-between text-base font-semibold">
+                <span className="text-slate-900 dark:text-slate-200">Total</span>
+                <motion.span
+                  className="tabular-nums font-bold text-sky-700 dark:text-sky-300"
+                  initial={{ scale: 0.95, opacity: 0.5 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                >
+                  {formatMoney(totals.total)}
+                </motion.span>
+              </div>
+            </div>
+          </motion.div>
+        </motion.div>
+
+        {/* Notes and terms */}
+        <motion.div
+          className="grid grid-cols-1 gap-3 md:grid-cols-2"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, ease: "easeOut", delay: 0.25 }}
+        >
+          <TextAreaField
+            label="Notes"
+            value={notes}
+            onChange={setNotes}
+            rows={3}
+            placeholder="Additional notes for the customer..."
+          />
+          <TextAreaField
+            label="Terms & conditions"
+            value={terms}
+            onChange={setTerms}
+            rows={3}
+            placeholder="Payment terms, warranty, etc..."
+          />
+        </motion.div>
+
+        {/* Bank details */}
+        <motion.section
+          className="space-y-2"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, ease: "easeOut", delay: 0.3 }}
+        >
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            Bank / Payment details
+          </h3>
+          <motion.div
+            className="grid grid-cols-1 gap-3 sm:grid-cols-2"
+            whileHover={{ boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}
+            transition={{ type: "spring", stiffness: 400, damping: 25 }}
+          >
+            <TextField
+              label="Bank name"
+              value={bankDetails.bank_name}
+              onChange={(v) => updateBank("bank_name", v)}
+              placeholder="e.g. SBI"
             />
-            <TextAreaField
-              label="Notes"
-              value={notes}
-              onChange={setNotes}
-              rows={2}
-              maxLength={2000}
-              hint="Internal notes — not printed on the invoice."
+            <TextField
+              label="Account number"
+              value={bankDetails.account_number}
+              onChange={(v) => updateBank("account_number", v)}
+              placeholder="e.g. 1234567890"
             />
-          </div>
-        </div>
+            <TextField
+              label="Account holder"
+              value={bankDetails.account_name}
+              onChange={(v) => updateBank("account_name", v)}
+              placeholder="Name as on the bank account"
+            />
+            <TextField
+              label="IFSC code"
+              value={bankDetails.ifsc_code}
+              onChange={(v) => updateBank("ifsc_code", v)}
+              placeholder="e.g. SBIN0001234"
+            />
+            <TextField
+              label="UPI ID"
+              value={bankDetails.upi_id}
+              onChange={(v) => updateBank("upi_id", v)}
+              placeholder="e.g. name@fam"
+            />
+            <TextField
+              label="Payment reference"
+              value={bankDetails.payment_reference}
+              onChange={(v) => updateBank("payment_reference", v)}
+              placeholder="e.g. Invoice ref / UTR"
+            />
+          </motion.div>
+        </motion.section>
 
-        {/* ── Bank / Payment Details ── */}
-        <div className="invoice-section invoice-section-accent-bank">
-          <div className="invoice-section-header">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-purple-50 text-purple-600">
-              <Icon name="building" className="h-4 w-4" />
-            </div>
-            <div>
-              <h3 className="invoice-section-title">Bank / Payment Details</h3>
-              <p className="invoice-section-subtitle">How the client can pay</p>
-            </div>
-          </div>
-          <div className="p-5">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <TextField
-                label="Bank name"
-                value={bankDetails.bank_name}
-                onChange={(v) => updateBank("bank_name", v)}
-                maxLength={100}
-              />
-              <TextField
-                label="Account holder name"
-                value={bankDetails.account_name}
-                onChange={(v) => updateBank("account_name", v)}
-                maxLength={100}
-              />
-              <TextField
-                label="Account number"
-                value={bankDetails.account_number}
-                onChange={(v) => updateBank("account_number", v)}
-                maxLength={30}
-              />
-              <TextField
-                label="IFSC code"
-                value={bankDetails.ifsc_code}
-                onChange={(v) => updateBank("ifsc_code", v)}
-                maxLength={11}
-                hint="e.g. SBIN0001234"
-              />
-              <TextField
-                label="UPI ID"
-                value={bankDetails.upi_id}
-                onChange={(v) => updateBank("upi_id", v)}
-                maxLength={100}
-                hint="e.g. name@upi"
-              />
-              <TextField
-                label="Payment reference"
-                value={bankDetails.payment_reference}
-                onChange={(v) => updateBank("payment_reference", v)}
-                maxLength={100}
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Form actions ── */}
-      <div className="flex items-center justify-end gap-3 border-t border-slate-200 pt-4">
+        {/* Error + success */}
         {errorMsg && <FormError error={errorMsg} />}
-        {saved && <FormSuccess message={saved} />}
-        <button
-          type="button"
-          className="btn-ghost-sky"
-          onClick={() => setShowPreview(true)}
-          disabled={usableLines.length === 0}
-        >
-          <Icon name="eye" className="h-4 w-4" />
-          <span className="ml-1">Preview</span>
-        </button>
-        <button
-          type="button"
-          className="btn-ghost-sky"
-          onClick={handleSaveDraft}
-          disabled={!canSave || activeMutation}
-        >
-          {activeMutation ? (
-            <>
-              <span className="mr-1">⏉</span>
-              <span>Saving…</span>
-            </>
-          ) : (
-            <>
-              <Icon name="file-text" className="h-4 w-4" />
-              <span className="ml-1">{isEdit ? "Save Changes" : "Save Draft"}</span>
-            </>
-          )}
-        </button>
-        <button
-          type="button"
-          className="btn-primary-gradient"
-          onClick={handleSaveAndSend}
-          disabled={!canSave || (create.isPending || issue.isPending)}
-        >
-          {create.isPending || issue.isPending ? (
-            <>
-              <span className="mr-1">⏉</span>
-              <span>Saving…</span>
-            </>
-          ) : (
-            <>
-              <Icon name="share" className="h-4 w-4" />
-              <span className="ml-1">{isEdit ? "Issue & Send" : "Save & Send"}</span>
-            </>
-          )}
-        </button>
-      </div>
+        <FormSuccess message={saved} />
 
-      {/* ── Preview modal ── */}
-      <Modal
-        open={showPreview}
-        onClose={() => setShowPreview(false)}
-        title="Invoice preview"
-        size="xl"
+        {/* Actions */}
+        <motion.div
+          className="flex items-center justify-between gap-3 border-t border-slate-200 pt-3 dark:border-slate-700"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, ease: "easeOut", delay: 0.35 }}
+        >
+          <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+            <span className="flex items-center gap-1">
+              <span
+                className={`flex h-2 w-2 rounded-full ${
+                  clientId ? "bg-emerald-500" : "bg-slate-300"
+                }`}
+              />
+              Client: {clientId ? "done" : "missing"}
+            </span>
+            <span
+              className={`flex h-2 w-2 rounded-full ${
+                usableLines.length > 0 ? "bg-emerald-500" : "bg-slate-300"
+              }`}
+            />
+            <span className="flex items-center gap-1">
+              <span />
+              Lines: {usableLines.length}
+            </span>
+            <span
+              className={`flex h-2 w-2 rounded-full ${
+                canSave ? "bg-emerald-500" : "bg-slate-300"
+              }`}
+            />
+            <span>Ready: {stepsComplete}/{steps.length}</span>
+          </div>
+
+          <div className="flex gap-2">
+            {onClose && (
+              <motion.button
+                type="button"
+                className="btn-ghost"
+                disabled={activeMutation}
+                onClick={handleClose}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                transition={{ type: "spring", stiffness: 400, damping: 25 }}
+              >
+                Cancel
+              </motion.button>
+            )}
+            <motion.button
+              type="button"
+              className="btn-ghost"
+              disabled={activeMutation || !canSave}
+              onClick={handleSaveDraft}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              transition={{ type: "spring", stiffness: 400, damping: 25 }}
+            >
+              {activeMutation ? "Saving…" : "Save draft"}
+            </motion.button>
+            <motion.button
+              type="submit"
+              disabled={activeMutation || !canSave}
+              className="btn-primary"
+              whileHover={{ scale: 1.01 }}
+              whileTap={{ scale: 0.98 }}
+              transition={{ type: "spring", stiffness: 400, damping: 25 }}
+            >
+              {activeMutation ? "Creating…" : isEdit ? "Update and send" : "Create and send"}
+            </motion.button>
+          </div>
+        </motion.div>
+      </form>
+
+      {/* Right: Live preview */}
+      <motion.div
+        className="w-full min-w-[320px] max-w-[500px] overflow-y-auto"
+        initial={{ opacity: 0, x: 10 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.4, ease: "easeOut", delay: 0.2 }}
       >
-        <div className="max-h-[90vh] overflow-y-auto p-6">
-          <LiveInvoicePreview state={previewState} />
-        </div>
-      </Modal>
+        <LiveInvoicePreview
+          state={previewState}
+          onEditTax={() => setTaxRate((current) => (current === 0 ? 18 : current))}
+          onDownloadPdf={() => {
+            if (initial?.id) {
+              window.open(`/print/invoices/${initial.id}`, "_blank");
+            }
+          }}
+          onSendClient={() => {
+            if (initial?.id) {
+              router.push(`/invoices/${initial.id}`);
+            }
+          }}
+          onMoreActions={() => {
+            if (initial?.id) {
+              router.push(`/invoices/${initial.id}`);
+            }
+          }}
+        />
+      </motion.div>
     </div>
   );
 }

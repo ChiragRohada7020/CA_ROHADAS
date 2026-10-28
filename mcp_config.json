@@ -4,12 +4,12 @@
       "command": "python",
       "args": ["-m", "mcp_server.server"],
       "env": {
-        "PYTHONPATH": "backend;.",
+        "PYTHONPATH": "backend:.",
         "DATABASE_URL": "postgresql+psycopg://postgres@127.0.0.1:5432/ca_software",
         "ENVIRONMENT": "development",
         "COMPOSIO_API_KEY": "<YOUR_COMPOSIO_API_KEY>"
       },
-      "cwd": "d:/rohadas_organisagtion/Ca_software",
+      "cwd": "/home/ubuntu/CA_ROHADAS",
       "disabled": false,
       "alwaysAllow": []
     }

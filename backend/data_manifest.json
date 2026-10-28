@@ -1,0 +1,2142 @@
+{
+  "services": {
+    "GST3B": "b53729d9-cb92-4953-977e-72f64908dc7b",
+    "GST1": "b7647467-cbd1-4707-afdb-c5378d1a6854",
+    "ITR1": "ee1c6e00-a962-4791-ac2b-d1f4c4bcf2bb",
+    "ITR3": "1352ec0f-8659-4e93-adce-bbd4184c2d13",
+    "ITR4": "42bf5b11-fb22-48e0-af92-0e3fc5d2a2b3",
+    "TDS26": "8894e14f-edd1-4f5c-b883-9048e08825fa",
+    "TDS27": "72a0d4f4-54dc-4ffc-89cd-5c13cd814243",
+    "AUDIT": "b1af3129-d0e9-4a8e-aa0e-657a90740fb0",
+    "BOOK": "55221e58-3121-47f0-8c49-4f57fc956227",
+    "ACCT": "6152411d-4ede-43e3-9cce-bf6f2dab03c8",
+    "ROC": "e387516b-ad4e-4329-b64a-ed7c00f86d99",
+    "PAY": "5035ca6f-f48c-435f-84a8-4a55920370f8"
+  },
+  "rules": {
+    "ITR1-R": "e77a763e-5107-4465-be0c-ecbfe9a2ae68",
+    "ITR3-R": "a6a4b961-31a2-4616-b4f8-d6f5aa495d3d",
+    "GST3B-R": "240d3f41-0eb5-408a-afd6-f5340d642d08",
+    "GST1-R": "d4858adf-2f08-4679-8b5c-784120e784cc",
+    "TDS26-R": "3cd5731d-eade-4120-8f33-bf9b608c0cc7",
+    "TDS27-R": "5c71fd7e-b2e3-4274-8ade-4dfe901b0eb6",
+    "AUDIT-R": "c059b10f-165e-4305-a1ae-04053a4a35d7",
+    "ROC-R": "e8ca1bc9-e1dc-4bb3-bc7c-0a415f88e55a",
+    "ADV-TAX": "a605b490-2d47-4f1d-98be-f8b4cae55f57",
+    "BOOK-R": "295a81ee-928e-4212-a92b-5f5f25194311",
+    "ACCT-R": "7cc304f9-6ebe-4e13-a7eb-5936e72d0ae3"
+  },
+  "fys": {
+    "FY2324": "2bb7f1e2-79b5-4877-b8ce-8a43185109d9",
+    "FY2425": "fde71b7c-4c5d-4644-8c92-5427d03963f2",
+    "FY2526": "0cd7a290-81cd-433c-a122-cbe277ab5187",
+    "FY2627": "7c779095-950d-44d7-aa18-273840563840"
+  },
+  "fys_active": "0cd7a290-81cd-433c-a122-cbe277ab5187",
+  "clients": {
+    "Sneha Associates (Textiles) - 002": "2f902ff2-e316-43e3-8796-a4130b59a6e7",
+    "Arjun Partners (IT Services) - 003": "afc51359-986d-4a02-958e-3028b4f846e4",
+    "Priya LLP (Cotton Ginners) - 004": "a5ceedc5-853a-4615-8ad6-f491d520b250",
+    "Karan Holdings (Restaurant) - 005": "1027f4f9-42b3-46ea-a29b-c04fc8c4c684",
+    "Meera Group (Construction) - 006": "67c4f42b-1f21-4d54-9c4c-9cd0c32d393f",
+    "Vikram Enterprises (Jewellery) - 007": "230b6e33-899f-4082-b030-e96501c43dae",
+    "Ananya & Sons (Auto Parts) - 008": "e4839c53-e344-44e2-9d42-6aeb249ead9d",
+    "Rohan Consultants (Media) - 009": "6bb052ab-fad0-4a73-9f7f-345998bfda62",
+    "Tina Trading (Logistics) - 010": "3b287de3-ab4f-4f76-964c-9a8f640875e6",
+    "Rohit & Co (Pharma) - 011": "26ac5e6d-b4ed-4bc3-a038-d8eabb6120d3",
+    "Sneha Associates (Textiles) - 012": "3d8e32ec-7bda-4723-8f18-2be20bc99429",
+    "Arjun Partners (IT Services) - 013": "97a8f5b5-c605-47f3-bd99-f8be0f86dc74",
+    "Priya LLP (Cotton Ginners) - 014": "ba33f724-f6eb-4c06-a7bc-484405ca44b7",
+    "Karan Holdings (Restaurant) - 015": "b4793ee4-6e2c-4879-bd9d-ff2e686d6db6",
+    "Meera Group (Construction) - 016": "964e9da5-d83e-4921-ad2f-9e6759be8ff9",
+    "Vikram Enterprises (Jewellery) - 017": "62356f78-1f4d-4de0-a1f3-af2168d3acfd",
+    "Ananya & Sons (Auto Parts) - 018": "8225069a-41dc-4a80-92cb-802764f09854",
+    "Rohan Consultants (Media) - 019": "d6c8f618-c5dc-4a8d-aa6d-4327417c80df",
+    "Tina Trading (Logistics) - 020": "0fb06c36-7664-4f4d-9041-0e429ffa70a9",
+    "Rohit & Co (Pharma) - 021": "220740b4-1d5f-441c-b6d2-6113680edc68",
+    "Sneha Associates (Textiles) - 022": "86a8bb7c-0c7b-4d9d-af1e-3fd1b0d793bc",
+    "Arjun Partners (IT Services) - 023": "1f665310-84bc-4f26-8140-9b3d3fad2dba",
+    "Priya LLP (Cotton Ginners) - 024": "3cd46895-1e73-440b-b32b-67d553927b8d",
+    "Karan Holdings (Restaurant) - 025": "ffe5ade4-5f38-4429-950f-7cba3cb7807a",
+    "Meera Group (Construction) - 026": "bc85863d-d704-4877-80db-3c79dbf6e92b",
+    "Vikram Enterprises (Jewellery) - 027": "3bdef8f4-2356-49f9-9232-10ecd542e10f",
+    "Ananya & Sons (Auto Parts) - 028": "e4e96029-dabc-480a-b4f4-ec303bd27e27",
+    "Rohan Consultants (Media) - 029": "88be43b6-a13d-44a0-bcff-c0d368d445e7",
+    "Tina Trading (Logistics) - 030": "173eec47-1ee2-4d86-a3a5-14d36877919a",
+    "Rohit & Co (Pharma) - 031": "22d7a863-aeab-459e-84ce-e29c1b71788c",
+    "Sneha Associates (Textiles) - 032": "fc02ce1f-a184-4daa-9f03-ac244f54f7a9",
+    "Arjun Partners (IT Services) - 033": "b81d8bb7-e1bc-4cb0-95d7-a1ea683c339e",
+    "Priya LLP (Cotton Ginners) - 034": "2fd8d1f5-8963-477d-9f02-55c6a2e425e2",
+    "Karan Holdings (Restaurant) - 035": "b6dd8d3e-c75f-4681-ab7e-62a9aab8c67f",
+    "Meera Group (Construction) - 036": "c4df1659-98fb-4773-b5f6-7d6d5333324d",
+    "Vikram Enterprises (Jewellery) - 037": "ba247a79-d5ae-402a-8ca3-5b7a76ae857b",
+    "Ananya & Sons (Auto Parts) - 038": "ad991313-c4aa-485f-bbe8-16161988f559",
+    "Rohan Consultants (Media) - 039": "4f1f8a53-717e-47d9-a557-984e4006e05b",
+    "Tina Trading (Logistics) - 040": "5c33d415-240d-4b97-b0f5-18f9c0cdf8b1",
+    "Rohit & Co (Pharma) - 041": "3a8b9c7b-64a3-4d3d-8ba7-92c5f8d38f46",
+    "Sneha Associates (Textiles) - 042": "fe02e84a-8616-4b74-b699-11f466f8b086",
+    "Arjun Partners (IT Services) - 043": "9b8ab16a-234d-47e9-9c4a-13bdf07e9562",
+    "Priya LLP (Cotton Ginners) - 044": "6e1f0fb9-cd29-4578-8905-12a724e97597",
+    "Karan Holdings (Restaurant) - 045": "f915d9cf-99a2-4d62-8514-0e5ae0a11581",
+    "Meera Group (Construction) - 046": "094e9f88-45bb-44f9-8b09-4413cd90f4f3",
+    "Vikram Enterprises (Jewellery) - 047": "e515e16b-ff70-43da-a99f-da17d8a0ffc5",
+    "Ananya & Sons (Auto Parts) - 048": "4d2ddeec-4e81-4a3e-8ab0-b8d3886fdbb0",
+    "Rohan Consultants (Media) - 049": "0b0f4cad-32d2-441e-888d-1d5801ad9905",
+    "Tina Trading (Logistics) - 050": "db74573d-ebbe-489f-8036-894c4e8590f5",
+    "Rohit & Co (Pharma) - 051": "f1ba9ce6-73f7-4067-8279-fa97bed44a29",
+    "Sneha Associates (Textiles) - 052": "730926bd-ac8c-46e9-9171-c0e9dabec3fb",
+    "Arjun Partners (IT Services) - 053": "787cea14-3046-4a34-b1f5-2e8441c59d30",
+    "Priya LLP (Cotton Ginners) - 054": "8bc19c19-878f-4fa1-83ec-2cdf7d2e6113",
+    "Karan Holdings (Restaurant) - 055": "174d2af5-3e51-4066-9617-9191e838a592",
+    "Meera Group (Construction) - 056": "cbbc228e-5b7b-4e74-934f-7426fd0956c7",
+    "Vikram Enterprises (Jewellery) - 057": "b0c21726-6b60-49b8-91fc-e419d5355628",
+    "Ananya & Sons (Auto Parts) - 058": "f19b17db-cec3-4474-aabe-c809bba43e8d",
+    "Rohan Consultants (Media) - 059": "35e5f644-f0db-4ee7-aa71-c6ca0bb0c682",
+    "Tina Trading (Logistics) - 060": "590da087-0580-4d7f-9e75-7c439a4a120a",
+    "Rohit & Co (Pharma) - 061": "e66c2d17-f2b7-4af7-ac46-2f67c3145274",
+    "Sneha Associates (Textiles) - 062": "a82215d9-ebc4-463d-8d20-cddebaebcd49",
+    "Arjun Partners (IT Services) - 063": "1b7bad80-481e-4162-a2b8-3fc6ff65557c",
+    "Priya LLP (Cotton Ginners) - 064": "49298b94-95fe-4115-a09e-3b1ba4f79319",
+    "Karan Holdings (Restaurant) - 065": "5690b786-d58e-4ae1-b6ae-75d5ed0e98c5",
+    "Meera Group (Construction) - 066": "985e56e7-b05b-43d6-ad0a-3e50df3f4da7",
+    "Vikram Enterprises (Jewellery) - 067": "46ad0a32-7c88-4b37-bb0f-91646cf57104",
+    "Ananya & Sons (Auto Parts) - 068": "8fa01d3f-3f97-42db-9d8d-a2a6368f834f",
+    "Rohan Consultants (Media) - 069": "89015af0-a440-44be-9734-858de0fee398",
+    "Tina Trading (Logistics) - 070": "9335ca95-4da1-46d0-a13f-53765f08ee6b",
+    "Rohit & Co (Pharma) - 071": "7554b0e6-41b5-46d7-9166-9d8fb34a7dea",
+    "Sneha Associates (Textiles) - 072": "c6fdc061-51bd-476c-a56c-c59b3796296d",
+    "Arjun Partners (IT Services) - 073": "bbec3e8d-552a-4e6b-be7c-7d5b775f723d",
+    "Priya LLP (Cotton Ginners) - 074": "fc787088-3fdd-45c1-a169-02c89bce4a46",
+    "Karan Holdings (Restaurant) - 075": "63eda4a6-eed8-4afe-a58b-fa59464522dc",
+    "Meera Group (Construction) - 076": "9d03b045-f201-42e9-9c39-64e9c73c4674",
+    "Vikram Enterprises (Jewellery) - 077": "6e6bcfcf-cf31-4fe3-a18a-d16f2ed09aa1",
+    "Ananya & Sons (Auto Parts) - 078": "14fbd786-c73e-4c4e-90a1-402a083c5d29",
+    "Rohan Consultants (Media) - 079": "ea2db0ea-6588-44de-9357-e0641e6dff94",
+    "Tina Trading (Logistics) - 080": "8fd81835-411d-4eb1-87de-2b5fe3c23f88",
+    "Rohit & Co (Pharma) - 081": "49d73442-4ac9-4b81-8fd3-be0005f43ec6",
+    "Sneha Associates (Textiles) - 082": "4e52935d-b9fe-4b1c-8919-17dc9c80850c",
+    "Arjun Partners (IT Services) - 083": "f09d5b3c-d592-4c3f-b356-7a988793576c",
+    "Priya LLP (Cotton Ginners) - 084": "3d818105-eea3-4eb0-917d-94e0f6d3d245",
+    "Karan Holdings (Restaurant) - 085": "a687a747-f950-4307-bc01-54cbee7cbb7e",
+    "Meera Group (Construction) - 086": "08a56fef-949c-4ea0-8662-7afa5f23860e",
+    "Vikram Enterprises (Jewellery) - 087": "73f5a6d1-054d-4903-b2f4-d1583c547008",
+    "Ananya & Sons (Auto Parts) - 088": "8650e5f9-7f2a-4eca-bec3-9f6bc9680497",
+    "Rohan Consultants (Media) - 089": "e0d2146d-673a-46c7-9a82-cca2d37d3736",
+    "Tina Trading (Logistics) - 090": "e2c9b617-c27b-4e51-a944-89f192f50f2e",
+    "Rohit & Co (Pharma) - 091": "4c194d80-f150-49da-96f0-dd45845e9672",
+    "Sneha Associates (Textiles) - 092": "b803d707-1114-4bf5-8733-8cafbad8f92d",
+    "Arjun Partners (IT Services) - 093": "0ffb9a2b-9083-49f9-8966-3b5f963ec940",
+    "Priya LLP (Cotton Ginners) - 094": "5ffcf22d-f897-4ce6-ae20-6b62ab69a2c6",
+    "Karan Holdings (Restaurant) - 095": "f1c9a4ff-798f-43f8-9542-d20f454c7c95",
+    "Meera Group (Construction) - 096": "5af46000-dfe5-44cf-a17d-036a4092824f",
+    "Vikram Enterprises (Jewellery) - 097": "a95d1331-7bd9-42ed-8ac1-c0b00be6d745",
+    "Ananya & Sons (Auto Parts) - 098": "f32da48b-2e50-44f6-ac98-4a9d7b3abcc2",
+    "Rohan Consultants (Media) - 099": "323e2f32-7aef-4a52-87bb-0f0d750128d5",
+    "Tina Trading (Logistics) - 100": "2f655930-fcbb-4ce0-b8c3-1b16001300bb",
+    "Rohit & Co (Pharma) - 101": "6f09127e-af45-4c16-9c2a-3b98d2205f9e"
+  },
+  "client_services": {
+    "Sneha Associates (Textiles) - 002|GST3B": "1cbb7a33-3c7f-4025-a5ad-3547dca7094c",
+    "Arjun Partners (IT Services) - 003|GST1": "5ac035c0-2a4d-43d5-b5e9-d9a6018d9def",
+    "Priya LLP (Cotton Ginners) - 004|ITR1": "868da40a-0995-4f35-8688-14329d72251a",
+    "Karan Holdings (Restaurant) - 005|ITR3": "62cd5083-be65-4933-9ca1-f4d2f2622301",
+    "Meera Group (Construction) - 006|ITR4": "3bf444a2-faeb-41f8-91f2-ec61ce9b685f",
+    "Vikram Enterprises (Jewellery) - 007|TDS26": "29848a81-85cf-45af-a6e4-09647d7c5503",
+    "Ananya & Sons (Auto Parts) - 008|TDS27": "1c9a8d0f-c09d-4cac-ab49-ee2f98db044a",
+    "Rohan Consultants (Media) - 009|AUDIT": "e05df034-fef1-435f-9fc9-cc29c0ade26b",
+    "Tina Trading (Logistics) - 010|BOOK": "0363a834-50d4-4779-8e00-61402ee78e60",
+    "Rohit & Co (Pharma) - 011|ACCT": "227826c3-70d3-480a-8bab-7b788359d0dd",
+    "Sneha Associates (Textiles) - 012|ROC": "3432c8a7-3b1d-4e3a-b303-6285047e4b9a",
+    "Arjun Partners (IT Services) - 013|PAY": "20821044-f97d-45cb-8acc-d1cb33cbf52b",
+    "Priya LLP (Cotton Ginners) - 014|GST3B": "2b2cac6e-2413-4f0d-9e2f-928bf0308f9d",
+    "Karan Holdings (Restaurant) - 015|GST1": "92768b98-8cb1-4169-b185-7401bc34ce59",
+    "Meera Group (Construction) - 016|ITR1": "f35af875-18c3-4dd6-847d-26e16f15e1a5",
+    "Vikram Enterprises (Jewellery) - 017|ITR3": "f7041c88-f686-4488-8447-faf343d9e7fe",
+    "Ananya & Sons (Auto Parts) - 018|ITR4": "4231d5d6-e8a4-4fd6-9433-0492dbd3e187",
+    "Rohan Consultants (Media) - 019|TDS26": "4cf999e9-4904-4baf-ac30-d7e41a3651a0",
+    "Tina Trading (Logistics) - 020|TDS27": "8ad5d894-d833-4dab-8475-b9805dfb0a2f",
+    "Rohit & Co (Pharma) - 021|AUDIT": "59be1a33-9441-4c75-a6e3-7ad39e3b06cf",
+    "Sneha Associates (Textiles) - 022|BOOK": "20c3c6aa-1419-4cf3-8604-4df3a65dd79c",
+    "Arjun Partners (IT Services) - 023|ACCT": "69210b95-ae74-4032-b1d6-7f05f968d9d0",
+    "Priya LLP (Cotton Ginners) - 024|ROC": "7ff7f6c0-318d-4707-8954-8fbd51c4965e",
+    "Karan Holdings (Restaurant) - 025|PAY": "64337cfc-fea8-447d-b878-7e96bb2af2d1",
+    "Meera Group (Construction) - 026|GST3B": "e28cb9fc-96de-43f3-93d0-5ea27b1bfc76",
+    "Vikram Enterprises (Jewellery) - 027|GST1": "1a81aa4d-c62c-4616-b0e9-6f2e842aba45",
+    "Ananya & Sons (Auto Parts) - 028|ITR1": "5e8c9cfb-d754-45d5-85b8-55e91579380d",
+    "Rohan Consultants (Media) - 029|ITR3": "af90f722-b62f-4484-a564-7b29cfeeade2",
+    "Tina Trading (Logistics) - 030|ITR4": "8d4be15d-880d-4efc-812e-24c64b1db3f6",
+    "Rohit & Co (Pharma) - 031|TDS26": "7d1cd76e-dc56-4822-8fdd-aac87c2c06a5",
+    "Sneha Associates (Textiles) - 032|TDS27": "49c06315-7d15-48ba-a6d6-e4b64a710a04",
+    "Arjun Partners (IT Services) - 033|AUDIT": "300a68bf-43f8-431c-91b1-ba6927346a41",
+    "Priya LLP (Cotton Ginners) - 034|BOOK": "9866a54e-7831-4728-8b23-b622ed5f035c",
+    "Karan Holdings (Restaurant) - 035|ACCT": "7a646ab5-9e47-4662-ac1a-65cc9f62bd63",
+    "Meera Group (Construction) - 036|ROC": "5601dad7-a632-4f96-826f-fc77c065050c",
+    "Vikram Enterprises (Jewellery) - 037|PAY": "544403b7-7e9d-4e2c-9c8b-a254beed182f",
+    "Ananya & Sons (Auto Parts) - 038|GST3B": "4c82d868-2203-4db0-988a-a8325a66fdc3",
+    "Rohan Consultants (Media) - 039|GST1": "a80761d5-c170-4bfd-9757-84bd3c95d773",
+    "Tina Trading (Logistics) - 040|ITR1": "464cf713-7b6b-49d5-a00c-8965c8c7d3b8",
+    "Rohit & Co (Pharma) - 041|ITR3": "83aba3ae-955b-43d5-ac6e-1345aae8fb96",
+    "Sneha Associates (Textiles) - 042|ITR4": "e2419c8e-71ea-40f0-95e9-67308fe9adc4",
+    "Arjun Partners (IT Services) - 043|TDS26": "0863774b-631a-4189-88f5-f29e48860279",
+    "Priya LLP (Cotton Ginners) - 044|TDS27": "2b20f277-bb15-4e7a-a89a-ec77f2537471",
+    "Karan Holdings (Restaurant) - 045|AUDIT": "1856f564-d28e-4083-bd81-05a4127cd43e",
+    "Meera Group (Construction) - 046|BOOK": "b336f643-a2f0-4aea-9e3f-5ac37c3c7d4f",
+    "Vikram Enterprises (Jewellery) - 047|ACCT": "411632ab-9732-4cc3-aa35-d47ee71ef6e1",
+    "Ananya & Sons (Auto Parts) - 048|ROC": "42e636df-7fcb-495d-8bc0-db7f2ed8a796",
+    "Rohan Consultants (Media) - 049|PAY": "c2d1e888-2a82-4946-81ca-e604f662abc3",
+    "Tina Trading (Logistics) - 050|GST3B": "caa9ac96-2efd-47ed-b8c6-23347a1864c0",
+    "Rohit & Co (Pharma) - 051|GST1": "93509b1f-3660-4654-9021-45bc61d0f863",
+    "Sneha Associates (Textiles) - 052|ITR1": "55238fd2-83a7-41fd-9b26-579c8a4d8fce",
+    "Arjun Partners (IT Services) - 053|ITR3": "33f3799e-1fd9-4669-9300-3f364be94c5b",
+    "Priya LLP (Cotton Ginners) - 054|ITR4": "30c4fff9-7453-4515-843c-f17cdc241b6f",
+    "Karan Holdings (Restaurant) - 055|TDS26": "1105fbfc-b252-4e1b-bdb3-88ca09192f09",
+    "Meera Group (Construction) - 056|TDS27": "a9449380-ba2a-4d1d-9129-25cae53b5dc9",
+    "Vikram Enterprises (Jewellery) - 057|AUDIT": "a63757ae-89d6-49ef-8103-994413dcd98d",
+    "Ananya & Sons (Auto Parts) - 058|BOOK": "514a63dc-aca8-4740-b62f-890988d5a33d",
+    "Rohan Consultants (Media) - 059|ACCT": "978bdb2e-bb7c-49cd-9681-bcae0067742f",
+    "Tina Trading (Logistics) - 060|ROC": "f5eeac87-062e-4261-9c1d-1b8191b92a80",
+    "Rohit & Co (Pharma) - 061|PAY": "8b959c10-96ee-4a11-a84a-35c61ba9ce4c",
+    "Sneha Associates (Textiles) - 062|GST3B": "2767ede2-24c9-491a-9efc-99c5cfc93b6c",
+    "Arjun Partners (IT Services) - 063|GST1": "fa58e111-1e6e-409a-a4d4-093e4194a98e",
+    "Priya LLP (Cotton Ginners) - 064|ITR1": "eab6491e-c861-4d9d-95a0-9626f714a594",
+    "Karan Holdings (Restaurant) - 065|ITR3": "8b3fe02b-4aae-4a21-aadc-e808a929335c",
+    "Meera Group (Construction) - 066|ITR4": "e645988a-f5dc-49c9-a094-e699d2694720",
+    "Vikram Enterprises (Jewellery) - 067|TDS26": "0e2359b4-ff89-4b78-a4d1-5450e85190b2",
+    "Ananya & Sons (Auto Parts) - 068|TDS27": "5c277e81-59ec-4371-bc1f-1be5996af847",
+    "Rohan Consultants (Media) - 069|AUDIT": "12f6e254-c47e-4541-9768-9caa292aecef",
+    "Tina Trading (Logistics) - 070|BOOK": "7db8597b-80e6-4280-89e7-26bcfe0e4936",
+    "Rohit & Co (Pharma) - 071|ACCT": "c00904d7-0f34-403a-b4d5-d25c0948ce3c",
+    "Sneha Associates (Textiles) - 072|ROC": "ad3355a5-c819-4d1a-b635-189342e918d0",
+    "Arjun Partners (IT Services) - 073|PAY": "cea7c2f8-ec80-459b-a65a-c3ddb3ed773a",
+    "Priya LLP (Cotton Ginners) - 074|GST3B": "5f20fc91-a782-4cf3-b3d9-109f42c2b104",
+    "Karan Holdings (Restaurant) - 075|GST1": "69817b20-6d7d-4624-89ca-3c93fcc44f1c",
+    "Meera Group (Construction) - 076|ITR1": "fe6d87d4-09dc-42e9-85da-a8e0e73883a7",
+    "Vikram Enterprises (Jewellery) - 077|ITR3": "5887da1f-2f71-4669-9a31-8e36409dcf96",
+    "Ananya & Sons (Auto Parts) - 078|ITR4": "b2245ae6-018c-476f-b331-34f71cf85948",
+    "Rohan Consultants (Media) - 079|TDS26": "4ee84c40-d7b6-4cd0-8d02-7f3c01846329",
+    "Tina Trading (Logistics) - 080|TDS27": "d8110b8d-b618-4acb-ab23-c6a81773770f",
+    "Rohit & Co (Pharma) - 081|AUDIT": "d715fb99-fc7a-4653-890b-b37199057a69",
+    "Sneha Associates (Textiles) - 082|BOOK": "5c74d419-3abd-4cba-84a1-21f1ff8b43f6",
+    "Arjun Partners (IT Services) - 083|ACCT": "b1590d1e-2790-4644-8112-1b339eae9228",
+    "Priya LLP (Cotton Ginners) - 084|ROC": "17b57ed4-b665-49a2-8b29-8d5958bf2e0a",
+    "Karan Holdings (Restaurant) - 085|PAY": "0ed40313-50f3-4ec2-93ae-d59e0be309cd",
+    "Meera Group (Construction) - 086|GST3B": "925e5a91-b654-4e4e-b6d6-e7f3a60f6285",
+    "Vikram Enterprises (Jewellery) - 087|GST1": "f636f080-0c47-4d46-ac97-964952cca3e6",
+    "Ananya & Sons (Auto Parts) - 088|ITR1": "a5dd79fb-82c9-4698-9883-a8d74067e267",
+    "Rohan Consultants (Media) - 089|ITR3": "0d83e0d2-d4cd-4cec-aae5-49a4ae3d5589",
+    "Tina Trading (Logistics) - 090|ITR4": "1f760cb4-be88-4d19-bd87-12a94308e939",
+    "Rohit & Co (Pharma) - 091|TDS26": "b42defbe-68a5-4804-9318-7686eaae2505",
+    "Sneha Associates (Textiles) - 092|TDS27": "74129da9-0b4d-445e-9f8e-6ef9ada704c8",
+    "Arjun Partners (IT Services) - 093|AUDIT": "c5bbde22-944a-49ea-9276-4f13b6ed306c",
+    "Priya LLP (Cotton Ginners) - 094|BOOK": "2fed3186-8fd6-4224-8936-f07acdfc2ff9",
+    "Karan Holdings (Restaurant) - 095|ACCT": "d5184b5b-331e-4954-8240-20f40ce76076",
+    "Meera Group (Construction) - 096|ROC": "e0cc158c-317c-44a3-a190-207e367eba30",
+    "Vikram Enterprises (Jewellery) - 097|PAY": "a132fb19-5711-416a-ac21-da8a853df2be",
+    "Ananya & Sons (Auto Parts) - 098|GST3B": "fed25adb-b775-4fb0-a512-8b770a43d0b1",
+    "Rohan Consultants (Media) - 099|GST1": "476fc00e-32be-4174-9fce-e89d39e920bb",
+    "Tina Trading (Logistics) - 100|ITR1": "8e6134ef-4b1e-42a1-9e63-58bedafbd045",
+    "Rohit & Co (Pharma) - 101|ITR3": "fa96d615-65fb-45a5-b6ce-3c5dec89b3ed",
+    "Sneha Associates (Textiles) - 002|ITR4": "c5befad4-069d-48e2-ada2-19f28df34e41",
+    "Arjun Partners (IT Services) - 003|TDS26": "f48a2924-5d03-4037-8ebe-38e4adeaedf0",
+    "Priya LLP (Cotton Ginners) - 004|TDS27": "2eeed291-7637-4bdf-9c24-450ce425b859",
+    "Karan Holdings (Restaurant) - 005|AUDIT": "f87cb203-2974-4548-bb6e-a226963aaf12",
+    "Meera Group (Construction) - 006|BOOK": "514ed128-3b28-4942-969c-84a557e34eec",
+    "Vikram Enterprises (Jewellery) - 007|ACCT": "709cea5f-881d-427e-aecd-a9d59689bf84",
+    "Ananya & Sons (Auto Parts) - 008|ROC": "ce31f309-5d9d-4167-a499-835a0b38cff0",
+    "Rohan Consultants (Media) - 009|PAY": "fe434655-9d03-4356-9152-1ce7ba56b372",
+    "Tina Trading (Logistics) - 010|GST3B": "f113fa9c-b44b-4079-b982-e37fd42c1d25",
+    "Rohit & Co (Pharma) - 011|GST1": "a6ade828-dd75-4256-8149-f8f2f9a9ebfc",
+    "Sneha Associates (Textiles) - 012|ITR1": "7948f325-3fd4-4161-a4ca-5dfd85b892b2",
+    "Arjun Partners (IT Services) - 013|ITR3": "349f1bcc-8c34-45c1-9761-62fc2f5b841b",
+    "Priya LLP (Cotton Ginners) - 014|ITR4": "189b958a-42c4-4c81-878e-51b644e3f33e",
+    "Karan Holdings (Restaurant) - 015|TDS26": "41243505-2b2c-4b50-9ed0-f8127c9098a4",
+    "Meera Group (Construction) - 016|TDS27": "1461f8e2-58a7-4ba9-929a-f62b17486b62",
+    "Vikram Enterprises (Jewellery) - 017|AUDIT": "e1321bd9-f3d8-4ea2-90fc-ce5973d99b0a",
+    "Ananya & Sons (Auto Parts) - 018|BOOK": "1ce5cb5d-8c00-45c7-bf9c-ece59c4c4ca9",
+    "Rohan Consultants (Media) - 019|ACCT": "7b1a070c-fc94-4c3a-8485-76f48cdc4ffd",
+    "Tina Trading (Logistics) - 020|ROC": "42af0a4f-af69-4723-bed8-e32032ec9975",
+    "Rohit & Co (Pharma) - 021|PAY": "62672d85-b06e-45b1-87f0-a51c0e474c1f",
+    "Sneha Associates (Textiles) - 022|GST3B": "4af095a9-6061-4c4a-8c34-1d699a75b5c3",
+    "Arjun Partners (IT Services) - 023|GST1": "69657252-6652-4624-b3c8-e43314e44479",
+    "Priya LLP (Cotton Ginners) - 024|ITR1": "f7ff6d9e-3b8a-4f2a-84a0-d41cd8b3332d",
+    "Karan Holdings (Restaurant) - 025|ITR3": "21b1c61b-695b-4f49-a90f-10c18e193e33",
+    "Meera Group (Construction) - 026|ITR4": "c9bb4f04-2818-4692-a279-bfa3a26b770b",
+    "Vikram Enterprises (Jewellery) - 027|TDS26": "3dd40afd-2501-4b04-84cd-23496488e308",
+    "Ananya & Sons (Auto Parts) - 028|TDS27": "8a036178-bd6d-4e5b-aae2-30950256f951",
+    "Rohan Consultants (Media) - 029|AUDIT": "a0c96d3f-2ff7-4129-9c17-69d3f3d0e617",
+    "Tina Trading (Logistics) - 030|BOOK": "30da4e27-965f-477f-9928-61ccff59d8fa",
+    "Rohit & Co (Pharma) - 031|ACCT": "dabc6fc0-8124-47b6-84c3-c75caed8bb16",
+    "Sneha Associates (Textiles) - 032|ROC": "9f514abb-9df3-492b-bffe-88fdb76d3dd1",
+    "Arjun Partners (IT Services) - 033|PAY": "7b58e9c2-1db4-4735-94b0-fbe79eaea40e",
+    "Priya LLP (Cotton Ginners) - 034|GST3B": "53f71110-8789-4fa4-8a43-09ac9b483a0a",
+    "Karan Holdings (Restaurant) - 035|GST1": "92dec451-daf9-4ceb-984e-054d4fe1ccb5",
+    "Meera Group (Construction) - 036|ITR1": "d6ca432d-d980-47e6-a129-c56861e460ae",
+    "Vikram Enterprises (Jewellery) - 037|ITR3": "299d6153-c1cb-4b5f-b31e-a3b4a6d817f3",
+    "Ananya & Sons (Auto Parts) - 038|ITR4": "c940ae3b-85bd-40d4-829c-62c7e38c1078",
+    "Rohan Consultants (Media) - 039|TDS26": "9c902946-3c56-488e-b052-86f9bcab6357",
+    "Tina Trading (Logistics) - 040|TDS27": "82263a94-c2db-48e9-853d-02a290157d50",
+    "Rohit & Co (Pharma) - 041|AUDIT": "8688d309-6519-483d-8d2a-39e304c2787d",
+    "Sneha Associates (Textiles) - 042|BOOK": "f26ef7ff-f98a-4363-bb20-72badc3127ef",
+    "Arjun Partners (IT Services) - 043|ACCT": "b6cf858d-b3c7-4618-9216-c7356505422d",
+    "Priya LLP (Cotton Ginners) - 044|ROC": "83f1c9aa-ffbd-4f42-b0c5-748023ce18d2",
+    "Karan Holdings (Restaurant) - 045|PAY": "71f5e53d-68ef-4ba2-8276-30b362f2bace",
+    "Meera Group (Construction) - 046|GST3B": "c15883bf-4f75-48f7-b20a-2f16c5f4295e",
+    "Vikram Enterprises (Jewellery) - 047|GST1": "5cc74385-2107-4bed-9a8f-5e64a9287f73",
+    "Ananya & Sons (Auto Parts) - 048|ITR1": "d160e7b3-a9a9-4f50-afe5-0aa5cca5819b",
+    "Rohan Consultants (Media) - 049|ITR3": "1215686f-2a79-49e0-9f2d-ba02207197fe",
+    "Tina Trading (Logistics) - 050|ITR4": "bae3f946-f2e4-4676-977c-fdc0cab64ea8",
+    "Rohit & Co (Pharma) - 051|TDS26": "a8f05ca8-f03c-40ef-b65c-42621054e2cb",
+    "Sneha Associates (Textiles) - 052|TDS27": "cfd33848-781f-4927-8657-965d31fc3b7c",
+    "Arjun Partners (IT Services) - 053|AUDIT": "4d57d296-0587-49a2-b2ec-9224dab7cc73",
+    "Priya LLP (Cotton Ginners) - 054|BOOK": "91031d3b-96d3-4e1e-8d9a-8bbc121157ca",
+    "Karan Holdings (Restaurant) - 055|ACCT": "1af62b0f-dd70-46d0-b0e3-2f47b15f3fce",
+    "Meera Group (Construction) - 056|ROC": "5c445211-ae82-46a6-8d02-61194d2e7f9b",
+    "Vikram Enterprises (Jewellery) - 057|PAY": "fbe2afb0-955d-4c2f-82a4-f5c68fe44253",
+    "Ananya & Sons (Auto Parts) - 058|GST3B": "92bd6c8f-ad80-4cbd-a09a-ca73e4f7f05d",
+    "Rohan Consultants (Media) - 059|GST1": "89dab132-372a-4439-9894-f7ad1b410020",
+    "Tina Trading (Logistics) - 060|ITR1": "a48c024c-db61-4d87-b5d0-fa386aaf0121",
+    "Rohit & Co (Pharma) - 061|ITR3": "373b4f57-47a0-44a0-bdec-ed271ed818c8",
+    "Sneha Associates (Textiles) - 062|ITR4": "b37666d9-5db0-4da0-b90a-6dd577441b16",
+    "Arjun Partners (IT Services) - 063|TDS26": "cd810cce-9070-4fee-8ee6-dc9cd87d50a7",
+    "Priya LLP (Cotton Ginners) - 064|TDS27": "ddc016e0-3834-49ca-827f-bfd06465a54e",
+    "Karan Holdings (Restaurant) - 065|AUDIT": "52df606d-b3e1-49b0-b2a5-40390577c6c0",
+    "Meera Group (Construction) - 066|BOOK": "6602dc89-968f-499b-8d19-34fcfadb3e3a",
+    "Vikram Enterprises (Jewellery) - 067|ACCT": "c22c5d85-3ab3-4168-9ec9-0072c6e681d5",
+    "Ananya & Sons (Auto Parts) - 068|ROC": "b657a52e-03ee-4aab-b2c0-e58920568f68",
+    "Rohan Consultants (Media) - 069|PAY": "e363a4b8-1492-4c66-abff-8ea5812aa169",
+    "Tina Trading (Logistics) - 070|GST3B": "3996d19c-e5dd-47ec-85e9-c7ac6f74c0d6",
+    "Rohit & Co (Pharma) - 071|GST1": "6b62499c-3943-47e0-8504-cf03ce4c8a6f",
+    "Sneha Associates (Textiles) - 072|ITR1": "6d1907d3-dbc4-4a23-b2de-2e848bc07b56",
+    "Arjun Partners (IT Services) - 073|ITR3": "09c22a3b-9600-4325-93ce-fa27e1c6cf8d",
+    "Priya LLP (Cotton Ginners) - 074|ITR4": "d790d4c1-af0e-4497-b9a2-b796cf6bda43",
+    "Karan Holdings (Restaurant) - 075|TDS26": "82c3b5d8-304b-4b27-ab9a-bf913f35204d",
+    "Meera Group (Construction) - 076|TDS27": "00992cde-061e-4ef5-a5d8-59c799f60cef",
+    "Vikram Enterprises (Jewellery) - 077|AUDIT": "903e7788-1732-4e9d-894d-192e240673c4",
+    "Ananya & Sons (Auto Parts) - 078|BOOK": "76dcf808-4c2e-4d0a-9c69-09fc16376dd6",
+    "Rohan Consultants (Media) - 079|ACCT": "29d1a68e-427e-4e61-bab9-97324b353003",
+    "Tina Trading (Logistics) - 080|ROC": "3d341a37-12d5-4814-9d1f-fe263c56435c",
+    "Rohit & Co (Pharma) - 081|PAY": "ba8d402c-1b31-458b-93d2-c36c4662109d",
+    "Sneha Associates (Textiles) - 082|GST3B": "abd82887-1cb5-460f-997b-e524b0e011bb",
+    "Arjun Partners (IT Services) - 083|GST1": "5cab4a59-7283-4047-88f7-146c7f7b24a0",
+    "Priya LLP (Cotton Ginners) - 084|ITR1": "eac11eef-8be8-46f8-961c-271f62149a48",
+    "Karan Holdings (Restaurant) - 085|ITR3": "97ce94b1-c4ce-4094-9977-c733421ca672",
+    "Meera Group (Construction) - 086|ITR4": "11ca5e24-7e54-4428-90c8-23dfbc46c8df",
+    "Vikram Enterprises (Jewellery) - 087|TDS26": "81b707da-5d2f-41b2-a2dd-24797e2e1006",
+    "Ananya & Sons (Auto Parts) - 088|TDS27": "204aa7eb-3525-4034-b2f9-44199eb90601",
+    "Rohan Consultants (Media) - 089|AUDIT": "43dbd1f6-0e99-4c30-8082-c7ce5178c270",
+    "Tina Trading (Logistics) - 090|BOOK": "deeed9ac-c5a6-4cd8-ae4e-c6c2c351b88c",
+    "Rohit & Co (Pharma) - 091|ACCT": "8aa73fb8-37dc-43c3-bacb-c08b541571da",
+    "Sneha Associates (Textiles) - 092|ROC": "eda1a282-3fbe-4dbd-972a-f95f774cdace",
+    "Arjun Partners (IT Services) - 093|PAY": "d7e4034d-d8b5-424d-9d57-277be27e3fe6",
+    "Priya LLP (Cotton Ginners) - 094|GST3B": "91fd19ec-8e55-4d50-8b51-e84e6080e346",
+    "Karan Holdings (Restaurant) - 095|GST1": "f69a6aaf-bcd7-4ffb-90ef-f0a1985eb1ea",
+    "Meera Group (Construction) - 096|ITR1": "cbc70dd2-ed90-4228-9890-002d8db97197",
+    "Vikram Enterprises (Jewellery) - 097|ITR3": "0c2c3b2e-12ec-4902-8c6b-544fc0a760b2",
+    "Ananya & Sons (Auto Parts) - 098|ITR4": "6083efed-931b-410f-881d-395a870fc2bf",
+    "Rohan Consultants (Media) - 099|TDS26": "f7c53694-ba3d-485f-97b7-a5e926ceb8ec",
+    "Tina Trading (Logistics) - 100|TDS27": "4c6cbf3e-41c7-42c9-aba4-ab46d413c27f",
+    "Rohit & Co (Pharma) - 101|AUDIT": "ea094c7c-a8ef-47a0-a323-e9deca199dde"
+  },
+  "tasks": {
+    "Arjun Partners (IT Services) - 003|0001": {
+      "id": "c9dde609-d8f4-4c5a-a70a-81a42cff9d5b",
+      "service_code": "GST1",
+      "rule_code": "ITR3-R",
+      "client_name": "Arjun Partners (IT Services) - 003"
+    },
+    "Priya LLP (Cotton Ginners) - 004|0002": {
+      "id": "0246cf59-5a54-42ff-8db3-4c3c708b1bff",
+      "service_code": "ITR1",
+      "rule_code": "GST3B-R",
+      "client_name": "Priya LLP (Cotton Ginners) - 004"
+    },
+    "Karan Holdings (Restaurant) - 005|0003": {
+      "id": "f581aff1-3a34-46f0-aef3-963db5932f2a",
+      "service_code": "ITR3",
+      "rule_code": "GST1-R",
+      "client_name": "Karan Holdings (Restaurant) - 005"
+    },
+    "Meera Group (Construction) - 006|0004": {
+      "id": "726ec4f4-5a68-4d19-9f7d-91c123305f71",
+      "service_code": "ITR4",
+      "rule_code": "TDS26-R",
+      "client_name": "Meera Group (Construction) - 006"
+    },
+    "Vikram Enterprises (Jewellery) - 007|0005": {
+      "id": "f71dcc96-fad2-4e1a-bd09-9d4f09b1404f",
+      "service_code": "TDS26",
+      "rule_code": "TDS27-R",
+      "client_name": "Vikram Enterprises (Jewellery) - 007"
+    },
+    "Ananya & Sons (Auto Parts) - 008|0006": {
+      "id": "9ffdaeec-c3be-4d9c-8a6b-9406f6f0af14",
+      "service_code": "TDS27",
+      "rule_code": "AUDIT-R",
+      "client_name": "Ananya & Sons (Auto Parts) - 008"
+    },
+    "Rohan Consultants (Media) - 009|0007": {
+      "id": "215e66fc-d4c6-420b-bbdf-6e36fad21a6b",
+      "service_code": "AUDIT",
+      "rule_code": "ROC-R",
+      "client_name": "Rohan Consultants (Media) - 009"
+    },
+    "Tina Trading (Logistics) - 010|0008": {
+      "id": "21dfebc7-ec41-4391-bbba-fa8a44caf961",
+      "service_code": "BOOK",
+      "rule_code": "ADV-TAX",
+      "client_name": "Tina Trading (Logistics) - 010"
+    },
+    "Rohit & Co (Pharma) - 011|0009": {
+      "id": "87efb337-8c37-4bad-9b8e-71afdda6ba18",
+      "service_code": "ACCT",
+      "rule_code": "BOOK-R",
+      "client_name": "Rohit & Co (Pharma) - 011"
+    },
+    "Sneha Associates (Textiles) - 012|0010": {
+      "id": "604e6456-d972-41dd-9827-54123df35f85",
+      "service_code": "ROC",
+      "rule_code": "ACCT-R",
+      "client_name": "Sneha Associates (Textiles) - 012"
+    },
+    "Arjun Partners (IT Services) - 013|0011": {
+      "id": "8ac5917b-9e3d-46e8-b716-e8f9388fd345",
+      "service_code": "PAY",
+      "rule_code": "ITR1-R",
+      "client_name": "Arjun Partners (IT Services) - 013"
+    },
+    "Priya LLP (Cotton Ginners) - 014|0012": {
+      "id": "e610d476-11e1-4d91-aef6-710e07f2096a",
+      "service_code": "GST3B",
+      "rule_code": "ITR3-R",
+      "client_name": "Priya LLP (Cotton Ginners) - 014"
+    },
+    "Karan Holdings (Restaurant) - 015|0013": {
+      "id": "cfe8bc9e-f9fa-43e7-ad4d-f65d228418a6",
+      "service_code": "GST1",
+      "rule_code": "GST3B-R",
+      "client_name": "Karan Holdings (Restaurant) - 015"
+    },
+    "Meera Group (Construction) - 016|0014": {
+      "id": "26e69808-5a7e-435a-adcd-8df74a09c7ea",
+      "service_code": "ITR1",
+      "rule_code": "GST1-R",
+      "client_name": "Meera Group (Construction) - 016"
+    },
+    "Vikram Enterprises (Jewellery) - 017|0015": {
+      "id": "72df1d1a-f9b0-4a9a-9033-1965dfceab30",
+      "service_code": "ITR3",
+      "rule_code": "TDS26-R",
+      "client_name": "Vikram Enterprises (Jewellery) - 017"
+    },
+    "Ananya & Sons (Auto Parts) - 018|0016": {
+      "id": "c1c5536f-3f74-4a83-aeae-0fd7346fe3a5",
+      "service_code": "ITR4",
+      "rule_code": "TDS27-R",
+      "client_name": "Ananya & Sons (Auto Parts) - 018"
+    },
+    "Rohan Consultants (Media) - 019|0017": {
+      "id": "7d49638b-9d0d-4fd4-b889-b4fcd135b914",
+      "service_code": "TDS26",
+      "rule_code": "AUDIT-R",
+      "client_name": "Rohan Consultants (Media) - 019"
+    },
+    "Tina Trading (Logistics) - 020|0018": {
+      "id": "7f40e560-7804-4352-a12f-4bdafefdcab3",
+      "service_code": "TDS27",
+      "rule_code": "ROC-R",
+      "client_name": "Tina Trading (Logistics) - 020"
+    },
+    "Rohit & Co (Pharma) - 021|0019": {
+      "id": "66a3e16f-269a-4c67-8db3-a04dbcb88c23",
+      "service_code": "AUDIT",
+      "rule_code": "ADV-TAX",
+      "client_name": "Rohit & Co (Pharma) - 021"
+    },
+    "Sneha Associates (Textiles) - 022|0020": {
+      "id": "b362e3f7-be21-4674-bd31-7f0ab81b46f4",
+      "service_code": "BOOK",
+      "rule_code": "BOOK-R",
+      "client_name": "Sneha Associates (Textiles) - 022"
+    },
+    "Arjun Partners (IT Services) - 023|0021": {
+      "id": "9e2a4072-85a2-48df-9017-2f8e8aa89e99",
+      "service_code": "ACCT",
+      "rule_code": "ACCT-R",
+      "client_name": "Arjun Partners (IT Services) - 023"
+    },
+    "Priya LLP (Cotton Ginners) - 024|0022": {
+      "id": "efd50454-ec11-40c0-832c-35b348ef3b71",
+      "service_code": "ROC",
+      "rule_code": "ITR1-R",
+      "client_name": "Priya LLP (Cotton Ginners) - 024"
+    },
+    "Karan Holdings (Restaurant) - 025|0023": {
+      "id": "fb48e625-4fd2-4c27-b25f-b731b9bc6c9f",
+      "service_code": "PAY",
+      "rule_code": "ITR3-R",
+      "client_name": "Karan Holdings (Restaurant) - 025"
+    },
+    "Meera Group (Construction) - 026|0024": {
+      "id": "ecec18b9-fa22-4010-9ff7-f2ceea0ea927",
+      "service_code": "GST3B",
+      "rule_code": "GST3B-R",
+      "client_name": "Meera Group (Construction) - 026"
+    },
+    "Vikram Enterprises (Jewellery) - 027|0025": {
+      "id": "30da681b-f1b6-451e-9b0f-7382c8dc2af6",
+      "service_code": "GST1",
+      "rule_code": "GST1-R",
+      "client_name": "Vikram Enterprises (Jewellery) - 027"
+    },
+    "Ananya & Sons (Auto Parts) - 028|0026": {
+      "id": "3acf37d3-fbf0-4c31-880d-516d5135039b",
+      "service_code": "ITR1",
+      "rule_code": "TDS26-R",
+      "client_name": "Ananya & Sons (Auto Parts) - 028"
+    },
+    "Rohan Consultants (Media) - 029|0027": {
+      "id": "60294759-fdf5-41c8-877f-6151033edfd2",
+      "service_code": "ITR3",
+      "rule_code": "TDS27-R",
+      "client_name": "Rohan Consultants (Media) - 029"
+    },
+    "Tina Trading (Logistics) - 030|0028": {
+      "id": "8602239e-c617-4f78-8f1b-dfceffac9dbc",
+      "service_code": "ITR4",
+      "rule_code": "AUDIT-R",
+      "client_name": "Tina Trading (Logistics) - 030"
+    },
+    "Rohit & Co (Pharma) - 031|0029": {
+      "id": "0f76378f-f074-4e59-aaa6-97572a26b714",
+      "service_code": "TDS26",
+      "rule_code": "ROC-R",
+      "client_name": "Rohit & Co (Pharma) - 031"
+    },
+    "Sneha Associates (Textiles) - 032|0030": {
+      "id": "4833831d-852b-4422-89af-a1b1f0b6b36f",
+      "service_code": "TDS27",
+      "rule_code": "ADV-TAX",
+      "client_name": "Sneha Associates (Textiles) - 032"
+    },
+    "Arjun Partners (IT Services) - 033|0031": {
+      "id": "a204bfa9-0a15-43dc-a6c6-86a49ee038d5",
+      "service_code": "AUDIT",
+      "rule_code": "BOOK-R",
+      "client_name": "Arjun Partners (IT Services) - 033"
+    },
+    "Priya LLP (Cotton Ginners) - 034|0032": {
+      "id": "2170c373-151a-40b0-9a8b-aabdda822689",
+      "service_code": "BOOK",
+      "rule_code": "ACCT-R",
+      "client_name": "Priya LLP (Cotton Ginners) - 034"
+    },
+    "Karan Holdings (Restaurant) - 035|0033": {
+      "id": "6bf631cc-3993-471e-8fce-4b6fe09e3e17",
+      "service_code": "ACCT",
+      "rule_code": "ITR1-R",
+      "client_name": "Karan Holdings (Restaurant) - 035"
+    },
+    "Meera Group (Construction) - 036|0034": {
+      "id": "c74498df-30d7-4edc-a899-a4e6bb79203f",
+      "service_code": "ROC",
+      "rule_code": "ITR3-R",
+      "client_name": "Meera Group (Construction) - 036"
+    },
+    "Vikram Enterprises (Jewellery) - 037|0035": {
+      "id": "eae29d95-97a9-48eb-8f3d-68f4a2c6db22",
+      "service_code": "PAY",
+      "rule_code": "GST3B-R",
+      "client_name": "Vikram Enterprises (Jewellery) - 037"
+    },
+    "Ananya & Sons (Auto Parts) - 038|0036": {
+      "id": "84fd32e3-8093-4a18-87ba-f169f56df671",
+      "service_code": "GST3B",
+      "rule_code": "GST1-R",
+      "client_name": "Ananya & Sons (Auto Parts) - 038"
+    },
+    "Rohan Consultants (Media) - 039|0037": {
+      "id": "be7c6a07-b804-4e68-a456-575048d8810c",
+      "service_code": "GST1",
+      "rule_code": "TDS26-R",
+      "client_name": "Rohan Consultants (Media) - 039"
+    },
+    "Tina Trading (Logistics) - 040|0038": {
+      "id": "64ffcf4e-3513-4aa0-ad64-0d565c831488",
+      "service_code": "ITR1",
+      "rule_code": "TDS27-R",
+      "client_name": "Tina Trading (Logistics) - 040"
+    },
+    "Rohit & Co (Pharma) - 041|0039": {
+      "id": "03992b99-23f8-4927-94bb-14e6b6b3b855",
+      "service_code": "ITR3",
+      "rule_code": "AUDIT-R",
+      "client_name": "Rohit & Co (Pharma) - 041"
+    },
+    "Sneha Associates (Textiles) - 042|0040": {
+      "id": "0df4b59d-142b-4ad7-83b2-55516a248e38",
+      "service_code": "ITR4",
+      "rule_code": "ROC-R",
+      "client_name": "Sneha Associates (Textiles) - 042"
+    },
+    "Arjun Partners (IT Services) - 043|0041": {
+      "id": "48420a42-c739-4be1-aa4e-dd3b5876c0c4",
+      "service_code": "TDS26",
+      "rule_code": "ADV-TAX",
+      "client_name": "Arjun Partners (IT Services) - 043"
+    },
+    "Priya LLP (Cotton Ginners) - 044|0042": {
+      "id": "f9897861-e83c-4fc8-aeed-99505e373292",
+      "service_code": "TDS27",
+      "rule_code": "BOOK-R",
+      "client_name": "Priya LLP (Cotton Ginners) - 044"
+    },
+    "Karan Holdings (Restaurant) - 045|0043": {
+      "id": "18a43d65-403d-444f-a055-be3cbcf859af",
+      "service_code": "AUDIT",
+      "rule_code": "ACCT-R",
+      "client_name": "Karan Holdings (Restaurant) - 045"
+    },
+    "Meera Group (Construction) - 046|0044": {
+      "id": "3750670d-0751-4654-b938-ac3819e7aeb1",
+      "service_code": "BOOK",
+      "rule_code": "ITR1-R",
+      "client_name": "Meera Group (Construction) - 046"
+    },
+    "Vikram Enterprises (Jewellery) - 047|0045": {
+      "id": "6ea3aa13-fa17-4a00-8799-5e3e7308b0ce",
+      "service_code": "ACCT",
+      "rule_code": "ITR3-R",
+      "client_name": "Vikram Enterprises (Jewellery) - 047"
+    },
+    "Ananya & Sons (Auto Parts) - 048|0046": {
+      "id": "e3757d55-cafb-4212-b21a-57e48917a1c2",
+      "service_code": "ROC",
+      "rule_code": "GST3B-R",
+      "client_name": "Ananya & Sons (Auto Parts) - 048"
+    },
+    "Rohan Consultants (Media) - 049|0047": {
+      "id": "cfec6b12-6cba-4b7e-84da-1e9cc8be65d0",
+      "service_code": "PAY",
+      "rule_code": "GST1-R",
+      "client_name": "Rohan Consultants (Media) - 049"
+    },
+    "Tina Trading (Logistics) - 050|0048": {
+      "id": "3bce6ce5-0148-4412-8a35-206cb1cc7e86",
+      "service_code": "GST3B",
+      "rule_code": "TDS26-R",
+      "client_name": "Tina Trading (Logistics) - 050"
+    },
+    "Rohit & Co (Pharma) - 051|0049": {
+      "id": "2938ed05-7383-4af9-a873-2364f442e2b8",
+      "service_code": "GST1",
+      "rule_code": "TDS27-R",
+      "client_name": "Rohit & Co (Pharma) - 051"
+    },
+    "Sneha Associates (Textiles) - 052|0050": {
+      "id": "81aa65d7-1c75-41c2-af8b-56bb55aa737d",
+      "service_code": "ITR1",
+      "rule_code": "AUDIT-R",
+      "client_name": "Sneha Associates (Textiles) - 052"
+    },
+    "Arjun Partners (IT Services) - 053|0051": {
+      "id": "21b8d6a3-4735-4289-86f9-d3222a865a61",
+      "service_code": "ITR3",
+      "rule_code": "ROC-R",
+      "client_name": "Arjun Partners (IT Services) - 053"
+    },
+    "Priya LLP (Cotton Ginners) - 054|0052": {
+      "id": "35725ad6-9d66-462a-b418-dfb226e667b6",
+      "service_code": "ITR4",
+      "rule_code": "ADV-TAX",
+      "client_name": "Priya LLP (Cotton Ginners) - 054"
+    },
+    "Karan Holdings (Restaurant) - 055|0053": {
+      "id": "4fc2a659-50b3-48dc-a755-6b11e42a3bf3",
+      "service_code": "TDS26",
+      "rule_code": "BOOK-R",
+      "client_name": "Karan Holdings (Restaurant) - 055"
+    },
+    "Meera Group (Construction) - 056|0054": {
+      "id": "9bee1f8d-2e1f-4e7a-a397-7c512059a841",
+      "service_code": "TDS27",
+      "rule_code": "ACCT-R",
+      "client_name": "Meera Group (Construction) - 056"
+    },
+    "Vikram Enterprises (Jewellery) - 057|0055": {
+      "id": "3e7fe9ea-b4e6-4ea3-9bd7-0a902d27b97c",
+      "service_code": "AUDIT",
+      "rule_code": "ITR1-R",
+      "client_name": "Vikram Enterprises (Jewellery) - 057"
+    },
+    "Ananya & Sons (Auto Parts) - 058|0056": {
+      "id": "0ad5821b-8b4c-4b7b-bb67-06c7651599ae",
+      "service_code": "BOOK",
+      "rule_code": "ITR3-R",
+      "client_name": "Ananya & Sons (Auto Parts) - 058"
+    },
+    "Rohan Consultants (Media) - 059|0057": {
+      "id": "fb5a02f5-634d-4732-909d-b72db155d08d",
+      "service_code": "ACCT",
+      "rule_code": "GST3B-R",
+      "client_name": "Rohan Consultants (Media) - 059"
+    },
+    "Tina Trading (Logistics) - 060|0058": {
+      "id": "ad5fa56f-0f92-4602-8e63-fb6d7694bdc5",
+      "service_code": "ROC",
+      "rule_code": "GST1-R",
+      "client_name": "Tina Trading (Logistics) - 060"
+    },
+    "Rohit & Co (Pharma) - 061|0059": {
+      "id": "7a1c452b-29f4-4a9a-9042-049d973cd0d2",
+      "service_code": "PAY",
+      "rule_code": "TDS26-R",
+      "client_name": "Rohit & Co (Pharma) - 061"
+    },
+    "Sneha Associates (Textiles) - 062|0060": {
+      "id": "38222c90-5173-4480-9796-9597b1dc0dca",
+      "service_code": "GST3B",
+      "rule_code": "TDS27-R",
+      "client_name": "Sneha Associates (Textiles) - 062"
+    },
+    "Arjun Partners (IT Services) - 063|0061": {
+      "id": "21d48698-98f3-4041-8831-7531304bb96a",
+      "service_code": "GST1",
+      "rule_code": "AUDIT-R",
+      "client_name": "Arjun Partners (IT Services) - 063"
+    },
+    "Priya LLP (Cotton Ginners) - 064|0062": {
+      "id": "f6645a43-be40-494a-918b-5d18625e631f",
+      "service_code": "ITR1",
+      "rule_code": "ROC-R",
+      "client_name": "Priya LLP (Cotton Ginners) - 064"
+    },
+    "Karan Holdings (Restaurant) - 065|0063": {
+      "id": "242180fd-c539-4b4b-b56b-04ac3dcff41b",
+      "service_code": "ITR3",
+      "rule_code": "ADV-TAX",
+      "client_name": "Karan Holdings (Restaurant) - 065"
+    },
+    "Meera Group (Construction) - 066|0064": {
+      "id": "a3f478c0-167a-4795-8104-f8efa9e47201",
+      "service_code": "ITR4",
+      "rule_code": "BOOK-R",
+      "client_name": "Meera Group (Construction) - 066"
+    },
+    "Vikram Enterprises (Jewellery) - 067|0065": {
+      "id": "46e45497-f561-403c-aaad-4e54262d66d6",
+      "service_code": "TDS26",
+      "rule_code": "ACCT-R",
+      "client_name": "Vikram Enterprises (Jewellery) - 067"
+    },
+    "Ananya & Sons (Auto Parts) - 068|0066": {
+      "id": "9f733f12-524d-4da4-82f3-84076378fc8d",
+      "service_code": "TDS27",
+      "rule_code": "ITR1-R",
+      "client_name": "Ananya & Sons (Auto Parts) - 068"
+    },
+    "Rohan Consultants (Media) - 069|0067": {
+      "id": "a2cd3832-aa51-4380-b384-98a244b3bb29",
+      "service_code": "AUDIT",
+      "rule_code": "ITR3-R",
+      "client_name": "Rohan Consultants (Media) - 069"
+    },
+    "Tina Trading (Logistics) - 070|0068": {
+      "id": "2596f967-4082-48ee-8900-834ba4d773b9",
+      "service_code": "BOOK",
+      "rule_code": "GST3B-R",
+      "client_name": "Tina Trading (Logistics) - 070"
+    },
+    "Rohit & Co (Pharma) - 071|0069": {
+      "id": "a5532809-cabf-451e-994a-e1ffc6120616",
+      "service_code": "ACCT",
+      "rule_code": "GST1-R",
+      "client_name": "Rohit & Co (Pharma) - 071"
+    },
+    "Sneha Associates (Textiles) - 072|0070": {
+      "id": "45fd1051-0cc8-4993-9fd3-dc317972326a",
+      "service_code": "ROC",
+      "rule_code": "TDS26-R",
+      "client_name": "Sneha Associates (Textiles) - 072"
+    },
+    "Arjun Partners (IT Services) - 073|0071": {
+      "id": "4b86dc39-0927-4dde-8988-0d83dedec8ef",
+      "service_code": "PAY",
+      "rule_code": "TDS27-R",
+      "client_name": "Arjun Partners (IT Services) - 073"
+    },
+    "Priya LLP (Cotton Ginners) - 074|0072": {
+      "id": "f8b9597a-9402-409a-8340-a5a0bb4c514a",
+      "service_code": "GST3B",
+      "rule_code": "AUDIT-R",
+      "client_name": "Priya LLP (Cotton Ginners) - 074"
+    },
+    "Karan Holdings (Restaurant) - 075|0073": {
+      "id": "86da190d-6d7a-4cf6-82f3-2627ee3bcea9",
+      "service_code": "GST1",
+      "rule_code": "ROC-R",
+      "client_name": "Karan Holdings (Restaurant) - 075"
+    },
+    "Meera Group (Construction) - 076|0074": {
+      "id": "0bd71baf-97d2-4bfd-bffa-e2046293c443",
+      "service_code": "ITR1",
+      "rule_code": "ADV-TAX",
+      "client_name": "Meera Group (Construction) - 076"
+    },
+    "Vikram Enterprises (Jewellery) - 077|0075": {
+      "id": "c682b9a5-24bd-41d2-8838-ad35a0f23a54",
+      "service_code": "ITR3",
+      "rule_code": "BOOK-R",
+      "client_name": "Vikram Enterprises (Jewellery) - 077"
+    },
+    "Ananya & Sons (Auto Parts) - 078|0076": {
+      "id": "6d7a52cc-b1f5-48c4-8321-90095c77280f",
+      "service_code": "ITR4",
+      "rule_code": "ACCT-R",
+      "client_name": "Ananya & Sons (Auto Parts) - 078"
+    },
+    "Rohan Consultants (Media) - 079|0077": {
+      "id": "f188e210-54a9-4eb5-beee-6e4cc5b140c8",
+      "service_code": "TDS26",
+      "rule_code": "ITR1-R",
+      "client_name": "Rohan Consultants (Media) - 079"
+    },
+    "Tina Trading (Logistics) - 080|0078": {
+      "id": "a51385d9-3775-4f58-8aaa-5ee42141675f",
+      "service_code": "TDS27",
+      "rule_code": "ITR3-R",
+      "client_name": "Tina Trading (Logistics) - 080"
+    },
+    "Rohit & Co (Pharma) - 081|0079": {
+      "id": "c57e8ea3-2151-4211-8f57-5a1edeb5b1e2",
+      "service_code": "AUDIT",
+      "rule_code": "GST3B-R",
+      "client_name": "Rohit & Co (Pharma) - 081"
+    },
+    "Sneha Associates (Textiles) - 082|0080": {
+      "id": "8a18771a-fa74-4fce-b455-6680a5755271",
+      "service_code": "BOOK",
+      "rule_code": "GST1-R",
+      "client_name": "Sneha Associates (Textiles) - 082"
+    },
+    "Arjun Partners (IT Services) - 083|0081": {
+      "id": "f1774d95-739a-4fdf-bc72-a93400fb2297",
+      "service_code": "ACCT",
+      "rule_code": "TDS26-R",
+      "client_name": "Arjun Partners (IT Services) - 083"
+    },
+    "Priya LLP (Cotton Ginners) - 084|0082": {
+      "id": "c7ca19c5-9fc8-4c83-8c49-1a72025d056c",
+      "service_code": "ROC",
+      "rule_code": "TDS27-R",
+      "client_name": "Priya LLP (Cotton Ginners) - 084"
+    },
+    "Karan Holdings (Restaurant) - 085|0083": {
+      "id": "96ae4608-bd9c-4f98-a4ca-c1cdf536f041",
+      "service_code": "PAY",
+      "rule_code": "AUDIT-R",
+      "client_name": "Karan Holdings (Restaurant) - 085"
+    },
+    "Meera Group (Construction) - 086|0084": {
+      "id": "4ba484dc-4aa8-4901-9526-7b5e59188900",
+      "service_code": "GST3B",
+      "rule_code": "ROC-R",
+      "client_name": "Meera Group (Construction) - 086"
+    },
+    "Vikram Enterprises (Jewellery) - 087|0085": {
+      "id": "c0ca954d-77c9-4dbb-a234-fb3279f1ced6",
+      "service_code": "GST1",
+      "rule_code": "ADV-TAX",
+      "client_name": "Vikram Enterprises (Jewellery) - 087"
+    },
+    "Ananya & Sons (Auto Parts) - 088|0086": {
+      "id": "292bb378-a8e2-4ba4-84d5-f3b6fb6328ec",
+      "service_code": "ITR1",
+      "rule_code": "BOOK-R",
+      "client_name": "Ananya & Sons (Auto Parts) - 088"
+    },
+    "Rohan Consultants (Media) - 089|0087": {
+      "id": "f1685650-25bd-40a8-b647-ee81fc6bf152",
+      "service_code": "ITR3",
+      "rule_code": "ACCT-R",
+      "client_name": "Rohan Consultants (Media) - 089"
+    },
+    "Tina Trading (Logistics) - 090|0088": {
+      "id": "c964b923-6803-4ace-aab2-e646a53f32b3",
+      "service_code": "ITR4",
+      "rule_code": "ITR1-R",
+      "client_name": "Tina Trading (Logistics) - 090"
+    },
+    "Rohit & Co (Pharma) - 091|0089": {
+      "id": "4dd43b7a-0f68-4346-8a81-77b626cc6e27",
+      "service_code": "TDS26",
+      "rule_code": "ITR3-R",
+      "client_name": "Rohit & Co (Pharma) - 091"
+    },
+    "Sneha Associates (Textiles) - 092|0090": {
+      "id": "f09750fe-9b29-41ab-a48f-f5c3d8690eef",
+      "service_code": "TDS27",
+      "rule_code": "GST3B-R",
+      "client_name": "Sneha Associates (Textiles) - 092"
+    },
+    "Arjun Partners (IT Services) - 093|0091": {
+      "id": "e59d6483-991f-4af5-9fc4-d145b64f0d6b",
+      "service_code": "AUDIT",
+      "rule_code": "GST1-R",
+      "client_name": "Arjun Partners (IT Services) - 093"
+    },
+    "Priya LLP (Cotton Ginners) - 094|0092": {
+      "id": "dbce86d9-3634-47f1-97a8-e005487743a1",
+      "service_code": "BOOK",
+      "rule_code": "TDS26-R",
+      "client_name": "Priya LLP (Cotton Ginners) - 094"
+    },
+    "Karan Holdings (Restaurant) - 095|0093": {
+      "id": "47a00485-8d02-46c7-8440-f50dbb274d35",
+      "service_code": "ACCT",
+      "rule_code": "TDS27-R",
+      "client_name": "Karan Holdings (Restaurant) - 095"
+    },
+    "Meera Group (Construction) - 096|0094": {
+      "id": "fbc514bc-49e7-4a25-8aa0-394f30ad4743",
+      "service_code": "ROC",
+      "rule_code": "AUDIT-R",
+      "client_name": "Meera Group (Construction) - 096"
+    },
+    "Vikram Enterprises (Jewellery) - 097|0095": {
+      "id": "491ebdd5-17c7-4e2e-88a1-ca282f8f54a6",
+      "service_code": "PAY",
+      "rule_code": "ROC-R",
+      "client_name": "Vikram Enterprises (Jewellery) - 097"
+    },
+    "Ananya & Sons (Auto Parts) - 098|0096": {
+      "id": "56cdd4fa-bcf5-4f2f-bacb-75a6670a6ced",
+      "service_code": "GST3B",
+      "rule_code": "ADV-TAX",
+      "client_name": "Ananya & Sons (Auto Parts) - 098"
+    },
+    "Rohan Consultants (Media) - 099|0097": {
+      "id": "fdefa018-eff1-4b5b-9b36-2dde9eb73483",
+      "service_code": "GST1",
+      "rule_code": "BOOK-R",
+      "client_name": "Rohan Consultants (Media) - 099"
+    },
+    "Tina Trading (Logistics) - 100|0098": {
+      "id": "235d2629-73bf-40b0-94dd-2e517309990d",
+      "service_code": "ITR1",
+      "rule_code": "ACCT-R",
+      "client_name": "Tina Trading (Logistics) - 100"
+    },
+    "Rohit & Co (Pharma) - 101|0099": {
+      "id": "01c8c388-a414-4e0b-924d-18c5a6f62b86",
+      "service_code": "ITR3",
+      "rule_code": "ITR1-R",
+      "client_name": "Rohit & Co (Pharma) - 101"
+    },
+    "Sneha Associates (Textiles) - 002|0100": {
+      "id": "503a92be-f1b3-43b6-8b3c-a1c0b3b7dade",
+      "service_code": "ITR4",
+      "rule_code": "ITR3-R",
+      "client_name": "Sneha Associates (Textiles) - 002"
+    },
+    "Arjun Partners (IT Services) - 003|0101": {
+      "id": "79113ea2-4faa-4366-be39-02a3e2c1d96b",
+      "service_code": "TDS26",
+      "rule_code": "GST3B-R",
+      "client_name": "Arjun Partners (IT Services) - 003"
+    },
+    "Priya LLP (Cotton Ginners) - 004|0102": {
+      "id": "0197fccc-7a6b-4696-8ddd-ceb170c4e520",
+      "service_code": "TDS27",
+      "rule_code": "GST1-R",
+      "client_name": "Priya LLP (Cotton Ginners) - 004"
+    },
+    "Karan Holdings (Restaurant) - 005|0103": {
+      "id": "1193c29e-a248-41ae-ac66-4710a53faa44",
+      "service_code": "AUDIT",
+      "rule_code": "TDS26-R",
+      "client_name": "Karan Holdings (Restaurant) - 005"
+    },
+    "Meera Group (Construction) - 006|0104": {
+      "id": "dc479be9-5b31-47cf-853d-39c110ddf80d",
+      "service_code": "BOOK",
+      "rule_code": "TDS27-R",
+      "client_name": "Meera Group (Construction) - 006"
+    },
+    "Vikram Enterprises (Jewellery) - 007|0105": {
+      "id": "d8f86842-1cac-4e4f-b4c9-6f86469c9dcd",
+      "service_code": "ACCT",
+      "rule_code": "AUDIT-R",
+      "client_name": "Vikram Enterprises (Jewellery) - 007"
+    },
+    "Ananya & Sons (Auto Parts) - 008|0106": {
+      "id": "6645a651-c943-4f32-be2d-db9e7771fd5b",
+      "service_code": "ROC",
+      "rule_code": "ROC-R",
+      "client_name": "Ananya & Sons (Auto Parts) - 008"
+    },
+    "Rohan Consultants (Media) - 009|0107": {
+      "id": "152a53bf-cedc-4643-9b8d-d9e737066b7f",
+      "service_code": "PAY",
+      "rule_code": "ADV-TAX",
+      "client_name": "Rohan Consultants (Media) - 009"
+    },
+    "Tina Trading (Logistics) - 010|0108": {
+      "id": "1a206ae6-3cc1-4d44-8457-a3c2fa28c638",
+      "service_code": "GST3B",
+      "rule_code": "BOOK-R",
+      "client_name": "Tina Trading (Logistics) - 010"
+    },
+    "Rohit & Co (Pharma) - 011|0109": {
+      "id": "bf9a7d18-3709-44a7-ae7c-6436c410edb8",
+      "service_code": "GST1",
+      "rule_code": "ACCT-R",
+      "client_name": "Rohit & Co (Pharma) - 011"
+    },
+    "Sneha Associates (Textiles) - 012|0110": {
+      "id": "fba555ec-2fa0-4cac-88b3-e3da2ea8c4db",
+      "service_code": "ITR1",
+      "rule_code": "ITR1-R",
+      "client_name": "Sneha Associates (Textiles) - 012"
+    },
+    "Arjun Partners (IT Services) - 013|0111": {
+      "id": "bcc5f673-8533-4513-a17d-93c15f57c0e4",
+      "service_code": "ITR3",
+      "rule_code": "ITR3-R",
+      "client_name": "Arjun Partners (IT Services) - 013"
+    },
+    "Priya LLP (Cotton Ginners) - 014|0112": {
+      "id": "1dba87ca-2051-4e85-9d56-0eb71411661e",
+      "service_code": "ITR4",
+      "rule_code": "GST3B-R",
+      "client_name": "Priya LLP (Cotton Ginners) - 014"
+    },
+    "Karan Holdings (Restaurant) - 015|0113": {
+      "id": "a4182035-7706-42c1-96c2-596260b9eba3",
+      "service_code": "TDS26",
+      "rule_code": "GST1-R",
+      "client_name": "Karan Holdings (Restaurant) - 015"
+    },
+    "Meera Group (Construction) - 016|0114": {
+      "id": "f0e2f5fe-3516-4e5a-9e49-bd2c04488de3",
+      "service_code": "TDS27",
+      "rule_code": "TDS26-R",
+      "client_name": "Meera Group (Construction) - 016"
+    },
+    "Vikram Enterprises (Jewellery) - 017|0115": {
+      "id": "5c70b8b3-2dec-467f-9389-8f684569b2c7",
+      "service_code": "AUDIT",
+      "rule_code": "TDS27-R",
+      "client_name": "Vikram Enterprises (Jewellery) - 017"
+    },
+    "Ananya & Sons (Auto Parts) - 018|0116": {
+      "id": "2d771795-0c53-4e2e-90a7-94a5dd0c8164",
+      "service_code": "BOOK",
+      "rule_code": "AUDIT-R",
+      "client_name": "Ananya & Sons (Auto Parts) - 018"
+    },
+    "Rohan Consultants (Media) - 019|0117": {
+      "id": "66d0e1d1-040d-4270-a500-6188a40eb3d8",
+      "service_code": "ACCT",
+      "rule_code": "ROC-R",
+      "client_name": "Rohan Consultants (Media) - 019"
+    },
+    "Tina Trading (Logistics) - 020|0118": {
+      "id": "99dfb0ea-86ae-43b6-a4db-b58dbbd6ee27",
+      "service_code": "ROC",
+      "rule_code": "ADV-TAX",
+      "client_name": "Tina Trading (Logistics) - 020"
+    },
+    "Rohit & Co (Pharma) - 021|0119": {
+      "id": "7726234c-e2ee-41e6-ba03-567508db4854",
+      "service_code": "PAY",
+      "rule_code": "BOOK-R",
+      "client_name": "Rohit & Co (Pharma) - 021"
+    },
+    "Sneha Associates (Textiles) - 022|0120": {
+      "id": "891bebe5-f94e-41c2-b8d6-309ceedfa281",
+      "service_code": "GST3B",
+      "rule_code": "ACCT-R",
+      "client_name": "Sneha Associates (Textiles) - 022"
+    },
+    "Arjun Partners (IT Services) - 023|0121": {
+      "id": "af7b5816-dcb7-419e-9672-1dc98bf9799f",
+      "service_code": "GST1",
+      "rule_code": "ITR1-R",
+      "client_name": "Arjun Partners (IT Services) - 023"
+    },
+    "Priya LLP (Cotton Ginners) - 024|0122": {
+      "id": "25ac1eca-5f97-4e97-84de-c3736d1e36d3",
+      "service_code": "ITR1",
+      "rule_code": "ITR3-R",
+      "client_name": "Priya LLP (Cotton Ginners) - 024"
+    },
+    "Karan Holdings (Restaurant) - 025|0123": {
+      "id": "ab503e22-f941-4eb2-b907-686ec5c9377d",
+      "service_code": "ITR3",
+      "rule_code": "GST3B-R",
+      "client_name": "Karan Holdings (Restaurant) - 025"
+    },
+    "Meera Group (Construction) - 026|0124": {
+      "id": "8e03b00f-a73c-447e-8175-3a8d24e78637",
+      "service_code": "ITR4",
+      "rule_code": "GST1-R",
+      "client_name": "Meera Group (Construction) - 026"
+    },
+    "Vikram Enterprises (Jewellery) - 027|0125": {
+      "id": "3b81c6ae-9473-4c37-b5b3-442df4483436",
+      "service_code": "TDS26",
+      "rule_code": "TDS26-R",
+      "client_name": "Vikram Enterprises (Jewellery) - 027"
+    },
+    "Ananya & Sons (Auto Parts) - 028|0126": {
+      "id": "8fb92456-e8a1-4f35-b719-3af429dcb71e",
+      "service_code": "TDS27",
+      "rule_code": "TDS27-R",
+      "client_name": "Ananya & Sons (Auto Parts) - 028"
+    },
+    "Rohan Consultants (Media) - 029|0127": {
+      "id": "f4e46a39-9cc1-4345-a94d-7d18618fddae",
+      "service_code": "AUDIT",
+      "rule_code": "AUDIT-R",
+      "client_name": "Rohan Consultants (Media) - 029"
+    },
+    "Tina Trading (Logistics) - 030|0128": {
+      "id": "4707c74b-1984-4ad7-9b38-8c7df9694a20",
+      "service_code": "BOOK",
+      "rule_code": "ROC-R",
+      "client_name": "Tina Trading (Logistics) - 030"
+    },
+    "Rohit & Co (Pharma) - 031|0129": {
+      "id": "9cdb94df-7f68-4104-93f8-27d01f29897a",
+      "service_code": "ACCT",
+      "rule_code": "ADV-TAX",
+      "client_name": "Rohit & Co (Pharma) - 031"
+    },
+    "Sneha Associates (Textiles) - 032|0130": {
+      "id": "4be551a0-5be3-4cb3-b618-e05a3a4a6ea7",
+      "service_code": "ROC",
+      "rule_code": "BOOK-R",
+      "client_name": "Sneha Associates (Textiles) - 032"
+    },
+    "Arjun Partners (IT Services) - 033|0131": {
+      "id": "b11ef9b4-1290-454e-8f96-895985136db7",
+      "service_code": "PAY",
+      "rule_code": "ACCT-R",
+      "client_name": "Arjun Partners (IT Services) - 033"
+    },
+    "Priya LLP (Cotton Ginners) - 034|0132": {
+      "id": "16816529-8734-4049-b02b-6ab0aedc8e27",
+      "service_code": "GST3B",
+      "rule_code": "ITR1-R",
+      "client_name": "Priya LLP (Cotton Ginners) - 034"
+    },
+    "Karan Holdings (Restaurant) - 035|0133": {
+      "id": "fcfcc85c-4a07-4265-bc10-978f80e37f8a",
+      "service_code": "GST1",
+      "rule_code": "ITR3-R",
+      "client_name": "Karan Holdings (Restaurant) - 035"
+    },
+    "Meera Group (Construction) - 036|0134": {
+      "id": "2a8bcbc0-ca8e-4d40-9b7f-eb23a14ae846",
+      "service_code": "ITR1",
+      "rule_code": "GST3B-R",
+      "client_name": "Meera Group (Construction) - 036"
+    },
+    "Vikram Enterprises (Jewellery) - 037|0135": {
+      "id": "faf9df3b-01e4-45eb-be35-2bd1de9189c6",
+      "service_code": "ITR3",
+      "rule_code": "GST1-R",
+      "client_name": "Vikram Enterprises (Jewellery) - 037"
+    },
+    "Ananya & Sons (Auto Parts) - 038|0136": {
+      "id": "a3c32ef5-dc5c-45df-b173-2b26f9588985",
+      "service_code": "ITR4",
+      "rule_code": "TDS26-R",
+      "client_name": "Ananya & Sons (Auto Parts) - 038"
+    },
+    "Rohan Consultants (Media) - 039|0137": {
+      "id": "d47d030e-9d23-4208-a68e-2f7280837d11",
+      "service_code": "TDS26",
+      "rule_code": "TDS27-R",
+      "client_name": "Rohan Consultants (Media) - 039"
+    },
+    "Tina Trading (Logistics) - 040|0138": {
+      "id": "5aaa4955-a814-4858-8457-8d580376fad2",
+      "service_code": "TDS27",
+      "rule_code": "AUDIT-R",
+      "client_name": "Tina Trading (Logistics) - 040"
+    },
+    "Rohit & Co (Pharma) - 041|0139": {
+      "id": "1934352f-9b3f-40d6-8e29-10efb224c19f",
+      "service_code": "AUDIT",
+      "rule_code": "ROC-R",
+      "client_name": "Rohit & Co (Pharma) - 041"
+    },
+    "Sneha Associates (Textiles) - 042|0140": {
+      "id": "7319d790-cd49-4654-bca5-3c5a69eef7da",
+      "service_code": "BOOK",
+      "rule_code": "ADV-TAX",
+      "client_name": "Sneha Associates (Textiles) - 042"
+    },
+    "Arjun Partners (IT Services) - 043|0141": {
+      "id": "8955d5bf-9947-4097-9910-8c62a8c775a0",
+      "service_code": "ACCT",
+      "rule_code": "BOOK-R",
+      "client_name": "Arjun Partners (IT Services) - 043"
+    },
+    "Priya LLP (Cotton Ginners) - 044|0142": {
+      "id": "e6de3048-6935-46ee-9bce-df85eb18ee0b",
+      "service_code": "ROC",
+      "rule_code": "ACCT-R",
+      "client_name": "Priya LLP (Cotton Ginners) - 044"
+    },
+    "Karan Holdings (Restaurant) - 045|0143": {
+      "id": "7e16f902-0382-4f2f-9f64-e01ad4ca33f9",
+      "service_code": "PAY",
+      "rule_code": "ITR1-R",
+      "client_name": "Karan Holdings (Restaurant) - 045"
+    },
+    "Meera Group (Construction) - 046|0144": {
+      "id": "0339e85e-d516-4afc-b7bb-2fdba4aab2b0",
+      "service_code": "GST3B",
+      "rule_code": "ITR3-R",
+      "client_name": "Meera Group (Construction) - 046"
+    },
+    "Vikram Enterprises (Jewellery) - 047|0145": {
+      "id": "6dee9ffe-a5bb-4af8-8097-f5a3eb28c0e6",
+      "service_code": "GST1",
+      "rule_code": "GST3B-R",
+      "client_name": "Vikram Enterprises (Jewellery) - 047"
+    },
+    "Ananya & Sons (Auto Parts) - 048|0146": {
+      "id": "ce0a9c54-e7a3-4fcd-85de-5a49f7a02139",
+      "service_code": "ITR1",
+      "rule_code": "GST1-R",
+      "client_name": "Ananya & Sons (Auto Parts) - 048"
+    },
+    "Rohan Consultants (Media) - 049|0147": {
+      "id": "9a8b8f56-1f15-4b6b-be92-a88753706593",
+      "service_code": "ITR3",
+      "rule_code": "TDS26-R",
+      "client_name": "Rohan Consultants (Media) - 049"
+    },
+    "Tina Trading (Logistics) - 050|0148": {
+      "id": "9c46750b-42bb-4dea-8378-2d71a6534af7",
+      "service_code": "ITR4",
+      "rule_code": "TDS27-R",
+      "client_name": "Tina Trading (Logistics) - 050"
+    },
+    "Rohit & Co (Pharma) - 051|0149": {
+      "id": "3caf25dc-11f5-43c7-8007-fdb032560957",
+      "service_code": "TDS26",
+      "rule_code": "AUDIT-R",
+      "client_name": "Rohit & Co (Pharma) - 051"
+    },
+    "Sneha Associates (Textiles) - 052|0150": {
+      "id": "855d144f-42ef-4e4e-9673-b5dee748c82d",
+      "service_code": "TDS27",
+      "rule_code": "ROC-R",
+      "client_name": "Sneha Associates (Textiles) - 052"
+    },
+    "Arjun Partners (IT Services) - 053|0151": {
+      "id": "cc06b836-d4ab-43f2-a3dc-421435349e16",
+      "service_code": "AUDIT",
+      "rule_code": "ADV-TAX",
+      "client_name": "Arjun Partners (IT Services) - 053"
+    },
+    "Priya LLP (Cotton Ginners) - 054|0152": {
+      "id": "6c4f81a3-6f07-4326-a282-534036e88d09",
+      "service_code": "BOOK",
+      "rule_code": "BOOK-R",
+      "client_name": "Priya LLP (Cotton Ginners) - 054"
+    },
+    "Karan Holdings (Restaurant) - 055|0153": {
+      "id": "6990b270-1e98-4a29-82ce-e2ed30549a0e",
+      "service_code": "ACCT",
+      "rule_code": "ACCT-R",
+      "client_name": "Karan Holdings (Restaurant) - 055"
+    },
+    "Meera Group (Construction) - 056|0154": {
+      "id": "5a574c57-f715-42d2-921b-caf982b45dc5",
+      "service_code": "ROC",
+      "rule_code": "ITR1-R",
+      "client_name": "Meera Group (Construction) - 056"
+    },
+    "Vikram Enterprises (Jewellery) - 057|0155": {
+      "id": "33f0debb-a72a-449d-a568-2e65eca5ef37",
+      "service_code": "PAY",
+      "rule_code": "ITR3-R",
+      "client_name": "Vikram Enterprises (Jewellery) - 057"
+    },
+    "Ananya & Sons (Auto Parts) - 058|0156": {
+      "id": "066308b5-f1da-4573-b8c6-62519e140e67",
+      "service_code": "GST3B",
+      "rule_code": "GST3B-R",
+      "client_name": "Ananya & Sons (Auto Parts) - 058"
+    },
+    "Rohan Consultants (Media) - 059|0157": {
+      "id": "7f17592c-abf1-478d-b706-102822ccb31a",
+      "service_code": "GST1",
+      "rule_code": "GST1-R",
+      "client_name": "Rohan Consultants (Media) - 059"
+    },
+    "Tina Trading (Logistics) - 060|0158": {
+      "id": "ed0267b3-3021-4324-a5bd-d01d1b227b54",
+      "service_code": "ITR1",
+      "rule_code": "TDS26-R",
+      "client_name": "Tina Trading (Logistics) - 060"
+    },
+    "Rohit & Co (Pharma) - 061|0159": {
+      "id": "ad846092-8057-4633-ad89-cf20e729d03a",
+      "service_code": "ITR3",
+      "rule_code": "TDS27-R",
+      "client_name": "Rohit & Co (Pharma) - 061"
+    },
+    "Sneha Associates (Textiles) - 062|0160": {
+      "id": "57a0fcb9-d453-40b4-b188-dfa25e5c19e7",
+      "service_code": "ITR4",
+      "rule_code": "AUDIT-R",
+      "client_name": "Sneha Associates (Textiles) - 062"
+    },
+    "Arjun Partners (IT Services) - 063|0161": {
+      "id": "bdaf5174-4d53-4fa6-8261-a236c0150707",
+      "service_code": "TDS26",
+      "rule_code": "ROC-R",
+      "client_name": "Arjun Partners (IT Services) - 063"
+    },
+    "Priya LLP (Cotton Ginners) - 064|0162": {
+      "id": "73f89e4c-2b79-4576-a0c3-052b1c4de5cc",
+      "service_code": "TDS27",
+      "rule_code": "ADV-TAX",
+      "client_name": "Priya LLP (Cotton Ginners) - 064"
+    },
+    "Karan Holdings (Restaurant) - 065|0163": {
+      "id": "6af1d4b8-771e-4120-8964-665584a88ac4",
+      "service_code": "AUDIT",
+      "rule_code": "BOOK-R",
+      "client_name": "Karan Holdings (Restaurant) - 065"
+    },
+    "Meera Group (Construction) - 066|0164": {
+      "id": "0026ac26-a455-4a28-b34f-acdd06de2eaa",
+      "service_code": "BOOK",
+      "rule_code": "ACCT-R",
+      "client_name": "Meera Group (Construction) - 066"
+    },
+    "Vikram Enterprises (Jewellery) - 067|0165": {
+      "id": "2a5f68fa-4a69-4c5b-8719-9be3670dfb3f",
+      "service_code": "ACCT",
+      "rule_code": "ITR1-R",
+      "client_name": "Vikram Enterprises (Jewellery) - 067"
+    },
+    "Ananya & Sons (Auto Parts) - 068|0166": {
+      "id": "b7dfdb4b-691b-44c1-9bde-df6b8cf0a95c",
+      "service_code": "ROC",
+      "rule_code": "ITR3-R",
+      "client_name": "Ananya & Sons (Auto Parts) - 068"
+    },
+    "Rohan Consultants (Media) - 069|0167": {
+      "id": "d491dc05-96ef-4202-8e55-0bc0ac5635cd",
+      "service_code": "PAY",
+      "rule_code": "GST3B-R",
+      "client_name": "Rohan Consultants (Media) - 069"
+    },
+    "Tina Trading (Logistics) - 070|0168": {
+      "id": "f10442a6-335c-4ab3-8282-0d671d2edcbb",
+      "service_code": "GST3B",
+      "rule_code": "GST1-R",
+      "client_name": "Tina Trading (Logistics) - 070"
+    },
+    "Rohit & Co (Pharma) - 071|0169": {
+      "id": "3602a0f0-f3e7-4104-aa55-b5066bfa8f4b",
+      "service_code": "GST1",
+      "rule_code": "TDS26-R",
+      "client_name": "Rohit & Co (Pharma) - 071"
+    },
+    "Sneha Associates (Textiles) - 072|0170": {
+      "id": "39fc769b-3bdb-4eb8-8fc2-4e60d790baf9",
+      "service_code": "ITR1",
+      "rule_code": "TDS27-R",
+      "client_name": "Sneha Associates (Textiles) - 072"
+    },
+    "Arjun Partners (IT Services) - 073|0171": {
+      "id": "f780e005-4d3d-44d9-b1be-6e9e36e84559",
+      "service_code": "ITR3",
+      "rule_code": "AUDIT-R",
+      "client_name": "Arjun Partners (IT Services) - 073"
+    },
+    "Priya LLP (Cotton Ginners) - 074|0172": {
+      "id": "32c30d73-0890-402c-a9a1-e56c01fb44ab",
+      "service_code": "ITR4",
+      "rule_code": "ROC-R",
+      "client_name": "Priya LLP (Cotton Ginners) - 074"
+    },
+    "Karan Holdings (Restaurant) - 075|0173": {
+      "id": "973d284d-3278-4748-92bd-91c3f5f5eee8",
+      "service_code": "TDS26",
+      "rule_code": "ADV-TAX",
+      "client_name": "Karan Holdings (Restaurant) - 075"
+    },
+    "Meera Group (Construction) - 076|0174": {
+      "id": "99845ed0-e772-45a0-a8bd-c5c16fda70d5",
+      "service_code": "TDS27",
+      "rule_code": "BOOK-R",
+      "client_name": "Meera Group (Construction) - 076"
+    },
+    "Vikram Enterprises (Jewellery) - 077|0175": {
+      "id": "4bf1e3fe-ddf6-401f-b7b6-57cf2eba8137",
+      "service_code": "AUDIT",
+      "rule_code": "ACCT-R",
+      "client_name": "Vikram Enterprises (Jewellery) - 077"
+    },
+    "Ananya & Sons (Auto Parts) - 078|0176": {
+      "id": "f83a9e3a-de81-43ff-bd66-967bf5e12858",
+      "service_code": "BOOK",
+      "rule_code": "ITR1-R",
+      "client_name": "Ananya & Sons (Auto Parts) - 078"
+    },
+    "Rohan Consultants (Media) - 079|0177": {
+      "id": "5e26b9d8-1192-494e-8de2-a16cf3f9e2a3",
+      "service_code": "ACCT",
+      "rule_code": "ITR3-R",
+      "client_name": "Rohan Consultants (Media) - 079"
+    },
+    "Tina Trading (Logistics) - 080|0178": {
+      "id": "87f231c0-bc95-45d1-8f67-544b0a188880",
+      "service_code": "ROC",
+      "rule_code": "GST3B-R",
+      "client_name": "Tina Trading (Logistics) - 080"
+    },
+    "Rohit & Co (Pharma) - 081|0179": {
+      "id": "b3e0a974-f5cd-49d6-a69f-057309dd2d3d",
+      "service_code": "PAY",
+      "rule_code": "GST1-R",
+      "client_name": "Rohit & Co (Pharma) - 081"
+    },
+    "Sneha Associates (Textiles) - 082|0180": {
+      "id": "8a019f9b-2cb2-450c-b84b-b3a4f24992d3",
+      "service_code": "GST3B",
+      "rule_code": "TDS26-R",
+      "client_name": "Sneha Associates (Textiles) - 082"
+    },
+    "Arjun Partners (IT Services) - 083|0181": {
+      "id": "d7b77d7a-4b02-4d7f-8a5a-13858a319f0b",
+      "service_code": "GST1",
+      "rule_code": "TDS27-R",
+      "client_name": "Arjun Partners (IT Services) - 083"
+    },
+    "Priya LLP (Cotton Ginners) - 084|0182": {
+      "id": "6732cfe9-605c-4b60-bfed-6dda4d1b2b3e",
+      "service_code": "ITR1",
+      "rule_code": "AUDIT-R",
+      "client_name": "Priya LLP (Cotton Ginners) - 084"
+    },
+    "Karan Holdings (Restaurant) - 085|0183": {
+      "id": "3a457d88-ef93-483c-b72e-bb19b0823c74",
+      "service_code": "ITR3",
+      "rule_code": "ROC-R",
+      "client_name": "Karan Holdings (Restaurant) - 085"
+    },
+    "Meera Group (Construction) - 086|0184": {
+      "id": "9c07247e-4ab0-4838-8cdb-fd55dea7500c",
+      "service_code": "ITR4",
+      "rule_code": "ADV-TAX",
+      "client_name": "Meera Group (Construction) - 086"
+    },
+    "Vikram Enterprises (Jewellery) - 087|0185": {
+      "id": "f8a6b197-fd92-471f-9e7e-5161cc34517e",
+      "service_code": "TDS26",
+      "rule_code": "BOOK-R",
+      "client_name": "Vikram Enterprises (Jewellery) - 087"
+    },
+    "Ananya & Sons (Auto Parts) - 088|0186": {
+      "id": "4ab9d9a8-038b-4f78-aadb-174457cd4f4e",
+      "service_code": "TDS27",
+      "rule_code": "ACCT-R",
+      "client_name": "Ananya & Sons (Auto Parts) - 088"
+    },
+    "Rohan Consultants (Media) - 089|0187": {
+      "id": "1aaf40f8-a5d4-4855-ad88-3ddeedc666f5",
+      "service_code": "AUDIT",
+      "rule_code": "ITR1-R",
+      "client_name": "Rohan Consultants (Media) - 089"
+    },
+    "Tina Trading (Logistics) - 090|0188": {
+      "id": "c118208f-19de-425b-baa6-0e8738cd1fd8",
+      "service_code": "BOOK",
+      "rule_code": "ITR3-R",
+      "client_name": "Tina Trading (Logistics) - 090"
+    },
+    "Rohit & Co (Pharma) - 091|0189": {
+      "id": "dcee7db4-3d6e-4860-87c7-d17139bc4e5b",
+      "service_code": "ACCT",
+      "rule_code": "GST3B-R",
+      "client_name": "Rohit & Co (Pharma) - 091"
+    },
+    "Sneha Associates (Textiles) - 092|0190": {
+      "id": "5ef8a5d3-c68b-4682-9763-c5b18b06d8e3",
+      "service_code": "ROC",
+      "rule_code": "GST1-R",
+      "client_name": "Sneha Associates (Textiles) - 092"
+    },
+    "Arjun Partners (IT Services) - 093|0191": {
+      "id": "4ea234db-d307-4b7d-a06b-bd2e93a5c4ed",
+      "service_code": "PAY",
+      "rule_code": "TDS26-R",
+      "client_name": "Arjun Partners (IT Services) - 093"
+    },
+    "Priya LLP (Cotton Ginners) - 094|0192": {
+      "id": "31381c54-9e80-4dc2-926b-93b2caff10ab",
+      "service_code": "GST3B",
+      "rule_code": "TDS27-R",
+      "client_name": "Priya LLP (Cotton Ginners) - 094"
+    },
+    "Karan Holdings (Restaurant) - 095|0193": {
+      "id": "62cf6aee-6e04-499c-8f18-a28849b036ab",
+      "service_code": "GST1",
+      "rule_code": "AUDIT-R",
+      "client_name": "Karan Holdings (Restaurant) - 095"
+    },
+    "Meera Group (Construction) - 096|0194": {
+      "id": "c958d4d9-f796-4d15-ae92-57fc23df9269",
+      "service_code": "ITR1",
+      "rule_code": "ROC-R",
+      "client_name": "Meera Group (Construction) - 096"
+    },
+    "Vikram Enterprises (Jewellery) - 097|0195": {
+      "id": "f55b50e0-8301-47d3-b721-e75658aaa755",
+      "service_code": "ITR3",
+      "rule_code": "ADV-TAX",
+      "client_name": "Vikram Enterprises (Jewellery) - 097"
+    },
+    "Ananya & Sons (Auto Parts) - 098|0196": {
+      "id": "4f04e2e8-f0a5-48a0-ae1f-7c98fb46b11e",
+      "service_code": "ITR4",
+      "rule_code": "BOOK-R",
+      "client_name": "Ananya & Sons (Auto Parts) - 098"
+    },
+    "Rohan Consultants (Media) - 099|0197": {
+      "id": "ac144bd2-fa0e-4e75-ae6d-334c0f406487",
+      "service_code": "TDS26",
+      "rule_code": "ACCT-R",
+      "client_name": "Rohan Consultants (Media) - 099"
+    },
+    "Tina Trading (Logistics) - 100|0198": {
+      "id": "d1bc08d9-3a60-4ac8-8e1f-de8aa74f23e9",
+      "service_code": "TDS27",
+      "rule_code": "ITR1-R",
+      "client_name": "Tina Trading (Logistics) - 100"
+    },
+    "Rohit & Co (Pharma) - 101|0199": {
+      "id": "2c0f1639-af40-475d-b3d7-4db805a384d3",
+      "service_code": "AUDIT",
+      "rule_code": "ITR3-R",
+      "client_name": "Rohit & Co (Pharma) - 101"
+    },
+    "Sneha Associates (Textiles) - 002|0200": {
+      "id": "8444f599-e24c-4779-aa25-017524ac3d6d",
+      "service_code": "BOOK",
+      "rule_code": "GST3B-R",
+      "client_name": "Sneha Associates (Textiles) - 002"
+    },
+    "Arjun Partners (IT Services) - 003|0201": {
+      "id": "61e15b52-8c40-4ef1-aeb8-d8fae3881b5e",
+      "service_code": "ACCT",
+      "rule_code": "GST1-R",
+      "client_name": "Arjun Partners (IT Services) - 003"
+    },
+    "Priya LLP (Cotton Ginners) - 004|0202": {
+      "id": "509983fe-917c-480e-a898-b6d34200a952",
+      "service_code": "ROC",
+      "rule_code": "TDS26-R",
+      "client_name": "Priya LLP (Cotton Ginners) - 004"
+    },
+    "Karan Holdings (Restaurant) - 005|0203": {
+      "id": "b3cad7bc-0c87-4c35-8dec-cf7cdcf952c8",
+      "service_code": "PAY",
+      "rule_code": "TDS27-R",
+      "client_name": "Karan Holdings (Restaurant) - 005"
+    },
+    "Meera Group (Construction) - 006|0204": {
+      "id": "1cdbb6eb-fb3a-429e-b6ca-7281538a15f3",
+      "service_code": "GST3B",
+      "rule_code": "AUDIT-R",
+      "client_name": "Meera Group (Construction) - 006"
+    },
+    "Vikram Enterprises (Jewellery) - 007|0205": {
+      "id": "cf2c384e-1a1d-4e16-9049-e171d355aba0",
+      "service_code": "GST1",
+      "rule_code": "ROC-R",
+      "client_name": "Vikram Enterprises (Jewellery) - 007"
+    },
+    "Ananya & Sons (Auto Parts) - 008|0206": {
+      "id": "cb9f50e8-f592-4586-82a6-ef7facfce798",
+      "service_code": "ITR1",
+      "rule_code": "ADV-TAX",
+      "client_name": "Ananya & Sons (Auto Parts) - 008"
+    },
+    "Rohan Consultants (Media) - 009|0207": {
+      "id": "ca0eaab6-ab39-4c73-9663-ecfa93157359",
+      "service_code": "ITR3",
+      "rule_code": "BOOK-R",
+      "client_name": "Rohan Consultants (Media) - 009"
+    },
+    "Tina Trading (Logistics) - 010|0208": {
+      "id": "d7b5e5fb-537b-4ebc-8099-0be3cdbec4d4",
+      "service_code": "ITR4",
+      "rule_code": "ACCT-R",
+      "client_name": "Tina Trading (Logistics) - 010"
+    },
+    "Rohit & Co (Pharma) - 011|0209": {
+      "id": "c347d4cf-b2fa-4b67-89e1-aae0629e846d",
+      "service_code": "TDS26",
+      "rule_code": "ITR1-R",
+      "client_name": "Rohit & Co (Pharma) - 011"
+    },
+    "Sneha Associates (Textiles) - 012|0210": {
+      "id": "e54407ac-0089-4391-aad4-6c434769dda3",
+      "service_code": "TDS27",
+      "rule_code": "ITR3-R",
+      "client_name": "Sneha Associates (Textiles) - 012"
+    },
+    "Arjun Partners (IT Services) - 013|0211": {
+      "id": "ef7c4ac2-7615-4699-9449-1bf59a1d6139",
+      "service_code": "AUDIT",
+      "rule_code": "GST3B-R",
+      "client_name": "Arjun Partners (IT Services) - 013"
+    },
+    "Priya LLP (Cotton Ginners) - 014|0212": {
+      "id": "84275a29-6a70-4c7f-9639-540b6976fb21",
+      "service_code": "BOOK",
+      "rule_code": "GST1-R",
+      "client_name": "Priya LLP (Cotton Ginners) - 014"
+    },
+    "Karan Holdings (Restaurant) - 015|0213": {
+      "id": "60ade1df-239f-4e76-ab59-7723ce2e319c",
+      "service_code": "ACCT",
+      "rule_code": "TDS26-R",
+      "client_name": "Karan Holdings (Restaurant) - 015"
+    },
+    "Meera Group (Construction) - 016|0214": {
+      "id": "b5666bae-3a50-4306-a0d2-62b55fd0850f",
+      "service_code": "ROC",
+      "rule_code": "TDS27-R",
+      "client_name": "Meera Group (Construction) - 016"
+    },
+    "Vikram Enterprises (Jewellery) - 017|0215": {
+      "id": "6499d9ea-dbe6-4a69-b274-b94f37f356cf",
+      "service_code": "PAY",
+      "rule_code": "AUDIT-R",
+      "client_name": "Vikram Enterprises (Jewellery) - 017"
+    },
+    "Ananya & Sons (Auto Parts) - 018|0216": {
+      "id": "c4010373-2919-4490-9193-713e5621e979",
+      "service_code": "GST3B",
+      "rule_code": "ROC-R",
+      "client_name": "Ananya & Sons (Auto Parts) - 018"
+    },
+    "Rohan Consultants (Media) - 019|0217": {
+      "id": "e3f0c291-bf32-4540-8f99-be5064a4bef6",
+      "service_code": "GST1",
+      "rule_code": "ADV-TAX",
+      "client_name": "Rohan Consultants (Media) - 019"
+    },
+    "Tina Trading (Logistics) - 020|0218": {
+      "id": "5ce8322d-578c-4e6e-a004-f56e64ae76ab",
+      "service_code": "ITR1",
+      "rule_code": "BOOK-R",
+      "client_name": "Tina Trading (Logistics) - 020"
+    },
+    "Rohit & Co (Pharma) - 021|0219": {
+      "id": "821bdeaf-9b11-4274-bb5b-718c0b6f41f8",
+      "service_code": "ITR3",
+      "rule_code": "ACCT-R",
+      "client_name": "Rohit & Co (Pharma) - 021"
+    },
+    "Sneha Associates (Textiles) - 022|0220": {
+      "id": "9af05821-0f3c-4e22-87c2-beb5b19d15d7",
+      "service_code": "ITR4",
+      "rule_code": "ITR1-R",
+      "client_name": "Sneha Associates (Textiles) - 022"
+    },
+    "Arjun Partners (IT Services) - 023|0221": {
+      "id": "7ddf3cc9-81e1-420d-b1cb-94418d2afdf8",
+      "service_code": "TDS26",
+      "rule_code": "ITR3-R",
+      "client_name": "Arjun Partners (IT Services) - 023"
+    },
+    "Priya LLP (Cotton Ginners) - 024|0222": {
+      "id": "731f72ce-428b-4e68-839a-35248f3aa2ba",
+      "service_code": "TDS27",
+      "rule_code": "GST3B-R",
+      "client_name": "Priya LLP (Cotton Ginners) - 024"
+    },
+    "Karan Holdings (Restaurant) - 025|0223": {
+      "id": "f75c3b3f-ec0b-4a09-9100-21748ad3779c",
+      "service_code": "AUDIT",
+      "rule_code": "GST1-R",
+      "client_name": "Karan Holdings (Restaurant) - 025"
+    },
+    "Meera Group (Construction) - 026|0224": {
+      "id": "32617c5d-80a1-4ded-83b7-be8d308cfc85",
+      "service_code": "BOOK",
+      "rule_code": "TDS26-R",
+      "client_name": "Meera Group (Construction) - 026"
+    },
+    "Vikram Enterprises (Jewellery) - 027|0225": {
+      "id": "d138e6e3-700a-45d6-9793-2492e492bec9",
+      "service_code": "ACCT",
+      "rule_code": "TDS27-R",
+      "client_name": "Vikram Enterprises (Jewellery) - 027"
+    },
+    "Ananya & Sons (Auto Parts) - 028|0226": {
+      "id": "d7d89311-e690-4cb9-94c7-769a6873b7ab",
+      "service_code": "ROC",
+      "rule_code": "AUDIT-R",
+      "client_name": "Ananya & Sons (Auto Parts) - 028"
+    },
+    "Rohan Consultants (Media) - 029|0227": {
+      "id": "32dc25c5-57fd-4226-95bc-62d5631eab15",
+      "service_code": "PAY",
+      "rule_code": "ROC-R",
+      "client_name": "Rohan Consultants (Media) - 029"
+    },
+    "Tina Trading (Logistics) - 030|0228": {
+      "id": "d5392606-fa30-4c7d-9b62-f2106c1ca3ff",
+      "service_code": "GST3B",
+      "rule_code": "ADV-TAX",
+      "client_name": "Tina Trading (Logistics) - 030"
+    },
+    "Rohit & Co (Pharma) - 031|0229": {
+      "id": "43cd6fed-057c-4cb7-bb6c-af1226ff14c3",
+      "service_code": "GST1",
+      "rule_code": "BOOK-R",
+      "client_name": "Rohit & Co (Pharma) - 031"
+    },
+    "Sneha Associates (Textiles) - 032|0230": {
+      "id": "15c3163f-0d3a-4b35-b6e8-0d42c1f518c6",
+      "service_code": "ITR1",
+      "rule_code": "ACCT-R",
+      "client_name": "Sneha Associates (Textiles) - 032"
+    },
+    "Arjun Partners (IT Services) - 033|0231": {
+      "id": "593744da-4a1f-4b88-a497-6f73b3e3d51d",
+      "service_code": "ITR3",
+      "rule_code": "ITR1-R",
+      "client_name": "Arjun Partners (IT Services) - 033"
+    },
+    "Priya LLP (Cotton Ginners) - 034|0232": {
+      "id": "ba1a8bd7-e119-4d27-a899-68370e7984a9",
+      "service_code": "ITR4",
+      "rule_code": "ITR3-R",
+      "client_name": "Priya LLP (Cotton Ginners) - 034"
+    },
+    "Karan Holdings (Restaurant) - 035|0233": {
+      "id": "25f08ec4-8ff5-4370-8811-4eda1db24313",
+      "service_code": "TDS26",
+      "rule_code": "GST3B-R",
+      "client_name": "Karan Holdings (Restaurant) - 035"
+    },
+    "Meera Group (Construction) - 036|0234": {
+      "id": "8778a33b-6658-4933-8fab-4c199beb8895",
+      "service_code": "TDS27",
+      "rule_code": "GST1-R",
+      "client_name": "Meera Group (Construction) - 036"
+    },
+    "Vikram Enterprises (Jewellery) - 037|0235": {
+      "id": "5532dcc1-8543-4d6f-b513-f33483ecd592",
+      "service_code": "AUDIT",
+      "rule_code": "TDS26-R",
+      "client_name": "Vikram Enterprises (Jewellery) - 037"
+    },
+    "Ananya & Sons (Auto Parts) - 038|0236": {
+      "id": "18cd6eef-03f1-4c83-992d-57b279abb6db",
+      "service_code": "BOOK",
+      "rule_code": "TDS27-R",
+      "client_name": "Ananya & Sons (Auto Parts) - 038"
+    },
+    "Rohan Consultants (Media) - 039|0237": {
+      "id": "454c75fd-0dfa-4268-a031-96ea0c45060d",
+      "service_code": "ACCT",
+      "rule_code": "AUDIT-R",
+      "client_name": "Rohan Consultants (Media) - 039"
+    },
+    "Tina Trading (Logistics) - 040|0238": {
+      "id": "2c716ceb-763f-4adf-9b85-1611a1c64c7a",
+      "service_code": "ROC",
+      "rule_code": "ROC-R",
+      "client_name": "Tina Trading (Logistics) - 040"
+    },
+    "Rohit & Co (Pharma) - 041|0239": {
+      "id": "1f11c2ab-5861-466d-bb73-2a453d2874bd",
+      "service_code": "PAY",
+      "rule_code": "ADV-TAX",
+      "client_name": "Rohit & Co (Pharma) - 041"
+    },
+    "Sneha Associates (Textiles) - 042|0240": {
+      "id": "17315cff-bc9d-4306-bec3-b25dc17a72e5",
+      "service_code": "GST3B",
+      "rule_code": "BOOK-R",
+      "client_name": "Sneha Associates (Textiles) - 042"
+    },
+    "Arjun Partners (IT Services) - 043|0241": {
+      "id": "b48b6410-9ed6-4864-9025-a823fa0ada54",
+      "service_code": "GST1",
+      "rule_code": "ACCT-R",
+      "client_name": "Arjun Partners (IT Services) - 043"
+    },
+    "Priya LLP (Cotton Ginners) - 044|0242": {
+      "id": "a9f708cb-d83d-4368-86cb-7aa3016f938b",
+      "service_code": "ITR1",
+      "rule_code": "ITR1-R",
+      "client_name": "Priya LLP (Cotton Ginners) - 044"
+    },
+    "Karan Holdings (Restaurant) - 045|0243": {
+      "id": "3f834eba-c19b-4505-9e02-50bead95562c",
+      "service_code": "ITR3",
+      "rule_code": "ITR3-R",
+      "client_name": "Karan Holdings (Restaurant) - 045"
+    },
+    "Meera Group (Construction) - 046|0244": {
+      "id": "153804fb-0717-4146-9755-6eb3fe439570",
+      "service_code": "ITR4",
+      "rule_code": "GST3B-R",
+      "client_name": "Meera Group (Construction) - 046"
+    },
+    "Vikram Enterprises (Jewellery) - 047|0245": {
+      "id": "777c94dc-488e-4e19-a9bf-958975ebb28d",
+      "service_code": "TDS26",
+      "rule_code": "GST1-R",
+      "client_name": "Vikram Enterprises (Jewellery) - 047"
+    },
+    "Ananya & Sons (Auto Parts) - 048|0246": {
+      "id": "c1e8ac0c-c607-41b3-a488-c3f88d476ce7",
+      "service_code": "TDS27",
+      "rule_code": "TDS26-R",
+      "client_name": "Ananya & Sons (Auto Parts) - 048"
+    },
+    "Rohan Consultants (Media) - 049|0247": {
+      "id": "45eb25d6-5138-4013-a916-bbcc679dd201",
+      "service_code": "AUDIT",
+      "rule_code": "TDS27-R",
+      "client_name": "Rohan Consultants (Media) - 049"
+    },
+    "Tina Trading (Logistics) - 050|0248": {
+      "id": "4b6c7722-a666-46fb-819e-76676b8c1a0a",
+      "service_code": "BOOK",
+      "rule_code": "AUDIT-R",
+      "client_name": "Tina Trading (Logistics) - 050"
+    },
+    "Rohit & Co (Pharma) - 051|0249": {
+      "id": "a957e51b-7b56-4259-bbaa-9c59b919a9c5",
+      "service_code": "ACCT",
+      "rule_code": "ROC-R",
+      "client_name": "Rohit & Co (Pharma) - 051"
+    },
+    "Sneha Associates (Textiles) - 052|0250": {
+      "id": "e7290f6b-6883-45ea-bd3e-505d5cac3fcf",
+      "service_code": "ROC",
+      "rule_code": "ADV-TAX",
+      "client_name": "Sneha Associates (Textiles) - 052"
+    },
+    "Arjun Partners (IT Services) - 053|0251": {
+      "id": "13e8e1d5-de4f-4c15-9493-03daa0e2423b",
+      "service_code": "PAY",
+      "rule_code": "BOOK-R",
+      "client_name": "Arjun Partners (IT Services) - 053"
+    },
+    "Priya LLP (Cotton Ginners) - 054|0252": {
+      "id": "4cc84032-d5ae-4a75-8f91-3bbad3aece03",
+      "service_code": "GST3B",
+      "rule_code": "ACCT-R",
+      "client_name": "Priya LLP (Cotton Ginners) - 054"
+    },
+    "Karan Holdings (Restaurant) - 055|0253": {
+      "id": "ee713ab1-f7ac-4bd1-adeb-704c5276754f",
+      "service_code": "GST1",
+      "rule_code": "ITR1-R",
+      "client_name": "Karan Holdings (Restaurant) - 055"
+    },
+    "Meera Group (Construction) - 056|0254": {
+      "id": "c69ace43-18ad-4d47-a6fd-b5ab28fd64c3",
+      "service_code": "ITR1",
+      "rule_code": "ITR3-R",
+      "client_name": "Meera Group (Construction) - 056"
+    },
+    "Vikram Enterprises (Jewellery) - 057|0255": {
+      "id": "80d88dd1-d13f-4145-95b3-f79090f5cec9",
+      "service_code": "ITR3",
+      "rule_code": "GST3B-R",
+      "client_name": "Vikram Enterprises (Jewellery) - 057"
+    },
+    "Ananya & Sons (Auto Parts) - 058|0256": {
+      "id": "c4423234-2bec-41e7-b944-f3c9f70cba5f",
+      "service_code": "ITR4",
+      "rule_code": "GST1-R",
+      "client_name": "Ananya & Sons (Auto Parts) - 058"
+    },
+    "Rohan Consultants (Media) - 059|0257": {
+      "id": "33964f21-6216-4fc3-b5d1-2ec84123192b",
+      "service_code": "TDS26",
+      "rule_code": "TDS26-R",
+      "client_name": "Rohan Consultants (Media) - 059"
+    },
+    "Tina Trading (Logistics) - 060|0258": {
+      "id": "283e9544-1b7b-4d6d-94f7-a44bc36c1792",
+      "service_code": "TDS27",
+      "rule_code": "TDS27-R",
+      "client_name": "Tina Trading (Logistics) - 060"
+    },
+    "Rohit & Co (Pharma) - 061|0259": {
+      "id": "a0f32344-da96-4bac-9db9-a175ff49e4ed",
+      "service_code": "AUDIT",
+      "rule_code": "AUDIT-R",
+      "client_name": "Rohit & Co (Pharma) - 061"
+    },
+    "Sneha Associates (Textiles) - 062|0260": {
+      "id": "92a11a0b-c054-4834-b5a5-414e0b115797",
+      "service_code": "BOOK",
+      "rule_code": "ROC-R",
+      "client_name": "Sneha Associates (Textiles) - 062"
+    },
+    "Arjun Partners (IT Services) - 063|0261": {
+      "id": "67c733bf-662c-4d7b-b2aa-ade05e18b509",
+      "service_code": "ACCT",
+      "rule_code": "ADV-TAX",
+      "client_name": "Arjun Partners (IT Services) - 063"
+    },
+    "Priya LLP (Cotton Ginners) - 064|0262": {
+      "id": "b29b5f6e-b82b-4f31-bd47-f56133bbe19b",
+      "service_code": "ROC",
+      "rule_code": "BOOK-R",
+      "client_name": "Priya LLP (Cotton Ginners) - 064"
+    },
+    "Karan Holdings (Restaurant) - 065|0263": {
+      "id": "1467f385-a297-4318-8dde-1dbc4d9711a4",
+      "service_code": "PAY",
+      "rule_code": "ACCT-R",
+      "client_name": "Karan Holdings (Restaurant) - 065"
+    },
+    "Meera Group (Construction) - 066|0264": {
+      "id": "cb0198db-1644-4e3b-bd76-719293cd7302",
+      "service_code": "GST3B",
+      "rule_code": "ITR1-R",
+      "client_name": "Meera Group (Construction) - 066"
+    },
+    "Vikram Enterprises (Jewellery) - 067|0265": {
+      "id": "0cc61dc8-f2ee-4e99-b293-c6fd36eff3c6",
+      "service_code": "GST1",
+      "rule_code": "ITR3-R",
+      "client_name": "Vikram Enterprises (Jewellery) - 067"
+    },
+    "Ananya & Sons (Auto Parts) - 068|0266": {
+      "id": "f5791ab4-de58-4229-969b-0b4b00165512",
+      "service_code": "ITR1",
+      "rule_code": "GST3B-R",
+      "client_name": "Ananya & Sons (Auto Parts) - 068"
+    },
+    "Rohan Consultants (Media) - 069|0267": {
+      "id": "ac074205-a7d2-4f5a-8c02-14d194ea1d87",
+      "service_code": "ITR3",
+      "rule_code": "GST1-R",
+      "client_name": "Rohan Consultants (Media) - 069"
+    },
+    "Tina Trading (Logistics) - 070|0268": {
+      "id": "df6a3ce9-2c63-4af9-8da9-65a6d116d7b0",
+      "service_code": "ITR4",
+      "rule_code": "TDS26-R",
+      "client_name": "Tina Trading (Logistics) - 070"
+    },
+    "Rohit & Co (Pharma) - 071|0269": {
+      "id": "664c10da-85d8-4978-9ce9-38234025f04c",
+      "service_code": "TDS26",
+      "rule_code": "TDS27-R",
+      "client_name": "Rohit & Co (Pharma) - 071"
+    },
+    "Sneha Associates (Textiles) - 072|0270": {
+      "id": "f5292804-0d16-4643-b8ed-16306544ff8e",
+      "service_code": "TDS27",
+      "rule_code": "AUDIT-R",
+      "client_name": "Sneha Associates (Textiles) - 072"
+    },
+    "Arjun Partners (IT Services) - 073|0271": {
+      "id": "e7b93700-38c6-4bb6-9ae7-57fda278c125",
+      "service_code": "AUDIT",
+      "rule_code": "ROC-R",
+      "client_name": "Arjun Partners (IT Services) - 073"
+    },
+    "Priya LLP (Cotton Ginners) - 074|0272": {
+      "id": "e81387b8-b354-4f20-ad40-9f6bd65b2604",
+      "service_code": "BOOK",
+      "rule_code": "ADV-TAX",
+      "client_name": "Priya LLP (Cotton Ginners) - 074"
+    },
+    "Karan Holdings (Restaurant) - 075|0273": {
+      "id": "a1fcefe1-ddae-4518-998a-e457a6eaff8b",
+      "service_code": "ACCT",
+      "rule_code": "BOOK-R",
+      "client_name": "Karan Holdings (Restaurant) - 075"
+    },
+    "Meera Group (Construction) - 076|0274": {
+      "id": "334ee3f4-bf3d-4521-9ab5-8c6b3e921db4",
+      "service_code": "ROC",
+      "rule_code": "ACCT-R",
+      "client_name": "Meera Group (Construction) - 076"
+    },
+    "Vikram Enterprises (Jewellery) - 077|0275": {
+      "id": "913c836a-3d14-4f02-a4e2-f13dd247c356",
+      "service_code": "PAY",
+      "rule_code": "ITR1-R",
+      "client_name": "Vikram Enterprises (Jewellery) - 077"
+    },
+    "Ananya & Sons (Auto Parts) - 078|0276": {
+      "id": "122db30f-4b41-4f7b-b18e-e2210b8fe991",
+      "service_code": "GST3B",
+      "rule_code": "ITR3-R",
+      "client_name": "Ananya & Sons (Auto Parts) - 078"
+    },
+    "Rohan Consultants (Media) - 079|0277": {
+      "id": "0da76dbc-2ab4-4c68-a74c-d7ef2c5a6e4a",
+      "service_code": "GST1",
+      "rule_code": "GST3B-R",
+      "client_name": "Rohan Consultants (Media) - 079"
+    },
+    "Tina Trading (Logistics) - 080|0278": {
+      "id": "e08a1edf-9da7-40e3-bf52-7b074c9e806a",
+      "service_code": "ITR1",
+      "rule_code": "GST1-R",
+      "client_name": "Tina Trading (Logistics) - 080"
+    },
+    "Rohit & Co (Pharma) - 081|0279": {
+      "id": "f5fa807c-30b9-4773-a469-5f53c48e64f7",
+      "service_code": "ITR3",
+      "rule_code": "TDS26-R",
+      "client_name": "Rohit & Co (Pharma) - 081"
+    },
+    "Sneha Associates (Textiles) - 082|0280": {
+      "id": "05ea3fb0-9473-4ebe-87de-60f98adac801",
+      "service_code": "ITR4",
+      "rule_code": "TDS27-R",
+      "client_name": "Sneha Associates (Textiles) - 082"
+    },
+    "Arjun Partners (IT Services) - 083|0281": {
+      "id": "539b7718-7785-4cfa-b967-926867aa3b63",
+      "service_code": "TDS26",
+      "rule_code": "AUDIT-R",
+      "client_name": "Arjun Partners (IT Services) - 083"
+    },
+    "Priya LLP (Cotton Ginners) - 084|0282": {
+      "id": "21fd3c54-a757-4575-a9e2-c0e8a8d599a2",
+      "service_code": "TDS27",
+      "rule_code": "ROC-R",
+      "client_name": "Priya LLP (Cotton Ginners) - 084"
+    },
+    "Karan Holdings (Restaurant) - 085|0283": {
+      "id": "d8d3d074-89c0-4362-8da1-acfd86730240",
+      "service_code": "AUDIT",
+      "rule_code": "ADV-TAX",
+      "client_name": "Karan Holdings (Restaurant) - 085"
+    },
+    "Meera Group (Construction) - 086|0284": {
+      "id": "207ac514-f4fc-47bf-b328-3814dedbb25b",
+      "service_code": "BOOK",
+      "rule_code": "BOOK-R",
+      "client_name": "Meera Group (Construction) - 086"
+    },
+    "Vikram Enterprises (Jewellery) - 087|0285": {
+      "id": "d336be2a-e693-466e-a4b7-3c1d8c86de44",
+      "service_code": "ACCT",
+      "rule_code": "ACCT-R",
+      "client_name": "Vikram Enterprises (Jewellery) - 087"
+    },
+    "Ananya & Sons (Auto Parts) - 088|0286": {
+      "id": "2b8bfd3c-9ca5-4bdd-b681-d0ad7fa49b69",
+      "service_code": "ROC",
+      "rule_code": "ITR1-R",
+      "client_name": "Ananya & Sons (Auto Parts) - 088"
+    },
+    "Rohan Consultants (Media) - 089|0287": {
+      "id": "7556e5dd-1c60-4b23-b3e7-0fb4206f3997",
+      "service_code": "PAY",
+      "rule_code": "ITR3-R",
+      "client_name": "Rohan Consultants (Media) - 089"
+    },
+    "Tina Trading (Logistics) - 090|0288": {
+      "id": "eac0ee89-d01f-432c-84a2-fd11afe597c9",
+      "service_code": "GST3B",
+      "rule_code": "GST3B-R",
+      "client_name": "Tina Trading (Logistics) - 090"
+    },
+    "Rohit & Co (Pharma) - 091|0289": {
+      "id": "a6162a23-6aff-471e-91ac-c1807471e7c1",
+      "service_code": "GST1",
+      "rule_code": "GST1-R",
+      "client_name": "Rohit & Co (Pharma) - 091"
+    },
+    "Sneha Associates (Textiles) - 092|0290": {
+      "id": "baf616c2-10ad-49ff-8c51-6e243be091aa",
+      "service_code": "ITR1",
+      "rule_code": "TDS26-R",
+      "client_name": "Sneha Associates (Textiles) - 092"
+    },
+    "Arjun Partners (IT Services) - 093|0291": {
+      "id": "3d2c705b-4678-45af-afbf-48382b515fe8",
+      "service_code": "ITR3",
+      "rule_code": "TDS27-R",
+      "client_name": "Arjun Partners (IT Services) - 093"
+    },
+    "Priya LLP (Cotton Ginners) - 094|0292": {
+      "id": "637f3fc1-eadb-495f-b801-b07f7ed19521",
+      "service_code": "ITR4",
+      "rule_code": "AUDIT-R",
+      "client_name": "Priya LLP (Cotton Ginners) - 094"
+    },
+    "Karan Holdings (Restaurant) - 095|0293": {
+      "id": "6485c464-35e4-4494-8e61-342c6ec4f4cb",
+      "service_code": "TDS26",
+      "rule_code": "ROC-R",
+      "client_name": "Karan Holdings (Restaurant) - 095"
+    },
+    "Meera Group (Construction) - 096|0294": {
+      "id": "e8bdbd75-31aa-4490-9b5e-c9ab28f6685d",
+      "service_code": "TDS27",
+      "rule_code": "ADV-TAX",
+      "client_name": "Meera Group (Construction) - 096"
+    },
+    "Vikram Enterprises (Jewellery) - 097|0295": {
+      "id": "96512044-7460-4b46-b9d5-76dc322995e6",
+      "service_code": "AUDIT",
+      "rule_code": "BOOK-R",
+      "client_name": "Vikram Enterprises (Jewellery) - 097"
+    },
+    "Ananya & Sons (Auto Parts) - 098|0296": {
+      "id": "af36e2a1-b8ac-4094-963c-e4cbb6ff2c97",
+      "service_code": "BOOK",
+      "rule_code": "ACCT-R",
+      "client_name": "Ananya & Sons (Auto Parts) - 098"
+    },
+    "Rohan Consultants (Media) - 099|0297": {
+      "id": "1b3bff42-53d1-4f51-9c44-22832ceaf71b",
+      "service_code": "ACCT",
+      "rule_code": "ITR1-R",
+      "client_name": "Rohan Consultants (Media) - 099"
+    },
+    "Tina Trading (Logistics) - 100|0298": {
+      "id": "96448aed-bffd-4b34-8731-863514de2240",
+      "service_code": "ROC",
+      "rule_code": "ITR3-R",
+      "client_name": "Tina Trading (Logistics) - 100"
+    },
+    "Rohit & Co (Pharma) - 101|0299": {
+      "id": "4403d8ba-81fb-465e-b830-250c465954ca",
+      "service_code": "PAY",
+      "rule_code": "GST3B-R",
+      "client_name": "Rohit & Co (Pharma) - 101"
+    },
+    "Sneha Associates (Textiles) - 002|0300": {
+      "id": "15eef5d6-9d28-49af-8313-71ce5feb6fb7",
+      "service_code": "GST3B",
+      "rule_code": "GST1-R",
+      "client_name": "Sneha Associates (Textiles) - 002"
+    }
+  }
+}

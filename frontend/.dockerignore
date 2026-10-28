@@ -1,0 +1,40 @@
+# Node / Next.js build artefacts (built at build time inside the image)
+node_modules
+.next
+.next.cache
+tsconfig.tsbuildinfo
+
+# Git
+.git
+.gitignore
+
+# Docker files belong to the image, not the build context
+Dockerfile
+.dockerignore
+
+# Logs and scratch
+*.log
+logs/
+
+# Env files — never bake secrets or local config into the image
+.env
+.env.local
+.env.*.local
+
+# Tests (not needed in the production image)
+**/tests/**
+**/__tests__/**
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+
+# IDE / editor
+.vscode
+.idea
+*.swp
+*.swo
+.DS_Store
+
+# Playwright browsers (not needed for production serve)
+/.cache/ms-playwright

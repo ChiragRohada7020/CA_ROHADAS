@@ -75,7 +75,7 @@ export function LiveInvoicePreview({
   const billableLines = state.lines.filter((l) => l.description.trim().length > 0);
 
   return (
-    <article className="w-full max-w-[210mm] overflow-hidden rounded-xl border border-slate-200 bg-white text-slate-900 shadow-lg">
+    <article className="force-light w-full max-w-[210mm] overflow-hidden rounded-xl border border-slate-200 bg-white text-slate-900 shadow-lg">
       <header className="relative border-b-2 border-slate-900 p-6 pb-4">
         <div className="absolute top-4 right-4 flex flex-wrap items-center gap-1 no-print">
           {onDownloadPdf && (

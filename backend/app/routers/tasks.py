@@ -5,7 +5,7 @@ Endpoints:
   GET  /tasks/summary            — headline counts for the task list tabs
   GET  /tasks                    — paginated, filtered task list
   GET  /tasks/{task_id}          — task detail (steps, assignments, comments, …)
-  PATCH /tasks/{task_id}         — partial field update
+  DELETE /tasks/{task_id}        — soft-delete a task (requires task.delete)
   POST  /tasks                   — create (optionally from a template)
   POST  /tasks/{task_id}/status  — workflow transition
   GET  /tasks/{task_id}/steps
@@ -28,13 +28,13 @@ from datetime import date, datetime, timedelta
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Body, Depends, Request
+from fastapi import APIRouter, HTTPException, Body, Depends, Request
 from sqlalchemy import delete, func, or_, select, text, update
 
 from app.core.clock import today_local
 from app.core.db import get_db
 from app.core.errors import BadRequestError, NotFoundError
-from app.core.security import get_current_user
+from app.core.security import get_current_user, require_permission
 from app.models import (
     Client,
     Service,
@@ -155,30 +155,31 @@ async def get_tasks_summary(
     today = _today()
     week_end = today + timedelta(days=7)
 
-    total = db.execute(select(func.count()).select_from(Task).where(Task.tenant_id == tenant_id)).scalar() or 0
+    total = db.execute(select(func.count()).select_from(Task).where(Task.tenant_id == tenant_id, Task.deleted_at.is_(None))).scalar() or 0
     my_tasks = db.execute(select(func.count()).select_from(Task).where(
-        Task.tenant_id == tenant_id, Task.preparer_id == user_id
+        Task.tenant_id == tenant_id, Task.preparer_id == user_id, Task.deleted_at.is_(None)
     )).scalar() or 0
     awaiting_review = db.execute(select(func.count()).select_from(Task).where(
-        Task.tenant_id == tenant_id, Task.reviewer_id == user_id, Task.status == "ready_for_review"
+        Task.tenant_id == tenant_id, Task.reviewer_id == user_id, Task.status == "ready_for_review", Task.deleted_at.is_(None)
     )).scalar() or 0
     awaiting_approval = db.execute(select(func.count()).select_from(Task).where(
-        Task.tenant_id == tenant_id, Task.approver_id == user_id, Task.status == "ready_for_approval"
+        Task.tenant_id == tenant_id, Task.approver_id == user_id, Task.status == "ready_for_approval", Task.deleted_at.is_(None)
     )).scalar() or 0
     my_blocked = db.execute(select(func.count()).select_from(Task).where(
-        Task.tenant_id == tenant_id, Task.preparer_id == user_id, Task.blocked_reason.is_not(None)
+        Task.tenant_id == tenant_id, Task.preparer_id == user_id, Task.blocked_reason.is_not(None), Task.deleted_at.is_(None)
     )).scalar() or 0
     overdue = db.execute(select(func.count()).select_from(Task).where(
         Task.tenant_id == tenant_id,
         Task.statutory_due_date.is_not(None),
         Task.statutory_due_date < func.current_date(),
         Task.status.not_in(list(TERMINAL_STATUSES)),
+        Task.deleted_at.is_(None),
     )).scalar() or 0
     completed = db.execute(select(func.count()).select_from(Task).where(
-        Task.tenant_id == tenant_id, Task.status == "completed"
+        Task.tenant_id == tenant_id, Task.status == "completed", Task.deleted_at.is_(None)
     )).scalar() or 0
     waiting_for_client = db.execute(select(func.count()).select_from(Task).where(
-        Task.tenant_id == tenant_id, Task.status == "waiting_for_client"
+        Task.tenant_id == tenant_id, Task.status == "waiting_for_client", Task.deleted_at.is_(None)
     )).scalar() or 0
     due_this_week = db.execute(select(func.count()).select_from(Task).where(
         Task.tenant_id == tenant_id,
@@ -186,6 +187,7 @@ async def get_tasks_summary(
         Task.statutory_due_date >= today,
         Task.statutory_due_date <= week_end,
         Task.status.not_in(list(TERMINAL_STATUSES)),
+        Task.deleted_at.is_(None),
     )).scalar() or 0
 
     return {
@@ -228,7 +230,7 @@ async def list_tasks(
     tenant_id = principal.tenant_id
     user_id = principal.id
 
-    stmt = select(Task).where(Task.tenant_id == tenant_id)
+    stmt = select(Task).where(Task.tenant_id == tenant_id, Task.deleted_at.is_(None))
     if search:
         pattern = f"%{search}%"
         stmt = stmt.where(or_(Task.title.ilike(pattern), Task.task_code.ilike(pattern)))
@@ -555,6 +557,31 @@ async def update_task(
     return {"id": str(task.id), "status": task.status}
 
 
+@router.delete("/tasks/{task_id}")
+async def delete_task(
+    request: Request,
+    task_id: str,
+    db: Any = Depends(get_db),
+    principal: Any = Depends(require_permission("task.delete")),
+) -> Any:
+    """Soft-delete a task (marks ``deleted_at`` so it no longer appears in lists).
+
+    Requires the ``task.delete`` permission — this is intentionally not granted
+    to every role so the delete option can be hidden in the UI for staff who
+    should not be able to remove work.
+    """
+    task = db.get(Task, task_id)
+    if task is None or str(task.tenant_id) != str(principal.tenant_id):
+        raise NotFoundError(f"Task {task_id} not found")
+    if task.deleted_at is not None:
+        raise NotFoundError(f"Task {task_id} not found")
+
+    from datetime import datetime
+    task.deleted_at = datetime.utcnow()
+    db.commit()
+    return {"id": str(task.id), "status": "deleted"}
+
+
 @router.post("/tasks")
 async def create_task(
     request: Request,
@@ -581,22 +608,21 @@ async def create_task(
     recurrence = payload.get("recurrence_frequency")
 
     stmt = text(
-        "INSERT INTO tasks (tenant_id, task_code, client_id, title, description, status, "
+        "INSERT INTO tasks (id, tenant_id, task_code, client_id, title, description, status, "
         " approval_status, filing_status, priority, complexity, task_type, category, "
         " sub_category, progress_percent, start_date, internal_due_date, statutory_due_date, "
         " deadline_verified, estimated_hours, preparer_id, reviewer_id, approver_id, filer_id, "
         " legal_entity_id, engagement_id, service_id, template_id, compliance_rule_id, "
         " financial_year_id, period_key, parent_task_id, tags, is_recurring, "
         " recurrence_frequency, recurrence_end_date, create_next_period, reminder_date, "
-        " created_by_id, updated_by_id) "
-        "VALUES (CAST(:tenant AS uuid), :code, CAST(:client AS uuid), :title, :desc, :status, "
+        " escalation_level, review_round, created_at, updated_at) "
+        "VALUES (gen_random_uuid(), CAST(:tenant AS uuid), :code, CAST(:client AS uuid), :title, :desc, :status, "
         " :approval, :filing, :priority, :complexity, :type, :category, :subcat, :progress, "
         " :start, :internal, :statutory, :verified, :est, CAST(:prep AS uuid), CAST(:rev AS uuid), "
         " CAST(:appr AS uuid), CAST(:filer AS uuid), CAST(:legal AS uuid), CAST(:eng AS uuid), "
         " CAST(:svc AS uuid), CAST(:tmpl AS uuid), CAST(:comp AS uuid), CAST(:fy AS uuid), "
         " :period, CAST(:parent AS uuid), CAST(:tags AS jsonb), :recurring, "
-        " CAST(:freq AS frequency), :rec_end, :next_period, :reminder, "
-        " CAST(:creator AS uuid), CAST(:updater AS uuid)) "
+        " CAST(:freq AS frequency), :rec_end, :next_period, :reminder, 0, 0, NOW(), NOW()) "
         "RETURNING id"
     )
     result = db.execute(stmt, {
@@ -626,7 +652,6 @@ async def create_task(
         "freq": recurrence, "rec_end": payload.get("recurrence_end_date"),
         "next_period": payload.get("create_next_period", False),
         "reminder": payload.get("reminder_date"),
-        "creator": _id(user_id), "updater": _id(user_id),
     })
     task_id = result.fetchone()[0]
     task = db.get(Task, task_id)
@@ -776,13 +801,13 @@ async def create_task_step(
         raise NotFoundError(f"Task {task_id} not found")
     seq = db.execute(select(func.max(TaskStep.sequence)).where(TaskStep.task_id == task_id).select_from(TaskStep)).scalar() or 0
     db.execute(text(
-        "INSERT INTO task_steps (tenant_id, task_id, sequence, name, description, "
+        "INSERT INTO task_steps (id, task_id, sequence, name, description, "
         " status, is_mandatory, requires_review, requires_approval, requires_filing, "
         " requires_document) "
-        "VALUES (CAST(:tenant AS uuid), CAST(:task AS uuid), :seq, :name, :desc, :status, "
+        "VALUES (gen_random_uuid(), CAST(:task AS uuid), :seq, :name, :desc, :status, "
         " :mandatory, :review, :approval, :filing, :document)"
     ), {
-        "tenant": str(task.tenant_id), "task": str(task.id),
+        "task": str(task.id),
         "seq": seq + 1,
         "name": payload.get("name", ""),
         "desc": payload.get("description"),
@@ -818,7 +843,7 @@ async def update_task_step(
     notes = payload.get("notes")
 
     if new_status:
-        clauses = "status = CAST(:status AS task_step_status)"
+        clauses = "status = :status"
         params = {"status": new_status}
         if new_status == "completed":
             clauses += ", completed_at = :completed_at, completed_by_id = CAST(:actor AS uuid)"
@@ -852,12 +877,11 @@ async def add_task_comment(
         raise NotFoundError(f"Task {task_id} not found")
     visibility = payload.get("visibility") or "internal"
     db.execute(text(
-        "INSERT INTO task_comments (tenant_id, task_id, author_user_id, author_type, "
-        " body, visibility, is_review_note, parent_comment_id) "
-        "VALUES (CAST(:tenant AS uuid), CAST(:task AS uuid), CAST(:author AS uuid), :author_type, "
-        " :body, CAST(:visibility AS comment_visibility), :review, :parent)"
+        "INSERT INTO task_comments (id, task_id, author_user_id, author_type, "
+        " body, visibility, is_review_note, parent_comment_id, created_at) "
+        "VALUES (gen_random_uuid(), CAST(:task AS uuid), CAST(:author AS uuid), :author_type, "
+        " :body, :visibility, :review, :parent, NOW())"
     ).bindparams(
-        tenant=str(task.tenant_id),
         task=str(task.id),
         author=str(principal.id),
         author_type="user",
@@ -1041,3 +1065,65 @@ async def delete_work_log(
     db.execute(delete(TaskWorkLog).where(TaskWorkLog.id == log_id))
     db.commit()
     return {"id": str(log_id), "status": "deleted"}
+
+
+@router.post("/tasks/{task_id}/assign")
+async def assign_task_rest(
+    task_id: str,
+    request: Request,
+    db: Session = Depends(get_db),
+) -> Any:
+    principal = await get_current_user(request, db)
+    tenant_id = principal.tenant_id
+    body = await request.json()
+    from app.models import Task, User, TaskAssignment
+    from datetime import datetime
+    task = db.get(Task, task_id)
+    if task is None or str(task.tenant_id) != str(tenant_id):
+        raise HTTPException(404, f"Task {task_id} not found")
+
+    role_map = {
+        "preparer_id": "preparer",
+        "reviewer_id": "reviewer",
+        "approver_id": "approver",
+        "filer_id": "filer",
+    }
+    reason = body.get("reason")
+
+    results = []
+    for field, role in role_map.items():
+        if field not in body:
+            continue
+        user_id = body.get(field)
+        # clear role
+        if user_id is None or user_id == "":
+            setattr(task, field, None)
+            db.commit()
+            results.append({"role": role, "cleared": True})
+            continue
+        user = db.get(User, user_id)
+        if user is None or str(user.tenant_id) != str(tenant_id):
+            raise HTTPException(404, f"User {user_id} not found in this tenant")
+        # separation of duties
+        if role == "reviewer" and task.preparer_id and str(user_id) == str(task.preparer_id):
+            raise HTTPException(400, "Reviewer cannot be the same as preparer")
+        if role == "approver" and task.preparer_id and str(user_id) == str(task.preparer_id):
+            raise HTTPException(400, "Approver cannot be the same as preparer")
+        setattr(task, field, user_id)
+        assignment = TaskAssignment(
+            task_id=task_id,
+            user_id=user_id,
+            role_in_task=role,
+            assigned_at=datetime.utcnow(),
+            assigned_by_id=principal.id,
+            is_active=True,
+            reason=reason,
+        )
+        db.add(assignment)
+        db.commit()
+        db.refresh(task)
+        results.append({"role": role, "user_id": str(user_id), "user_name": user.full_name})
+
+    db.commit()
+    db.refresh(task)
+    return {"success": True, "task_id": str(task.id), "task_code": task.task_code, "results": results}

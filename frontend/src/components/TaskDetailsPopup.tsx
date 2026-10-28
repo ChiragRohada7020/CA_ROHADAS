@@ -14,6 +14,7 @@ import { useState } from "react";
 
 import { Badge, ErrorState, LoadingState, ProgressBar } from "@/components/ui";
 import { Icon } from "@/components/Icon";
+import { PermissionGate } from "@/components/PermissionGate";
 import { DescriptionBody } from "@/components/TaskDescription";
 import { ApiError, api } from "@/lib/api";
 import { cn, formatDate, formatRelative, humanise } from "@/lib/format";
@@ -892,17 +893,23 @@ function FirmCard({
           </span>
         </SidebarRow>
 
-        <SidebarRow label="PAN">
-          <span className="font-mono text-sm text-slate-600">{cl.pan ?? "—"}</span>
-        </SidebarRow>
+         <SidebarRow label="PAN">
+           <PermissionGate code="client.read.sensitive">
+             <span className="font-mono text-sm text-slate-600">{cl.pan ?? "—"}</span>
+           </PermissionGate>
+         </SidebarRow>
 
-        <SidebarRow label="TAN">
-          <span className="font-mono text-sm text-slate-600">{cl.tan ?? "—"}</span>
-        </SidebarRow>
+         <SidebarRow label="TAN">
+           <PermissionGate code="client.read.sensitive">
+             <span className="font-mono text-sm text-slate-600">{cl.tan ?? "—"}</span>
+           </PermissionGate>
+         </SidebarRow>
 
-        <SidebarRow label="GSTIN">
-          <span className="font-mono text-sm text-slate-600">{cl.gstin ?? "—"}</span>
-        </SidebarRow>
+         <SidebarRow label="GSTIN">
+           <PermissionGate code="client.read.sensitive">
+             <span className="font-mono text-sm text-slate-600">{cl.gstin ?? "—"}</span>
+           </PermissionGate>
+         </SidebarRow>
 
         <SidebarRow label="City">
           <span className="text-sm text-slate-600">{cl.city ?? "—"}</span>

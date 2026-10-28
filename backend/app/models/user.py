@@ -24,6 +24,37 @@ user_roles = Table(
 )
 
 
+class UserPermissionOverride(Base):
+    """Per-user permission overrides that extend or restrict role-based grants.
+
+    A ``grant`` override adds a permission the user does not have via their role;
+    a ``revoke`` override removes a permission even if the role grants it.
+    """
+
+    __tablename__ = "user_permission_overrides"
+
+    # How broad this override row is. ``code`` is a single permission code
+    # (the historical shape); ``module``/``section`` cover every permission in a
+    # practice-area module; ``role`` covers every permission a role grants.
+    SCOPE_CODE = "code"
+    SCOPE_MODULE = "module"
+    SCOPE_SECTION = "section"
+    SCOPE_ROLE = "role"
+    VALID_SCOPES = (SCOPE_CODE, SCOPE_MODULE, SCOPE_SECTION, SCOPE_ROLE)
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    permission_code = Column(String(100), nullable=False)
+    action = Column(String(10), nullable=False)  # "grant" or "revoke"
+    scope = Column(String(20), default=SCOPE_CODE, nullable=False)
+    module = Column(String(50), nullable=True)
+    granted_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+    expires_at = Column(DateTime(timezone=True), nullable=True)
+
+    user = relationship("User", foreign_keys=[user_id], back_populates="permission_overrides")
+
+
 class User(Base):
     __tablename__ = "users"
 
@@ -55,6 +86,12 @@ class User(Base):
         back_populates="users",
     )
     refresh_tokens = relationship("RefreshToken", back_populates="user")
+    permission_overrides = relationship(
+        "UserPermissionOverride",
+        foreign_keys="UserPermissionOverride.user_id",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
 
 
 class RefreshToken(Base):

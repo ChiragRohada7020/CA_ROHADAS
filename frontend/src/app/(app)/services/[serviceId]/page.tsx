@@ -39,8 +39,8 @@ export default function ServiceDetailPage() {
   if (service.isError) return <ErrorState message="Could not load this service." />;
 
   const row = service.data;
-  const stepCount = row.templates.reduce((total, tpl) => total + tpl.steps.length, 0);
-  const mandatory = row.templates.reduce(
+  const stepCount = (row.templates ?? []).reduce((total, tpl) => total + tpl.steps.length, 0);
+  const mandatory = (row.templates ?? []).reduce(
     (total, tpl) => total + tpl.steps.filter((step) => step.is_mandatory).length,
     0,
   );
@@ -101,10 +101,10 @@ export default function ServiceDetailPage() {
         title="Checklist and milestones"
         subtitle="Copied onto each task generated for this service"
       >
-        {row.templates.length === 0 ? (
+        {row.templates?.length === 0 ? (
           <EmptyState message="No task template is linked to this service, so no checklist has been defined and no recurring work will be generated for it." />
         ) : (
-          row.templates.map((template) => (
+          row.templates?.map((template) => (
             <ChecklistEditor key={template.id} template={template} />
           ))
         )}

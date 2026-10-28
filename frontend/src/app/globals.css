@@ -1,6 +1,228 @@
 @import "tailwindcss";
 
 /*
+ * Tailwind v4 no longer picks `darkMode` up from `tailwind.config.{js,ts}`
+ * automatically (JS config files are opt-in via `@config` and `darkMode` from
+ * them is not honoured in v4 anyway). The ThemeProvider and the inlined
+ * theme script both toggle a `.dark` class on `<html>`, so the `dark` variant
+ * must be a *selector*, not the `prefers-color-scheme` media query:
+ *
+ *   <div class="bg-white dark:bg-slate-900">
+ *
+ *   <div class="bg-white dark:bg-slate-900">
+ *
+ * With this override, every `dark:*` utility and every `@apply dark:*`
+ * expands to a `.dark …` rule instead of `@media (prefers-color-scheme: dark)`,
+ * so the toggle actually takes effect.
+ */
+@variant dark (&:where(.dark, .dark *));
+
+
+@layer base {
+  :root {
+    /* ── Semantic tokens (light) ────────────────────────────────────────── */
+    /*
+     * These map to the slate/indigo system already in use. Light and dark share
+     * the same *names* so component code never branches on theme — only the
+     * variable values change, which is what makes the switch instantaneous.
+     */
+    --color-bg: theme(colors.slate.50);
+    --color-bg-elevated: theme(colors.white);
+    --color-surface: theme(colors.white);
+    --color-surface-elevated: theme(colors.white);
+    --color-border: theme(colors.slate.200);
+    --color-border-strong: theme(colors.slate.300);
+    --color-border-stronger: theme(colors.slate.400);
+    --color-text-primary: theme(colors.slate.900);
+    --color-text-secondary: theme(colors.slate.600);
+    --color-text-tertiary: theme(colors.slate.500);
+    --color-text-inverse: theme(colors.white);
+
+    /* Interactive surface backgrounds (tints used on both light and dark) */
+    --color-surface-tint-sky: theme(colors.sky.50);
+    --color-surface-tint-emerald: theme(colors.emerald.50);
+    --color-surface-tint-rose: theme(colors.rose.50);
+    --color-surface-tint-amber: theme(colors.amber.50);
+    --color-surface-tint-indigo: theme(colors.indigo.50);
+    --color-surface-tint-violet: theme(colors.violet.50);
+    --color-surface-tint-purple: theme(colors.purple.50);
+    --color-surface-tint-teal: theme(colors.teal.50);
+
+    /* Focus ring uses the brand blue so every control reads as the same system. */
+    --color-focus: theme(colors.sky.600);
+    --color-focus-ring: theme(colors.sky.200);
+
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 20px;
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+
+    /* ── Brand ── */
+    --color-brand-600: #5b5bd6;
+    --color-brand-700: #5050c0;
+
+    /* ── Dark theme tokens ──────────────────────────────────────────────── */
+    --color-bg-dark: theme(colors.slate.950);
+    --color-surface-dark: theme(colors.slate.900);
+    --color-surface-elevated-dark: theme(colors.slate.800);
+    --color-border-dark: theme(colors.slate.700);
+    --color-border-strong-dark: theme(colors.slate.600);
+    --color-text-primary-dark: theme(colors.slate.200);
+    --color-text-secondary-dark: theme(colors.slate.400);
+    --color-text-tertiary-dark: theme(colors.slate.500);
+
+    /* ── Variables consumed by InvoiceLineTable, CreateInvoiceForm, ServiceCombobox ──
+     * These chain to the semantic variables above so they resolve to light values
+     * normally and to dark values when `.dark` is active. The `--h-` prefix is kept
+     * to match existing call-sites that already reference these names. */
+    --h-brand-600: var(--color-brand-600);
+    --h-brand-700: var(--color-brand-700);
+    --h-dark-surface-0: var(--color-surface);
+    --h-dark-surface-1: var(--color-surface-elevated);
+    --h-dark-surface-2: var(--color-bg-elevated);
+    --h-dark-text-primary: var(--color-text-primary);
+    --h-dark-text-secondary: var(--color-text-secondary);
+    --h-dark-text-tertiary: var(--color-text-tertiary);
+    --h-dark-border-color: var(--color-border-strong);
+    --h-dark-border-light: var(--color-border);
+
+    /* ── Roles page design tokens (light) ─────────────────────────────────── */
+    --role-page-bg: theme(colors.slate.100);
+    --role-page-border: theme(colors.slate.200);
+    --role-page-ink: theme(colors.slate.900);
+    --role-page-muted: theme(colors.slate.500);
+    --role-page-primary: #1677ff;
+    --role-page-primary-hover: #0865e8;
+    --role-page-selected-bg: theme(colors.sky.100);
+    --role-page-selected-text: theme(colors.sky.700);
+    --role-page-module-bg: theme(colors.sky.50);
+    --role-page-row-hover: theme(colors.slate.50);
+    --role-page-row-border: theme(colors.slate.200);
+    --role-page-card-bg: theme(colors.white);
+    --role-page-card-border: theme(colors.slate.200);
+    --role-page-table-header: theme(colors.slate.50);
+    --role-page-toggle-bg: theme(colors.slate.200);
+    --role-page-search-border: theme(colors.slate.300);
+    --role-page-disabled: theme(colors.slate.400);
+
+    /* Role icon tint backgrounds (light) */
+    --role-icon-bg-sky: theme(colors.sky.100);
+    --role-icon-bg-violet: theme(colors.violet.100);
+    --role-icon-bg-emerald: theme(colors.emerald.100);
+    --role-icon-bg-amber: theme(colors.amber.100);
+    --role-icon-bg-rose: theme(colors.rose.100);
+
+    /* Role icon colors (light — accent colors are designed for both themes) */
+    --role-icon-text-sky: theme(colors.sky.500);
+    --role-icon-text-violet: theme(colors.violet.500);
+    --role-icon-text-emerald: theme(colors.emerald.600);
+    --role-icon-text-amber: theme(colors.amber.500);
+    --role-icon-text-rose: theme(colors.rose.500);
+  }
+
+  .dark {
+    --color-bg: var(--color-bg-dark);
+    --color-bg-elevated: var(--color-surface-dark);
+    --color-surface: var(--color-surface-dark);
+    --color-surface-elevated: var(--color-surface-elevated-dark);
+    --color-border: var(--color-border-dark);
+    --color-border-strong: var(--color-border-strong-dark);
+    --color-border-stronger: theme(colors.slate.600);
+    --color-text-primary: var(--color-text-primary-dark);
+    --color-text-secondary: var(--color-text-secondary-dark);
+    --color-text-tertiary: var(--color-text-tertiary-dark);
+
+    /* ── Roles page design tokens (dark) ──────────────────────────────────── */
+    --role-page-bg: theme(colors.slate.900);
+    --role-page-border: theme(colors.slate.700);
+    --role-page-ink: theme(colors.slate.200);
+    --role-page-muted: theme(colors.slate.400);
+    /* primary accent stays the same — it's designed to read on both themes */
+    --role-page-selected-bg: theme(colors.sky.900/30);
+    --role-page-selected-text: theme(colors.sky.300);
+    --role-page-module-bg: theme(colors.sky.900/30);
+    --role-page-row-hover: theme(colors.slate.800);
+    --role-page-row-border: theme(colors.slate.700);
+    --role-page-card-bg: theme(colors.slate.800);
+    --role-page-card-border: theme(colors.slate.700);
+    --role-page-table-header: theme(colors.slate.800);
+    --role-page-toggle-bg: theme(colors.slate.700);
+    --role-page-search-border: theme(colors.slate.600);
+    --role-page-disabled: theme(colors.slate.500);
+
+    /* Role icon tint backgrounds (dark) */
+    --role-icon-bg-sky: theme(colors.sky.900/30);
+    --role-icon-bg-violet: theme(colors.violet.900/30);
+    --role-icon-bg-emerald: theme(colors.emerald.900/30);
+    --role-icon-bg-amber: theme(colors.amber.900/30);
+    --role-icon-bg-rose: theme(colors.rose.900/30);
+
+    /* ── Billing / invoice design tokens (dark) ──────────────────────────── */
+    /* Tint backgrounds for stat cards and hover states — dark versions. */
+    --color-surface-tint-sky-dark: theme(colors.sky.900/30);
+    --color-surface-tint-emerald-dark: theme(colors.emerald.900/30);
+    --color-surface-tint-rose-dark: theme(colors.rose.900/30);
+    --color-surface-tint-amber-dark: theme(colors.amber.900/30);
+    --color-surface-tint-indigo-dark: theme(colors.indigo.900/30);
+    --color-surface-tint-violet-dark: theme(colors.violet.900/30);
+    --color-surface-tint-purple-dark: theme(colors.purple.900/30);
+    --color-surface-tint-teal-dark: theme(colors.teal.900/30);
+
+    /* Invoice preview card — dark variant. */
+    --color-preview-bg: theme(colors.slate.900);
+    --color-preview-border: theme(colors.slate.700);
+    --color-preview-text: theme(colors.slate.200);
+    --color-preview-muted: theme(colors.slate.400);
+    --color-preview-accent: theme(colors.sky.300);
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--color-bg);
+    color: var(--color-text-primary);
+    @apply antialiased;
+    font-family:
+      ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
+      Arial, "Noto Sans", sans-serif;
+  }
+
+  /* Tabular figures keep numbers aligned in tables and on the stat cards, which
+   * matters when a partner is scanning a column of counts. */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /*
+   * One focus ring, everywhere — in both light and dark mode.
+   *
+   * The browser's default outline is drawn inconsistently across styled controls — it
+   * is clipped by some of them and invisible on others. Declaring it once here means
+   * every button, link, input and checkbox gets the same visible ring, which is what
+   * makes the app usable by keyboard. `:focus-visible` rather than `:focus` keeps it
+   * off for mouse users, who do not need it.
+   */
+  :focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+    border-radius: 0.25rem;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply tracking-tight;
+  }
+}
+
+
+/*
  * The design layer.
  *
  * Deliberately small, but not thin: everything a screen needs repeatedly lives here so
@@ -22,88 +244,18 @@
   @apply disabled:cursor-not-allowed disabled:opacity-60 disabled:shadow-none;
 }
 
-@layer base {
-  html {
-    -webkit-text-size-adjust: 100%;
-  }
-
-   body {
-     @apply bg-[#F5F7FA] text-[#101B3D] antialiased;
-     font-family:
-       ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
-       Arial, "Noto Sans", sans-serif;
-   }
-
-  /* Tabular figures keep numbers aligned in tables and on the stat cards, which
-   * matters when a partner is scanning a column of counts. */
-  .tabular {
-    font-variant-numeric: tabular-nums;
-  }
-
-  /*
-   * One focus ring, everywhere.
-   *
-   * The browser's default outline is drawn inconsistently across styled controls — it
-   * is clipped by some of them and invisible on others. Declaring it once here means
-   * every button, link, input and checkbox gets the same visible ring, which is what
-   * makes the app usable by keyboard. `:focus-visible` rather than `:focus` keeps it
-   * off for mouse users, who do not need it.
-   */
-  :focus-visible {
-    outline: 2px solid var(--color-sky-600);
-    outline-offset: 2px;
-    border-radius: 0.25rem;
-  }
-
-  h1,
-  h2,
-  h3,
-  h4 {
-    @apply tracking-tight;
-  }
-}
-
 @layer components {
   /* ── Surfaces ─────────────────────────────────────────────────────────── */
 
   .card {
-    @apply rounded-[10px] border border-[#E4E7EC] bg-white;
+    @apply rounded-xl border border-slate-200 bg-white shadow-sm;
+    @apply dark:border-slate-700 dark:bg-slate-900;
   }
 
-  /* ── Dashboard surfaces ────────────────────────────────────────── */
-
-  /* Subtle page-background gradient so the dashboard feels layered,
-     not flat. */
+  /* Subtle page background so the dashboard feels layered, not flat. */
   .dashboard-page {
-    @apply bg-gradient-to-b from-slate-50 to-white;
-  }
-
-  /* Accent border on the side that colour-codes each section card
-     at a glance, so the eye can skip from one topic to the next. */
-  .dashboard-card {
-    @apply relative border-t transition-colors duration-200;
-  }
-  .dashboard-card--overdue { @apply border-t-rose-200; }
-  .dashboard-card--today { @apply border-t-amber-200; }
-  .dashboard-card--week { @apply border-t-sky-200; }
-  .dashboard-card--review { @apply border-t-violet-200; }
-  .dashboard-card--docs { @apply border-t-emerald-200; }
-  .dashboard-card--compliance { @apply border-t-indigo-200; }
-  .dashboard-card--deadlines { @apply border-t-cyan-200; }
-  .dashboard-card--pipeline { @apply border-t-fuchsia-200; }
-  .dashboard-card--portfolio { @apply border-t-teal-200; }
-  .dashboard-card--financial { @apply border-t-amber-200; }
-  .dashboard-card--at-risk { @apply border-t-rose-200; }
-  .dashboard-card--workload { @apply border-t-indigo-200; }
-  .dashboard-card--activity { @apply border-t-slate-200; }
-
-  /* Headline stat cards get a subtle tint on hover that matches
-     their theme, and a softer shadow lift. */
-  .dashboard-stat {
-    @apply transition-all duration-200;
-  }
-  .dashboard-stat:hover {
-    @apply scale-[1.015] shadow-lg;
+    @apply bg-slate-50;
+    @apply dark:bg-slate-950;
   }
 
   /* List-row hover that is consistent across tables and ul lists. */
@@ -112,16 +264,17 @@
   }
   .dashboard-row:hover {
     @apply bg-slate-50/80;
+    @apply dark:bg-slate-800/60;
   }
 
   /* Pipeline stage badges get a softer look. */
   .pipeline-stage {
-    @apply inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium ring-1 ring-inset transition;
+    @apply inline-flex items-center gap-2 rounded-xl px-4 py-3 text-sm font-medium ring-1 ring-inset transition;
   }
 
   /* Activity feed items get a dot with a coloured background wash. */
   .activity-dot {
-    @apply flex h-6 w-6 shrink-0 items-center justify-center rounded-lg ring-1 ring-inset;
+    @apply flex h-7 w-7 shrink-0 items-center justify-center rounded-xl ring-1 ring-inset;
   }
 
   /* Subtle fade-in for stat cards on first paint. */
@@ -142,65 +295,81 @@
   /* ── Client form: section cards with accent borders ────────────── */
   .client-section {
     @apply rounded-xl border border-slate-200 bg-white shadow-sm transition-all duration-200;
+    @apply dark:border-slate-700 dark:bg-slate-900;
   }
   .client-section:hover {
     @apply border-slate-300 shadow-md;
+    @apply dark:border-slate-600;
   }
   .client-section-header {
     @apply flex items-center gap-3 border-b border-slate-200 px-5 py-3.5;
+    @apply dark:border-slate-700;
   }
   .client-section-title {
     @apply text-sm font-semibold text-slate-800;
+    @apply dark:text-slate-200;
   }
   .client-section-subtitle {
     @apply mt-0.5 text-xs text-slate-500;
+    @apply dark:text-slate-400;
   }
   .client-section-accent-basics {
     @apply border-t border-sky-200;
+    @apply dark:border-sky-800;
   }
   .client-section-accent-identifiers {
     @apply border-t border-indigo-200;
+    @apply dark:border-indigo-800;
   }
   .client-section-accent-address {
     @apply border-t border-teal-200;
+    @apply dark:border-teal-800;
   }
-   .client-section-accent-staff {
+  .client-section-accent-staff {
     @apply border-t border-violet-200;
+    @apply dark:border-violet-800;
   }
 
   /* ── Team modal: section cards with accent borders ────────────── */
   .team-section {
     @apply rounded-xl bg-white transition-all duration-200;
+    @apply dark:bg-slate-900;
   }
   .team-section-header {
     @apply flex items-start gap-3 border-b border-slate-200 px-5 py-3.5;
+    @apply dark:border-slate-700;
   }
   .team-section-title {
     @apply text-sm font-semibold text-slate-800;
+    @apply dark:text-slate-200;
   }
   .team-section-subtitle {
     @apply mt-0.5 text-xs text-slate-500;
+    @apply dark:text-slate-400;
   }
   .team-section-accent-basics {
     @apply border-t-2 border-sky-200;
+    @apply dark:border-sky-800;
   }
 
-
   .card-header {
-    @apply flex items-center justify-between gap-3 border-b border-[#E4E7EC] px-4 py-3;
+    @apply flex items-center justify-between gap-3 border-b border-slate-200 px-5 py-3.5;
+    @apply dark:border-slate-700;
   }
 
   .card-title {
-    @apply text-sm font-semibold text-[#172B4D];
+    @apply text-base font-semibold text-slate-900;
+    @apply dark:text-slate-200;
   }
 
   .card-subtitle {
-    @apply mt-0.5 text-xs text-[#667085];
+    @apply mt-0.5 text-sm text-slate-500;
+    @apply dark:text-slate-400;
   }
 
   /* For a card whose body is not a table — a table's rows carry their own padding. */
   .card-body {
-    @apply p-4;
+    @apply p-5;
   }
 
   /* ── Page structure ───────────────────────────────────────────────────── */
@@ -211,15 +380,18 @@
    * app was the most visible sign that these screens were built separately.
    */
   .page-title {
-    @apply text-xl font-semibold tracking-tight text-[#172B4D];
+    @apply text-2xl font-bold tracking-tight text-slate-900;
+    @apply dark:text-slate-200;
   }
 
   .page-subtitle {
-    @apply mt-1 max-w-3xl text-sm text-[#667085];
+    @apply mt-1.5 max-w-3xl text-base text-slate-500;
+    @apply dark:text-slate-400;
   }
 
   .section-title {
     @apply text-xs font-semibold uppercase tracking-wide text-slate-500;
+    @apply dark:text-slate-400;
   }
 
   /* ── Tables ───────────────────────────────────────────────────────────── */
@@ -231,17 +403,20 @@
   }
 
   .th {
-    @apply px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-slate-500;
+    @apply px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500;
+    @apply dark:text-slate-400;
   }
 
   .td {
-    @apply px-3 py-2 text-sm text-slate-700;
+    @apply px-4 py-3 text-sm text-slate-700;
+    @apply dark:text-slate-300;
   }
 
   /* Rows share one hover treatment, so "this row is clickable" reads the same on
    * every list. */
   .table-row {
     @apply transition-colors hover:bg-slate-50;
+    @apply dark:hover:bg-slate-800/60;
   }
 
   /* ── Forms ────────────────────────────────────────────────────────────── */
@@ -250,6 +425,7 @@
     @apply w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm
            text-slate-900 shadow-sm outline-none placeholder:text-slate-400
            transition-colors duration-150;
+    @apply dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500;
   }
 
   /*
@@ -276,15 +452,18 @@
   input[type="checkbox"],
   .checkbox {
     @apply size-4 cursor-pointer rounded border-slate-300;
-    accent-color: var(--color-sky-600);
+    @apply dark:border-slate-600;
+    accent-color: var(--color-focus);
   }
 
   .label {
     @apply block text-xs font-medium text-slate-700;
+    @apply dark:text-slate-300;
   }
 
   .field-hint {
     @apply mt-1 text-xs text-slate-500;
+    @apply dark:text-slate-400;
   }
 
   /* ── Buttons ──────────────────────────────────────────────────────────── */
@@ -294,14 +473,15 @@
            hover:from-sky-700 hover:to-indigo-700;
   }
 
-   .btn-ghost {
+  .btn-ghost {
     @apply btn border border-slate-300 bg-white text-slate-700 hover:bg-slate-50;
+    @apply dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700;
   }
 
   .btn-outline {
-    @apply btn border border-[#E2E8F0] bg-white text-[#64748B] hover:bg-[#F6F8FC];
+    @apply btn border border-slate-200 bg-white text-slate-500 hover:bg-slate-100;
+    @apply dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700;
   }
-
 
   .btn-danger {
     @apply btn bg-rose-600 text-white hover:bg-rose-700;
@@ -315,6 +495,7 @@
   /* A square button holding only an icon, e.g. a row's overflow menu. */
   .btn-icon {
     @apply btn size-8 p-0 text-slate-400 shadow-none hover:bg-slate-100 hover:text-slate-700;
+    @apply dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-300;
   }
 
   /* ── Scrollbars ────────────────────────────────────────────────────────── */
@@ -323,17 +504,23 @@
   }
   ::-webkit-scrollbar-track {
     @apply bg-slate-100;
+    @apply dark:bg-slate-800;
   }
   ::-webkit-scrollbar-thumb {
     @apply rounded-full border-2 border-slate-100 bg-slate-300;
+    @apply dark:border-slate-800 dark:bg-slate-600;
   }
   ::-webkit-scrollbar-thumb:hover {
     @apply bg-slate-400;
+    @apply dark:bg-slate-500;
   }
   /* Only show scrollbars when actually scrolling, for a cleaner look. */
   .overflow-y-auto {
     scrollbar-width: thin;
     scrollbar-color: theme(colors.slate.300) theme(colors.slate.100);
+  }
+  .dark .overflow-y-auto {
+    scrollbar-color: theme(colors.slate.600) theme(colors.slate.800);
   }
 
   /* ── Service dropdown portal ──────────────────────────────── */
@@ -348,46 +535,59 @@
   /* ── Invoice form: section cards with accent borders ──────── */
   .invoice-section {
     @apply rounded-xl border border-slate-200 bg-white shadow-sm transition-all duration-200;
+    @apply dark:border-slate-700 dark:bg-slate-900;
   }
   .invoice-section:hover {
     @apply border-slate-300 shadow-md;
+    @apply dark:border-slate-600;
   }
   .invoice-section-header {
     @apply flex items-center gap-3 border-b border-slate-200 px-5 py-3.5;
+    @apply dark:border-slate-700;
   }
   .invoice-section-title {
     @apply text-sm font-semibold text-slate-800;
+    @apply dark:text-slate-200;
   }
   .invoice-section-subtitle {
     @apply mt-0.5 text-xs text-slate-500;
+    @apply dark:text-slate-400;
   }
   .invoice-section-accent-client {
     @apply border-t-2 border-sky-400;
+    @apply dark:border-sky-800;
   }
   .invoice-section-accent-invoice {
     @apply border-t-2 border-indigo-400;
+    @apply dark:border-indigo-800;
   }
   .invoice-section-accent-items {
     @apply border-t-2 border-amber-400;
+    @apply dark:border-amber-800;
   }
   .invoice-section-accent-gst {
     @apply border-t-2 border-emerald-400;
+    @apply dark:border-emerald-800;
   }
   .invoice-section-accent-payment {
     @apply border-t-2 border-rose-400;
+    @apply dark:border-rose-800;
   }
   .invoice-section-accent-bank {
     @apply border-t-2 border-purple-400;
+    @apply dark:border-purple-800;
   }
 
   /* ── Sticky financial summary ─────────────────────────────── */
   .financial-summary {
     @apply rounded-xl border border-sky-200/50 bg-gradient-to-b from-sky-50/30 to-white p-4 shadow-sm;
+    @apply dark:border-sky-800/50 dark:from-sky-900/10 dark:to-slate-900;
   }
 
   /* ── Step progress indicator ──────────────────────────────── */
   .step-bar {
     @apply h-1.5 w-full overflow-hidden rounded-full bg-slate-200;
+    @apply dark:bg-slate-700;
   }
   .step-bar-fill {
     @apply h-full rounded-full bg-gradient-to-r from-sky-500 to-indigo-500 transition-all duration-300;
@@ -397,9 +597,11 @@
   }
   .step-dot-complete {
     @apply bg-sky-100 text-sky-700 ring-2 ring-sky-200;
+    @apply dark:bg-sky-900/30 dark:text-sky-300 dark:ring-sky-800;
   }
   .step-dot-incomplete {
     @apply bg-slate-100 text-slate-500 ring-1 ring-slate-200;
+    @apply dark:bg-slate-800 dark:text-slate-400 dark:ring-slate-700;
   }
 
   /* ── Invoice action buttons ──────────────────────────────── */
@@ -408,25 +610,484 @@
   }
   .btn-ghost-sky {
     @apply btn border border-slate-300 bg-white text-slate-700 hover:border-sky-300 hover:bg-sky-50;
+    @apply dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-sky-700 dark:hover:bg-sky-900/20;
   }
 
   /* ── Better form input focus ─────────────────────────────── */
   .input:focus {
     @apply border-sky-500 ring-2 ring-sky-200;
+    @apply dark:border-sky-600 dark:ring-sky-900/50;
   }
 
   /* ── Professional table styling ──────────────────────────── */
   .invoice-table th {
     @apply px-3 py-2.5 text-left text-xs font-medium uppercase tracking-wide text-slate-500;
+    @apply dark:text-slate-400;
   }
   .invoice-table td {
     @apply px-3 py-2.5 text-sm text-slate-700;
+    @apply dark:text-slate-300;
   }
   .invoice-table tbody tr:hover {
     @apply bg-slate-50/60;
+    @apply dark:bg-slate-800/60;
   }
   .invoice-table tfoot td {
     @apply border-t-2 border-slate-900 pt-2.5 font-semibold text-slate-900;
+    @apply dark:border-slate-100 dark:text-slate-200;
+  }
+
+  /* ── Invoice form: light slide-over tokens ──
+     Consistent typography and spacing for the invoice creation form.
+     Light theme, larger text for readability.
+     Dark variants adjust the background and border inputs that hardcode hex. */
+
+  .invoice-form-label {
+    @apply block text-sm font-medium mb-1.5;
+    color: theme(colors.slate.500);
+    @apply dark:text-slate-400;
+  }
+
+  .invoice-form-section-title {
+    @apply block text-sm font-semibold uppercase tracking-wider mb-2.5;
+    color: theme(colors.slate.400);
+    @apply dark:text-slate-500;
+  }
+
+  .invoice-form-input {
+    @apply w-full rounded-md px-3 py-2.5 text-base outline-none tabular-nums;
+    background-color: theme(colors.white);
+    border: 1px solid theme(colors.slate.300);
+    color: theme(colors.slate.900);
+    @apply dark:bg-slate-800 dark:border-slate-600 dark:text-slate-100;
+  }
+
+  .invoice-form-input:focus {
+    border-color: var(--color-brand-600);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-brand-600) 25%, transparent);
+  }
+
+  .invoice-form-textarea {
+    @apply w-full rounded-md px-3 py-2.5 text-base outline-none resize-none;
+    background-color: theme(colors.white);
+    border: 1px solid theme(colors.slate.300);
+    color: theme(colors.slate.900);
+    @apply dark:bg-slate-800 dark:border-slate-600 dark:text-slate-100;
+  }
+
+  .invoice-form-textarea:focus {
+    border-color: var(--color-brand-600);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-brand-600) 25%, transparent);
+  }
+
+  .invoice-form-add-item {
+    @apply inline-flex items-center gap-2 rounded-md border px-4 py-2.5 text-sm font-medium transition-colors;
+    border-color: theme(colors.slate.300);
+    background-color: theme(colors.slate.50);
+    color: var(--color-brand-600);
+    @apply dark:border-slate-600 dark:bg-slate-800;
+  }
+
+  .invoice-form-add-item:hover {
+    background-color: theme(colors.slate.100);
+    color: var(--color-brand-700);
+    @apply dark:bg-slate-700;
+  }
+
+  .invoice-form-cancel {
+    @apply rounded-lg px-4 py-2.5 text-base font-medium;
+    background-color: theme(colors.slate.100);
+    color: theme(colors.slate.700);
+    @apply dark:bg-slate-800 dark:text-slate-300;
+  }
+
+  .invoice-form-cancel:hover {
+    background-color: theme(colors.slate.200);
+    @apply dark:bg-slate-700;
+  }
+
+  .invoice-form-submit {
+    @apply rounded-lg px-6 py-3 text-base font-semibold text-white shadow-md transition-colors disabled:opacity-50;
+    background-color: var(--color-brand-600);
+  }
+  .dark .invoice-form-submit {
+    background-color: var(--color-brand-600);
+  }
+
+  .invoice-form-submit:hover:not(:disabled) {
+    background-color: var(--color-brand-700);
+  }
+}
+
+/*
+ * ── Global dark-mode overrides for inline Tailwind classes ──────────────
+ *
+ * Page and feature components sprinkle inline utilities like `bg-white`,
+ * `border-slate-200`, `text-slate-900` directly in JSX. Editing every file that
+ * uses them is error-prone and slow; instead, these rules repaint those
+ * classes *only under `.dark`* so the switch is consistent without touching
+ * call sites. Coloured backgrounds (sky-50, emerald-50 …) that carry meaning
+ * are mapped to a dark tint of the same hue.
+ *
+   * Cascade priority: in Tailwind v4 the stylesheet is split into native cascade
+   * LAYERS — base, components, utilities — and a rule in a LATER layer wins over
+   * an earlier one regardless of specificity. The `.bg-white` utility lives in
+   * `@layer utilities` (last), so if these overrides stay in `@layer components`
+   * they are silently beaten and dark mode never applies to inline `bg-white` /
+   * `border-slate-200` usages. Declaring them OUTSIDE any `@layer` makes them
+   * unlayered, and per the CSS cascade spec unlayered declarations outrank every
+   * layer — so `.dark .bg-white` reliably beats the `.bg-white` utility. Coloured
+   * text/accent colours are left to individual components because they are already
+   * contrast-managed for both modes.
+   */
+
+/* ── Global dark-mode overrides (unlayered → outrank @layer utilities) ────── */
+  /* Backgrounds — neutral surfaces that should flip dark */
+  .dark .bg-white { background-color: theme(colors.slate.900); }
+  .dark .bg-slate-50 { background-color: theme(colors.slate.950); }
+  .dark .bg-slate-100 { background-color: theme(colors.slate.800); }
+  .dark .bg-slate-200 { background-color: theme(colors.slate.700); }
+  .dark .bg-slate-50\/30 { background-color: rgba(0, 0, 0, 0.3); }
+  .dark .bg-slate-50\/50 { background-color: rgba(15, 17, 23, 0.5); }
+  .dark .bg-slate-50\/60,
+  .dark .bg-slate-50\/80 { background-color: rgba(31, 41, 55, 0.6); }
+  .dark .bg-slate-100\/60 { background-color: rgba(31, 41, 55, 0.6); }
+  .dark .bg-slate-100\/50 { background-color: rgba(31, 41, 55, 0.5); }
+
+  /* Tinted surfaces — coloured backgrounds used as card/row backgrounds */
+  .dark .bg-sky-50 { background-color: rgba(3, 105, 180, 0.12); }
+  .dark .bg-sky-50\/50 { background-color: rgba(3, 105, 180, 0.06); }
+  .dark .bg-sky-50\/60 { background-color: rgba(3, 105, 180, 0.08); }
+  .dark .bg-emerald-50 { background-color: rgba(16, 170, 105, 0.12); }
+  .dark .bg-emerald-50\/50 { background-color: rgba(16, 170, 105, 0.06); }
+  .dark .bg-rose-50 { background-color: rgba(239, 68, 68, 0.12); }
+  .dark .bg-amber-50 { background-color: rgba(245, 158, 11, 0.12); }
+  .dark .bg-indigo-50 { background-color: rgba(99, 102, 241, 0.12); }
+  .dark .bg-violet-50 { background-color: rgba(138, 43, 226, 0.12); }
+  .dark .bg-purple-50 { background-color: rgba(168, 85, 247, 0.12); }
+  .dark .bg-teal-50 { background-color: rgba(20, 184, 166, 0.12); }
+  .dark .bg-cyan-50 { background-color: rgba(6, 182, 211, 0.12); }
+  .dark .bg-orange-50 { background-color: rgba(249, 115, 22, 0.12); }
+  .dark .bg-lime-50 { background-color: rgba(132, 204, 22, 0.12); }
+
+  /* Text — neutral text that should flip lighter */
+  .dark .text-slate-900 { color: theme(colors.slate.100); }
+  .dark .text-slate-800 { color: theme(colors.slate.200); }
+  .dark .text-slate-700 { color: theme(colors.slate.300); }
+  .dark .text-slate-600 { color: theme(colors.slate.400); }
+  .dark .text-slate-500 { color: theme(colors.slate.400); }
+  .dark .text-slate-400 { color: theme(colors.slate.500); }
+  .dark .text-\[\#101B3D\] { color: theme(colors.slate.100); }
+  .dark .text-\[\#667085\] { color: theme(colors.slate.400); }
+  .dark .text-\[\#374151\] { color: theme(colors.slate.300); }
+  .dark .text-\[\#475467\] { color: theme(colors.slate.400); }
+  .dark .text-\[\#64748b\] { color: theme(colors.slate.400); }
+  .dark .text-\[\#94A3B8\] { color: theme(colors.slate.500); }
+
+  /* Links on dark backgrounds get a lighter colour */
+  .dark .text-slate-900\/70 { color: rgba(226, 232, 240, 0.7); }
+
+  /* Borders */
+  .dark .border-slate-200 { border-color: theme(colors.slate.700); }
+  .dark .border-slate-300 { border-color: theme(colors.slate.600); }
+  .dark .border-\[\#E2E8F0\] { border-color: theme(colors.slate.700); }
+  .dark .border-\[\#CBD5E1\] { border-color: theme(colors.slate.600); }
+  .dark .border-slate-100 { border-color: theme(colors.slate.800); }
+
+  /* Divide (table and list separators) */
+  .dark .divide-slate-100,
+  .dark .divide-slate-200 { border-color: theme(colors.slate.700); }
+  .dark .divide-slate-500 { border-color: theme(colors.slate.600); }
+
+  /* Ring (shadows around chips, avatars) */
+  .dark .ring-slate-100 { --tw-ring-color: theme(colors.slate.800); }
+  .dark .ring-slate-200 { --tw-ring-color: theme(colors.slate.700); }
+
+  /* Hover states for neutral backgrounds */
+  .dark .hover\:bg-slate-50:hover { background-color: theme(colors.slate.800/60); }
+  .dark .hover\:bg-slate-100:hover { background-color: theme(colors.slate.800); }
+  .dark .hover\:bg-slate-50\/80:hover { background-color: rgba(31, 41, 55, 0.6); }
+  .dark .hover\:bg-slate-100\/60:hover { background-color: rgba(31, 41, 55, 0.6); }
+
+  /* Hover states for tinted backgrounds — keep the hue, darken the tint */
+  .dark .hover\:bg-sky-50:hover { background-color: rgba(3, 105, 180, 0.16); }
+
+  /* Placeholder text */
+  .dark ::placeholder { color: theme(colors.slate.500); }
+
+  /* Input backgrounds that use bg-white directly */
+  .dark input.input,
+  .dark textarea.input,
+  .dark select.input,
+  .dark .select {
+    background-color: theme(colors.slate.800);
+  }
+
+  /* Checkbox accent in dark mode */
+  .dark input[type="checkbox"] {
+    border-color: theme(colors.slate.600);
+  }
+  /* ── Expanded dark-mode coverage ──────────────────────────────────────────
+   *
+   * White opacity variants, hex-colour surfaces, coloured text that is too dark
+   * on a dark background, light rings that go invisible, and hover states that
+   * reference hex backgrounds. These live here so component JSX never has to
+   * branch on theme — every inline utility is reparented under `.dark`.
+   */
+
+  /* Opacity variants of white used in headers, cards, and overlay panels */
+  .dark .bg-white\/30 { background-color: rgba(15, 23, 42, 0.3); }
+  .dark .bg-white\/50 { background-color: rgba(15, 23, 42, 0.5); }
+  .dark .bg-white\/60 { background-color: rgba(15, 23, 42, 0.6); }
+  .dark .bg-white\/70 { background-color: rgba(15, 23, 42, 0.7); }
+  .dark .bg-white\/80 { background-color: rgba(15, 23, 42, 0.8); }
+  .dark .bg-white\/95 { background-color: rgba(15, 23, 42, 0.95); }
+
+  /* Gray palette variant */
+  .dark .bg-gray-50 { background-color: theme(colors.slate.800); }
+
+  /* Hex colour backgrounds used as surfaces */
+  .dark .bg-\[\#F6F8FC\] { background-color: theme(colors.slate.800); }
+  .dark .bg-\[\#F8FAFC\] { background-color: theme(colors.slate.800); }
+  .dark .bg-\[\#f9fafb\] { background-color: theme(colors.slate.800); }
+  .dark .bg-\[\#DCE4EF\] { background-color: theme(colors.slate.700); }
+  .dark .bg-\[\#E2E8F0\] { background-color: theme(colors.slate.700); }
+  .dark .bg-\[\#CBD5E1\] { background-color: theme(colors.slate.600); }
+  .dark .bg-\[\#FFFAEB\] { background-color: rgba(161, 98, 24, 0.12); }
+  .dark .bg-\[\#FEDF89\] { background-color: rgba(161, 98, 24, 0.12); }
+  .dark .bg-\[\#FEE2E2\] { background-color: rgba(220, 38, 38, 0.12); }
+  .dark .bg-\[\#F0F9FF\] { background-color: rgba(3, 105, 180, 0.12); }
+  .dark .bg-\[\#E2EEFF\] { background-color: rgba(79, 70, 229, 0.12); }
+
+  /* Green palette (distinct from emerald) */
+  .dark .bg-green-50 { background-color: rgba(4, 120, 87, 0.12); }
+  .dark .bg-green-100 { background-color: rgba(4, 120, 87, 0.2); }
+  .dark .text-green-600 { color: theme(colors.green.400); }
+  .dark .text-green-700 { color: theme(colors.green.300); }
+  .dark .text-green-800 { color: theme(colors.green.300); }
+  .dark .ring-green-100 { --tw-ring-color: theme(colors.green.900); }
+
+  /* Coloured text classes that are too dark to read on a dark surface —
+     each maps to a `*-300`/`*-400` tint that keeps the hue but clears 4.5:1 */
+  .dark .text-sky-700 { color: theme(colors.sky.300); }
+  .dark .text-sky-800 { color: theme(colors.sky.300); }
+  .dark .text-sky-900 { color: theme(colors.sky.200); }
+  .dark .text-amber-700 { color: theme(colors.amber.300); }
+  .dark .text-amber-800 { color: theme(colors.amber.300); }
+  .dark .text-rose-700 { color: theme(colors.rose.300); }
+  .dark .text-rose-800 { color: theme(colors.rose.300); }
+  .dark .text-indigo-700 { color: theme(colors.indigo.300); }
+  .dark .text-indigo-800 { color: theme(colors.indigo.300); }
+  .dark .text-violet-700 { color: theme(colors.violet.300); }
+  .dark .text-violet-800 { color: theme(colors.violet.300); }
+  .dark .text-emerald-700 { color: theme(colors.emerald.300); }
+  .dark .text-emerald-800 { color: theme(colors.emerald.300); }
+  .dark .text-purple-700 { color: theme(colors.purple.300); }
+  .dark .text-teal-700 { color: theme(colors.teal.300); }
+  .dark .text-teal-800 { color: theme(colors.teal.300); }
+
+  /* Hex colour text equivalents */
+  .dark .text-\[\#0369A1\] { color: theme(colors.sky.300); }
+  .dark .text-\[\#92400E\] { color: theme(colors.amber.300); }
+
+  /* Light ring colours become nearly invisible on dark — darken them */
+  .dark .ring-sky-100 { --tw-ring-color: theme(colors.sky.900); }
+  .dark .ring-sky-200 { --tw-ring-color: theme(colors.sky.800); }
+  .dark .ring-amber-100 { --tw-ring-color: theme(colors.amber.900); }
+  .dark .ring-amber-200 { --tw-ring-color: theme(colors.amber.800); }
+  .dark .ring-rose-100 { --tw-ring-color: theme(colors.rose.900); }
+  .dark .ring-rose-200 { --tw-ring-color: theme(colors.rose.800); }
+  .dark .ring-emerald-100 { --tw-ring-color: theme(colors.emerald.900); }
+  .dark .ring-indigo-100 { --tw-ring-color: theme(colors.indigo.900); }
+  .dark .ring-violet-100 { --tw-ring-color: theme(colors.violet.900); }
+  .dark .ring-\[\#E2E8F0\] { --tw-ring-color: theme(colors.slate.700); }
+
+  /* Hover states for hex-colour backgrounds used in tables and dropdowns */
+  .dark .hover\:bg-\[\#F6F8FC\]:hover { background-color: theme(colors.slate.800); }
+  .dark .hover\:bg-\[\#F8FAFC\]:hover { background-color: theme(colors.slate.800); }
+  .dark .hover\:bg-amber-50:hover { background-color: rgba(161, 98, 24, 0.16); }
+  .dark .hover\:bg-emerald-50:hover { background-color: rgba(6, 151, 118, 0.16); }
+  .dark .hover\:bg-rose-50:hover { background-color: rgba(220, 38, 38, 0.16); }
+  .dark .hover\:bg-rose-100\/40:hover { background-color: rgba(220, 38, 38, 0.16); }
+  .dark .hover\:bg-sky-100\/40:hover { background-color: rgba(3, 105, 180, 0.16); }
+  .dark .hover\:bg-emerald-100\/40:hover { background-color: rgba(6, 151, 118, 0.16); }
+  .dark .hover\:bg-amber-100\/40:hover { background-color: rgba(161, 98, 24, 0.16); }
+  .dark .hover\:bg-indigo-100\/40:hover { background-color: rgba(79, 70, 229, 0.16); }
+  .dark .hover\:bg-violet-100\/40:hover { background-color: rgba(138, 43, 226, 0.16); }
+  .dark .hover\:bg-slate-100\/60:hover { background-color: theme(colors.slate.800); }
+
+  /* Hex border overrides for coloured borders needing dark mapping */
+  .dark .border-\[\#DCE4EF\] { border-color: theme(colors.slate.700); }
+  .dark .border-\[\#FEDF89\] { border-color: theme(colors.amber.800); }
+  .dark .border-\[\#1677FF\] { border-color: theme(colors.blue.500); }
+  .dark .border-gray-200 { border-color: theme(colors.slate.700); }
+  .dark .border-gray-300 { border-color: theme(colors.slate.600); }
+
+  /* ── Force light mode for invoice / document surfaces ─────────────────────
+   * Invoices and shared document views must render as white paper in both
+   * themes. This class resets the semantic variables so the element and its
+   * children stay on the light palette regardless of `.dark`. */
+  .force-light {
+    --color-bg: theme(colors.white);
+    --color-bg-elevated: theme(colors.white);
+    --color-surface: theme(colors.white);
+    --color-surface-elevated: theme(colors.white);
+    --color-border: theme(colors.slate.200);
+    --color-border-strong: theme(colors.slate.300);
+    --color-border-stronger: theme(colors.slate.400);
+    --color-text-primary: theme(colors.slate.900);
+    --color-text-secondary: theme(colors.slate.600);
+    --color-text-tertiary: theme(colors.slate.500);
+    --color-text-inverse: theme(colors.slate.900);
+     --color-focus: theme(colors.sky.600);
+     --color-focus-ring: theme(colors.sky.200);
+   }
+
+
+/* ── Login page: animation keyframes ─────────────────────────────────────
+   Keyframes live here so they are globally available to the
+   `animate-[login-…]` utility used in the login route. They use
+   distinct names prefixed with `login-` to avoid any clash with
+   the application-wide `fadeInUp` / `dropdown-appear` keys. */
+
+@keyframes login-bg-shift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes login-float-slow {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  33%      { transform: translate(6px, -10px) rotate(1deg); }
+  66%      { transform: translate(-4px, 6px) rotate(-0.5deg); }
+}
+
+@keyframes login-float-medium {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  25%      { transform: translate(-8px, -4px) rotate(-0.8deg); }
+  50%      { transform: translate(4px, 8px) rotate(0.5deg); }
+  75%      { transform: translate(-4px, -6px) rotate(-0.3deg); }
+}
+
+@keyframes login-float-fast {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  20%      { transform: translate(6px, 6px) rotate(1deg); }
+  40%      { transform: translate(-4px, 8px) rotate(-0.5deg); }
+  60%      { transform: translate(8px, -4px) rotate(0.8deg); }
+  80%      { transform: translate(-6px, -2px) rotate(-1deg); }
+}
+
+@keyframes login-logo-line {
+  from { stroke-dashoffset: 80; }
+  to   { stroke-dashoffset: 0; }
+}
+
+@keyframes login-logo-fade {
+  from { opacity: 0; transform: scale(0.92); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes login-field-fade {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes login-field-exit {
+  from { opacity: 1; transform: translateY(0); }
+  to   { opacity: 0; transform: translateY(-14px); }
+}
+
+@keyframes login-card-fade {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes login-shake {
+  0%, 100% { transform: translateX(0); }
+  20%      { transform: translateX(-6px); }
+  40%      { transform: translateX(6px); }
+  60%      { transform: translateX(-6px); }
+  80%      { transform: translateX(6px); }
+}
+
+@keyframes login-fade-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+@keyframes login-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes login-rotate-slow {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Fallback: reduce ALL animations on login page when the OS asks for it.
+   The React layer also checks matchMedia and skips classes, but this
+   covers the no-JS / hydration-mismatch edge. */
+@media (prefers-reduced-motion: reduce) {
+  .login-root [class*="animate-"] {
+    animation: none !important;
+  }
+
+  .login-root [class*="transition-"] {
+    transition: none !important;
+  }
+}
+
+/*
+ * Dark-mode tint overrides for the billing / invoice UI.
+ *
+ * Several components use hardcoded `bg-slate-50`, `bg-emerald-50`,
+ * `bg-amber-50`, `bg-slate-100` etc. as tint backgrounds on stat cards,
+ * table headers and callout boxes. In light mode those read correctly on
+ * the slate-50 page background. In dark mode they are near-white and fight
+ * the slate-950 backdrop, which is why the invoice detail drawer and the
+ * detail page look wrong when the toggle is flipped.
+ *
+ * Rather than chase every call-site, we map the most-used tints to their
+ * dark equivalents here. The `.dark` selector is the same one the rest of
+ * the file uses, so this only fires when the user has actually toggled
+ * dark mode.
+ */
+.dark {
+  .bg-slate-50 { background-color: theme(colors.slate.800); }
+  .bg-slate-100 { background-color: theme(colors.slate.700); }
+  .bg-slate-200 { background-color: theme(colors.slate.600); }
+  .bg-emerald-50 { background-color: theme(colors.emerald.900/30); }
+  .bg-amber-50 { background-color: theme(colors.amber.900/30); }
+  .bg-rose-50 { background-color: theme(colors.rose.900/30); }
+  .bg-sky-50 { background-color: theme(colors.sky.900/30); }
+  .bg-indigo-50 { background-color: theme(colors.indigo.900/30); }
+
+  .hover\:bg-slate-50:hover { background-color: theme(colors.slate.800); }
+  .hover\:bg-slate-100:hover { background-color: theme(colors.slate.700); }
+  .hover\:bg-slate-200:hover { background-color: theme(colors.slate.600); }
+  .hover\:bg-emerald-50:hover { background-color: theme(colors.emerald.900/40); }
+  .hover\:bg-amber-50:hover { background-color: theme(colors.amber.900/40); }
+
+  /* Tinted text colours — these already have dark variants in the component
+   * layer, but the raw classes below need them too. */
+  .text-slate-500 { color: theme(colors.slate.400); }
+  .text-slate-600 { color: theme(colors.slate.300); }
+  .text-slate-700 { color: theme(colors.slate.200); }
+  .text-slate-800 { color: theme(colors.slate.100); }
+  .text-slate-900 { color: theme(colors.slate.50); }
+  .text-slate-400 { color: theme(colors.slate.500); }
+
+  .text-emerald-700 { color: theme(colors.emerald.300); }
+  .text-amber-700 { color: theme(colors.amber.300); }
+  .text-rose-700 { color: theme(colors.rose.300); }
+  .text-sky-700 { color: theme(colors.sky.300); }
+
+  /* The invoice preview card in the drawer / detail page. */
+  .invoice-preview-card {
+    background-color: theme(colors.slate.900);
+    border-color: theme(colors.slate.700);
+    color: theme(colors.slate.200);
   }
 }
 

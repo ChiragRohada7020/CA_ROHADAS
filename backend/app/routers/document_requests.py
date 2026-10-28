@@ -7,6 +7,7 @@ Endpoints:
 """
 from __future__ import annotations
 
+import uuid
 from datetime import datetime
 from typing import Any
 
@@ -107,9 +108,7 @@ async def missing_document_requests(
 
     stmt = (
         select(DocumentRequest).where(DocumentRequest.tenant_id == tenant_id)
-        .where(text(
-            "status IN ('open'::document_request_status, 'partially_received'::document_request_status)"
-        ))
+        .where(DocumentRequest.status.in_(["open", "partially_received"]))
     )
     if client_id:
         stmt = stmt.where(DocumentRequest.client_id == client_id)
@@ -136,15 +135,18 @@ async def create_document_request(
     if client_id:
         db.get(Client, client_id)
 
+    new_id = str(uuid.uuid4())
+    now = datetime.utcnow()
     result = db.execute(text(
-        "INSERT INTO document_requests (tenant_id, client_id, task_id, engagement_id, "
+        "INSERT INTO document_requests (id, tenant_id, client_id, task_id, engagement_id, "
         " financial_year_id, period_key, title, description, doc_type, due_date, status, "
-        " requested_by_id, reminder_count) "
-        "VALUES (CAST(:tenant AS uuid), CAST(:client AS uuid), CAST(:task AS uuid), "
-        " CAST(:eng AS uuid), CAST(:fy AS uuid), :period, :title, :desc, :doctype, :due, "
-        " CAST(:status AS document_request_status), CAST(:req AS uuid), :reminders) "
+        " requested_by_id, reminder_count, created_at, updated_at) "
+        "VALUES (CAST(:id AS uuid), CAST(:tenant AS uuid), CAST(:client AS uuid), "
+        " CAST(:task AS uuid), CAST(:eng AS uuid), CAST(:fy AS uuid), :period, :title, "
+        " :desc, :doctype, :due, :status, CAST(:req AS uuid), :reminders, :now, :now) "
         "RETURNING id"
     ), {
+        "id": new_id,
         "tenant": str(tenant_id), "client": str(client_id) if client_id else None,
         "task": str(payload.get("task_id")) if payload.get("task_id") else None,
         "eng": str(payload.get("engagement_id")) if payload.get("engagement_id") else None,
@@ -152,6 +154,7 @@ async def create_document_request(
         "period": payload.get("period_key"), "title": title, "desc": payload.get("description"),
         "doctype": payload.get("doc_type"), "due": payload.get("due_date"),
         "status": payload.get("status") or "open", "req": str(user_id), "reminders": 0,
+        "now": now,
     })
     db.commit()
     new_id = result.fetchone()[0]

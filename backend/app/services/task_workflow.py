@@ -8,6 +8,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.core.errors import BadRequestError
+from app.core.clock import now_local
 
 _WORKFLOW: dict[str, set[str]] = {
     "not_started": {"assigned", "in_progress", "cancelled"},
@@ -65,11 +66,11 @@ def transition_task(
                 setattr(task, k, v)
 
     if new_status == "completed":
-        task.completed_at = datetime.utcnow()
+        task.completed_at = now_local()
     elif new_status == "filed":
-        task.filed_at = datetime.utcnow()
+        task.filed_at = now_local()
     elif new_status == "delivered":
-        task.delivered_at = datetime.utcnow()
+        task.delivered_at = now_local()
 
     db.commit()
     db.refresh(task)
@@ -78,14 +79,12 @@ def transition_task(
     db.execute(
         text(
             "INSERT INTO task_status_history "
-            "(tenant_id, task_id, from_status, to_status, approval_status, filing_status, "
-            " progress_percent, actor_type, changed_by_id, reason) "
-            "VALUES (CAST(:tenant AS uuid), CAST(:task AS uuid), "
-            "CAST(:f AS task_status), CAST(:to AS task_status), "
-            "CAST(:approval AS approval_status), CAST(:filing AS filing_status), "
-            ":progress, :actor, CAST(:actor_id AS uuid), :reason)"
+            "(id, task_id, from_status, to_status, approval_status, filing_status, "
+            " progress_percent, actor_type, changed_by_id, reason, created_at) "
+            "VALUES (gen_random_uuid(), CAST(:task AS uuid), "
+            ":f, :to, :approval, :filing, "
+            ":progress, :actor, CAST(:actor_id AS uuid), :reason, NOW())"
         ).bindparams(
-            tenant=str(task.tenant_id),
             task=str(task.id),
             f=old_status,
             to=new_status,

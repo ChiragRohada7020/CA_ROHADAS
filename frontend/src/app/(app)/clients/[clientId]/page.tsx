@@ -7,6 +7,7 @@ import { useState } from "react";
 
 import { Badge, Card, EmptyState, ErrorState, LoadingState, Modal } from "@/components/ui";
 import { Icon } from "@/components/Icon";
+import { PermissionGate } from "@/components/PermissionGate";
 import { ClientActions } from "@/components/ClientActions";
 import { FormActions, FormError, SelectField, TextField, TextAreaField } from "@/components/form";
 import { ApiError, api, buildQuery } from "@/lib/api";
@@ -535,13 +536,17 @@ export default function ClientWorkCentrePage() {
                 }
               >
                 <dl className="grid grid-cols-1 gap-x-6 gap-y-3 p-4 sm:grid-cols-2">
-                  <Detail label="Client Code" value={row.client_code} mono />
-                  <Detail label="PAN" value={row.pan} mono />
-                  <Detail label="GSTIN" value={row.gstin} mono />
-                  <Detail label="Type" value={humanise(row.client_type)} />
-                  <Detail label="TAN" value={row.tan} mono />
-                  <Detail label="CIN" value={row.cin} mono />
-                  <Detail label="LLPIN" value={row.llpin} mono />
+                   <Detail label="Client Code" value={row.client_code} mono />
+                   <PermissionGate code="client.read.sensitive">
+                     <Detail label="PAN" value={row.pan} mono />
+                     <Detail label="GSTIN" value={row.gstin} mono />
+                   </PermissionGate>
+                   <Detail label="Type" value={humanise(row.client_type)} />
+                   <PermissionGate code="client.read.sensitive">
+                     <Detail label="TAN" value={row.tan} mono />
+                     <Detail label="CIN" value={row.cin} mono />
+                     <Detail label="LLPIN" value={row.llpin} mono />
+                   </PermissionGate>
                   <Detail label="Phone" value={primaryContact?.phone ?? null} />
                   <Detail label="Email" value={primaryContact?.email ?? null} />
                   <Detail
@@ -1055,15 +1060,17 @@ export default function ClientWorkCentrePage() {
       )}
 
       {tab === "notes" && (
-        <Card title="Notes" subtitle="Relationship notes held against the client record">
-          {row.relationship_notes ? (
-            <p className="whitespace-pre-wrap p-4 text-sm text-[#64748B]">
-              {row.relationship_notes}
-            </p>
-          ) : (
-            <EmptyState message="No notes recorded for this client." />
-          )}
-        </Card>
+        <PermissionGate code="client.read.notes">
+          <Card title="Notes" subtitle="Relationship notes held against the client record">
+            {row.relationship_notes ? (
+              <p className="whitespace-pre-wrap p-4 text-sm text-[#64748B]">
+                {row.relationship_notes}
+              </p>
+            ) : (
+              <EmptyState message="No notes recorded for this client." />
+            )}
+          </Card>
+        </PermissionGate>
       )}
 
       {tab === "timeline" && (

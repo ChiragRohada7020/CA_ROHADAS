@@ -813,12 +813,12 @@ export default function TaskDetailPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {row.tags && row.tags.length > 0 && (
+          {(row.tags ?? []).length > 0 && (
             <div className="flex flex-wrap items-center gap-1.5">
               <Icon name="tag" className="h-3 w-3 text-slate-400" />
-              {row.tags.map((tag) => (
+              {(row.tags ?? []).map((tag, i) => (
                 <span
-                  key={tag}
+                  key={`${tag}-${i}`}
                   className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-xs text-slate-700"
                 >
                   {tag}
@@ -1280,11 +1280,11 @@ export default function TaskDetailPage() {
 
              <Card title="Tags" icon={<Icon name="tag" className="h-4 w-4" />}>
                <div className="p-4">
-                 {row.tags && row.tags.length > 0 ? (
+                 {(row.tags ?? []).length > 0 ? (
                    <div className="flex flex-wrap gap-1.5">
-                     {row.tags.map((tag) => (
+                     {(row.tags ?? []).map((tag, i) => (
                        <span
-                         key={tag}
+                         key={`${tag}-${i}`}
                          className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-xs text-slate-700"
                        >
                          {tag}

@@ -2,7 +2,9 @@
 
 Endpoints:
   GET  /services                     — paginated service catalogue
+  POST /services                     — create a service
   GET  /services/{id}                — service detail
+  PATCH /services/{id}               — update a service
   GET  /services/by-client/{id}     — services linked to a client
   GET  /services/categories          — distinct service categories
   POST /services/{id}/activate       — activate a client service
@@ -12,14 +14,82 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Body, Depends, HTTPException, Request, status
 
 from app.core.db import SessionLocal, get_db
 from app.core.errors import NotFoundError
 from app.core.security import get_current_user
-from app.models import Client, Service, ClientService, Document
+from sqlalchemy.exc import IntegrityError
+from app.models import Client, Service, ClientService, Document, TaskTemplate
 
 router = APIRouter(tags=["services"])
+
+
+def _service_detail_row(svc: Service, db: SessionLocal, principal: Any) -> dict:
+    """Build the ServiceDetailRow-shaped dict the frontend consumes.
+
+    Centralised so GET /services/{id}, POST /services and PATCH /services/{id}
+    all return the same shape (the field names the frontend type expects, plus the
+    nested ``templates``, ``clients`` and ``client_count`` the drawer relies on).
+    """
+    from sqlalchemy import select
+    from app.routers.task_templates import _template_row
+
+    templates = db.execute(
+        select(TaskTemplate)
+        .where(TaskTemplate.tenant_id == principal.tenant_id)
+        .where(TaskTemplate.service_id == svc.id)
+        .order_by(TaskTemplate.name)
+    ).scalars().all()
+    template_rows = [_template_row(t, db, include_steps=True) for t in templates]
+
+    client_links = db.execute(
+        select(ClientService, Client)
+        .join(Client, Client.id == ClientService.client_id)
+        .where(ClientService.tenant_id == principal.tenant_id)
+        .where(ClientService.service_id == svc.id)
+        .order_by(Client.legal_name)
+    ).all()
+    clients = [
+        {
+            "client_id": str(cs.client_id),
+            "client_code": client.client_code,
+            "legal_name": client.legal_name,
+            "client_status": client.status,
+            "link_is_active": bool(cs.is_active),
+            "start_date": cs.start_date.isoformat() if cs.start_date else None,
+        }
+        for cs, client in client_links
+    ]
+
+    return {
+        "id": str(svc.id),
+        "code": svc.code,
+        "name": svc.name,
+        "description": svc.description,
+        "category": svc.category,
+        "is_recurring": bool(svc.is_recurring),
+        "default_frequency": svc.default_frequency,
+        "default_priority": svc.default_priority,
+        "default_fee_model": svc.default_fee_model,
+        "standard_fee": svc.standard_fee,
+        "sac_code": svc.sac_code,
+        "is_active": bool(svc.is_active),
+        "sort_order": svc.sort_order,
+        "client_count": len(clients),
+        "clients": clients,
+        "templates": template_rows,
+    }
+
+
+def _service_write_permission(principal: Any) -> bool:
+    perms = principal.permissions
+    return (
+        "service.create" in perms
+        or "service.update" in perms
+        or "service.write" in perms
+        or "*:*" in perms
+    )
 
 
 @router.get("/services/categories")
@@ -213,24 +283,91 @@ async def get_service(
 ) -> Any:
     principal = await get_current_user(request, db)
     svc = db.get(Service, service_id)
-    if svc is None:
+    # `db.get` fetches by PK regardless of tenant; reject anything that does not
+    # belong to the caller so a service id from another tenant never leaks across.
+    if svc is None or str(svc.tenant_id) != str(principal.tenant_id):
         raise NotFoundError(f"Service {service_id} not found")
 
-    return {
-        "id": str(svc.id),
-        "code": svc.code,
-        "name": svc.name,
-        "description": svc.description,
-        "category": svc.category,
-        "default_duration_days": getattr(svc, "default_duration_days", None),
-        "default_fee": getattr(svc, "default_fee", None) or getattr(svc, "standard_fee", None),
-        "is_active": svc.is_active,
-        "is_statutory": getattr(svc, "is_statutory", False),
-        "applicable_for": getattr(svc, "applicable_for", None),
-        "filing_frequency": getattr(svc, "filing_frequency", None) or svc.default_frequency,
-        "filing_due_offset_days": getattr(svc, "filing_due_offset_days", None),
-        "created_at": svc.created_at.isoformat() if svc.created_at else None,
-    }
+    return _service_detail_row(svc, db, principal)
+
+
+@router.post("/services")
+async def create_service(
+    request: Request,
+    payload: Any = Body(...),
+    db: SessionLocal = Depends(get_db),
+) -> Any:
+    principal = await get_current_user(request, db)
+    if not _service_write_permission(principal):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Permission 'service.create' is required",
+        )
+
+    p = payload if isinstance(payload, dict) else payload.dict()
+    svc = Service(
+        tenant_id=principal.tenant_id,
+        code=p["code"],
+        name=p["name"],
+        category=p["category"],
+        description=p.get("description"),
+        is_recurring=p.get("is_recurring", False),
+        default_frequency=p.get("default_frequency"),
+        default_priority=p.get("default_priority", "normal"),
+        default_fee_model=p.get("default_fee_model"),
+        standard_fee=p.get("standard_fee"),
+        sac_code=p.get("sac_code") or "9982",
+        is_active=p.get("is_active", True),
+        sort_order=p.get("sort_order", 0),
+    )
+    db.add(svc)
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"A service with code '{svc.code}' already exists for this firm.",
+        )
+    db.refresh(svc)
+    return _service_detail_row(svc, db, principal)
+
+
+@router.patch("/services/{service_id}")
+async def update_service(
+    request: Request,
+    service_id: str,
+    payload: Any = Body(...),
+    db: SessionLocal = Depends(get_db),
+) -> Any:
+    principal = await get_current_user(request, db)
+    if not _service_write_permission(principal):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Permission 'service.update' is required",
+        )
+
+    svc = db.get(Service, service_id)
+    if svc is None or str(svc.tenant_id) != str(principal.tenant_id):
+        raise NotFoundError(f"Service {service_id} not found")
+
+    p = payload if isinstance(payload, dict) else payload.dict()
+    updatable = [
+        "name", "category", "description", "is_recurring", "default_frequency",
+        "default_priority", "default_fee_model", "sac_code", "is_active", "sort_order",
+    ]
+    for field in updatable:
+        if field in p and p[field] is not None:
+            setattr(svc, field, p[field])
+    # The fee needs three-way handling: unchanged, set to a number, or cleared.
+    if p.get("clear_fee"):
+        svc.standard_fee = None
+    elif "standard_fee" in p and p["standard_fee"] is not None:
+        svc.standard_fee = p["standard_fee"]
+
+    db.commit()
+    db.refresh(svc)
+    return _service_detail_row(svc, db, principal)
 
 
 @router.get("/services/by-client/{client_id}")

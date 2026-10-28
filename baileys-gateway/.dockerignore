@@ -1,0 +1,26 @@
+# Dependencies
+node_modules
+
+# Git
+.git
+.gitignore
+
+# Docker files
+Dockerfile
+.dockerignore
+
+# Logs
+*.log
+logs/
+
+# Env
+.env
+.env.*
+
+# WhatsApp session data (mounted as a volume in compose)
+wa-sessions/
+
+# IDE
+.vscode
+.idea
+.DS_Store

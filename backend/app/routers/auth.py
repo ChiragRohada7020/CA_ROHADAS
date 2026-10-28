@@ -21,6 +21,7 @@ from app.core.security import (
     verify_password,
 )
 from app.models import Role, RolePermission, Tenant, User, user_roles
+from app.models.user import UserPermissionOverride
 from app.schemas import LoginRequest, TokenResponse
 
 router = APIRouter(tags=["auth"])
@@ -98,6 +99,19 @@ async def login(
         ).scalars().all()
         permission_codes = list(perm_rows)
 
+    # Apply per-user permission overrides on top of role-based grants
+    overrides = db.execute(
+        select(UserPermissionOverride.permission_code, UserPermissionOverride.action).where(
+            UserPermissionOverride.user_id == user.id,
+            UserPermissionOverride.expires_at.is_(None) | (UserPermissionOverride.expires_at > datetime.now(timezone.utc)),
+        )
+    ).all()
+    for code, action in overrides:
+        if action == "grant" and code not in permission_codes:
+            permission_codes.append(code)
+        elif action == "revoke" and code in permission_codes:
+            permission_codes.remove(code)
+
     token = create_access_token(
         subject=str(user.id), tenant_id=str(user.tenant_id),
         roles=role_codes, permissions=permission_codes,
@@ -130,29 +144,76 @@ async def refresh(
     request: Request,
     db: Session = Depends(get_db),
 ) -> Any:
-    """Rotate the refresh token and issue a new access token."""
+    """Rotate the refresh token and issue a new access token.
+
+    Refresh tokens do **not** carry ``roles`` or ``permissions`` — those are
+    re-hydrated from the database on every refresh so that permission changes
+    take effect immediately without a re-login.
+    """
     refresh_cookie = request.cookies.get("ca_refresh_token")
     if not refresh_cookie:
         raise AppError("No refresh token", code="missing_refresh", status_code=401)
 
     try:
-        payload = decode_token(refresh_cookie, expected_type="refresh")
+        payload = decode_token(refresh_cookie, expected_type="refresh", expected_audience=None)
     except Exception:
         raise AppError("Invalid refresh token", code="invalid_refresh", status_code=401)
 
     user_id = payload.sub
     tenant_id = payload.tenant_id
+    aud = payload.aud or "staff"
 
-    token = create_access_token(
-        subject=user_id, tenant_id=tenant_id,
-        roles=payload.roles or [], permissions=payload.permissions or [],
-        audience=payload.aud or "staff",
-    )
-    refresh = create_refresh_token(
-        subject=user_id, tenant_id=tenant_id, audience=payload.aud or "staff",
-    )
+    # ── Staff users: re-load roles & permissions from the DB ───────────────
+    if aud == "staff":
+        role_rows = db.execute(
+            select(Role).join(user_roles).where(user_roles.c.user_id == user_id)
+        ).scalars().all()
+        role_codes = [r.code for r in role_rows]
+
+        permission_codes: list[str] = []
+        if role_rows:
+            perm_rows = db.execute(
+                select(RolePermission.permission_code).where(
+                    RolePermission.role_id.in_([r.id for r in role_rows])
+                )
+            ).scalars().all()
+            permission_codes = list(perm_rows)
+
+        # Apply per-user permission overrides on top of role-based grants
+        overrides = db.execute(
+            select(UserPermissionOverride.permission_code, UserPermissionOverride.action).where(
+                UserPermissionOverride.user_id == user_id,
+                UserPermissionOverride.expires_at.is_(None)
+                | (UserPermissionOverride.expires_at > datetime.now(timezone.utc)),
+            )
+        ).all()
+        for code, action in overrides:
+            if action == "grant" and code not in permission_codes:
+                permission_codes.append(code)
+            elif action == "revoke" and code in permission_codes:
+                permission_codes.remove(code)
+
+        token = create_access_token(
+            subject=user_id, tenant_id=tenant_id,
+            roles=role_codes, permissions=permission_codes,
+            audience="staff",
+        )
+        refresh = create_refresh_token(
+            subject=user_id, tenant_id=tenant_id, audience="staff",
+        )
+    # ── Client portal users: re-issue with the same limited scope ──────────
+    else:
+        token = create_access_token(
+            subject=user_id, tenant_id=tenant_id,
+            roles=["client"], permissions=[],
+            audience=aud,
+        )
+        refresh = create_refresh_token(
+            subject=user_id, tenant_id=tenant_id, audience=aud,
+        )
+
     _set_auth_cookies(response, token, refresh)
-    return {"ok": True}
+    return {"ok": True, "token_type": "bearer", "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60}
 
 
 @router.post("/auth/logout")
@@ -166,13 +227,48 @@ async def logout(
     refresh_cookie = request.cookies.get("ca_refresh_token")
     if refresh_cookie:
         from app.models.user import RefreshToken
-        db.execute(
-            __import__("sqlalchemy").update(RefreshToken)
-            .where(RefreshToken.token_hash == refresh_cookie)
-            .values(revoked_at=datetime.now(timezone.utc))
-        )
-        db.commit()
+        from app.core.security import hash_opaque
+        try:
+            db.execute(
+                __import__("sqlalchemy").update(RefreshToken)
+                .where(RefreshToken.token_hash == hash_opaque(refresh_cookie))
+                .values(revoked_at=datetime.now(timezone.utc))
+            )
+            db.commit()
+        except Exception:
+            pass
     return {"ok": True, "message": "Signed out"}
+
+
+@router.post("/auth/change-password")
+async def change_password(
+    request: Request,
+    db: Session = Depends(get_db),
+) -> Any:
+    principal = await get_current_user(request, db)
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    current_password = body.get("current_password") or body.get("old_password") or body.get("currentPassword")
+    new_password = body.get("new_password") or body.get("newPassword") or body.get("password") or body.get("newPasswordConfirm")
+
+    if not current_password or not new_password:
+        raise AppError("current_password and new_password are required", code="missing_fields", status_code=400)
+
+    user = db.get(User, principal.id)
+    if user is None:
+        raise NotFoundError("User not found")
+
+    from app.core.security import verify_password
+
+    if not verify_password(current_password, user.password_hash):
+        raise AppError("Current password is incorrect", code="invalid_password", status_code=400)
+
+    user.password_hash = hash_password(new_password)
+    db.commit()
+    return {"ok": True}
+
 
 
 @router.get("/auth/me")
@@ -231,7 +327,7 @@ async def onboarding(
     if db.execute(select(User).where(User.email == owner_email)).scalar_one_or_none():
         raise ConflictError("Email already registered")
 
-    tenant = Tenant(name=firm_name, slug=firm_slug, status="active")
+    tenant = Tenant(name=firm_name, legal_name=firm_name, slug=firm_slug, status="active")
     db.add(tenant)
     db.flush()
 
@@ -261,6 +357,13 @@ async def onboarding(
         )
 
     db.commit()
+
+    # Seed the remaining built-in roles (partner, manager, senior_associate,
+    # etc.) so the new firm has the full role catalogue from day one.
+    # ``firm_owner`` is already created above; ``seed_default_roles`` is
+    # idempotent and will skip it.
+    from app.core.rbac import seed_default_roles
+    seed_default_roles(db, tenant.id)
 
     token = create_access_token(
         subject=str(owner.id), tenant_id=str(tenant.id),

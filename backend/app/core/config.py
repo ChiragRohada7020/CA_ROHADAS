@@ -45,6 +45,9 @@ class Settings(BaseSettings):
     BLOB_READ_WRITE_TOKEN: str | None = None
     LOCAL_STORAGE_PATH: str = "backend/var/storage"
 
+    # ── CSV import ──
+    IMPORT_DIR: str = "/tmp/ca_imports"
+
     # ── WhatsApp integration ──
     WHATSAPP_PROVIDER: str = "baileys"
     WHATSAPP_API_URL: str | None = None

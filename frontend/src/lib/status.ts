@@ -4,6 +4,10 @@
  * The three status axes (task, approval, filing) are independent in the data model,
  * so each gets its own mapping. Nothing here infers one from another — that would
  * undo the separation the database enforces.
+ *
+ * Colour tokens use Tailwind classes with `dark:` variants, so every badge, dot,
+ * and progress bar is readable on both light and dark surfaces without the
+ * caller branching on theme.
  */
 
 export type Tone = "neutral" | "info" | "progress" | "warning" | "danger" | "success";
@@ -11,12 +15,12 @@ export type Tone = "neutral" | "info" | "progress" | "warning" | "danger" | "suc
 import type { TaskStatus } from "./types";
 
 const TONE_CLASSES: Record<Tone, string> = {
-  neutral: "bg-[#F2F4F7] text-[#475467] ring-[#E4E7EC]",
-  info: "bg-[#F0F9FF] text-[#0369A1] ring-[#BAE6FD]",
-  progress: "bg-[#EEF2FF] text-[#3730A3] ring-[#C7D2FE]",
-  warning: "bg-[#FFFAEB] text-[#92400E] ring-[#FEDF89]",
-  danger: "bg-[#FEE4E2] text-[#B42318] ring-[#FCA5A5]",
-  success: "bg-[#DCFCE7] text-[#15803D] ring-[#86EFAC]",
+  neutral: "bg-slate-100 text-slate-700 ring-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700",
+  info: "bg-sky-50 text-sky-700 ring-sky-200 dark:bg-sky-900/25 dark:text-sky-300 dark:ring-sky-800",
+  progress: "bg-indigo-50 text-indigo-700 ring-indigo-200 dark:bg-indigo-900/25 dark:text-indigo-300 dark:ring-indigo-800",
+  warning: "bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-900/25 dark:text-amber-300 dark:ring-amber-800",
+  danger: "bg-rose-50 text-rose-700 ring-rose-200 dark:bg-rose-900/25 dark:text-rose-300 dark:ring-rose-800",
+  success: "bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-900/25 dark:text-emerald-300 dark:ring-emerald-800",
 };
 
 /** All 14 workflow states. */
@@ -85,9 +89,10 @@ export function utilisationTone(percent: number): Tone {
   return "neutral";
 }
 
-/** The solid fill colour for a progress or utilisation bar. */
+/** The solid fill colour for a progress or utilisation bar.
+ * Solid fills are already visible on dark surfaces, so only `neutral` adjusts. */
 const BAR_CLASSES: Record<Tone, string> = {
-  neutral: "bg-slate-400",
+  neutral: "bg-slate-400 dark:bg-slate-500",
   info: "bg-sky-500",
   progress: "bg-indigo-500",
   warning: "bg-amber-500",
@@ -281,7 +286,7 @@ export function statusRequiresReason(toStatus: TaskStatus): boolean {
 
 /** Solid dot colour for each status, used in dropdown option lists. */
 export const STATUS_DOT_CLASSES: Record<string, string> = {
-  not_started: "bg-slate-400",
+  not_started: "bg-slate-400 dark:bg-slate-500",
   assigned: "bg-sky-500",
   in_progress: "bg-[#1677FF]",
   waiting_for_client: "bg-amber-500",
@@ -294,11 +299,11 @@ export const STATUS_DOT_CLASSES: Record<string, string> = {
   filed: "bg-emerald-600",
   delivered: "bg-emerald-500",
   completed: "bg-emerald-500",
-  cancelled: "bg-slate-400",
+  cancelled: "bg-slate-400 dark:bg-slate-500",
 };
 
 export function statusDotClass(status: string): string {
-  return STATUS_DOT_CLASSES[status] ?? "bg-slate-400";
+  return STATUS_DOT_CLASSES[status] ?? "bg-slate-400 dark:bg-slate-500";
 }
 
 export function delayReasonLabel(value: string): string {
@@ -399,4 +404,3 @@ const CHANNEL_TONES: Record<string, Tone> = {
 export function channelTone(channel: string): Tone {
   return CHANNEL_TONES[channel] ?? "neutral";
 }
-

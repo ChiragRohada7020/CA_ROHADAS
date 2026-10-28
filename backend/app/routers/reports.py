@@ -118,9 +118,10 @@ async def get_dashboard(
             continue
         sdue = r[2]
         if sdue is not None:
-            if sdue < today:
+            sdue_d = sdue.date() if hasattr(sdue, "date") else sdue
+            if sdue_d < today:
                 b["overdue"] += 1
-            elif sdue < compliance_due_soon_end:
+            elif sdue_d < compliance_due_soon_end:
                 b["due_soon"] += 1
 
     compliance = []
@@ -276,7 +277,8 @@ async def get_dashboard(
     ).order_by(Deadline.statutory_due_date.asc())).all()
     upcoming_deadlines = []
     for dl in deadlines:
-        days_remaining = (dl.statutory_due_date - today).days
+        due_d = dl.statutory_due_date.date() if dl.statutory_due_date and hasattr(dl.statutory_due_date, "date") else dl.statutory_due_date
+        days_remaining = (due_d - today).days if due_d else 0
         upcoming_deadlines.append({
             "task_id": str(dl.task_id) if dl.task_id else None,
             "client_id": str(dl.client_id) if dl.client_id else None,
@@ -367,17 +369,42 @@ async def get_weekly_change(
     from datetime import timedelta
     today = today_local()
     from_date = today - timedelta(days=7)
+    from app.models import Invoice, Payment
+    from sqlalchemy import select
+
+    invoices_issued = db.execute(
+        select(func.count()).select_from(Invoice).where(
+            Invoice.tenant_id == tenant_id,
+            Invoice.issued_at.is_not(None),
+            Invoice.issued_at >= from_date,
+        )
+    ).scalar() or 0
+    payments_received = db.execute(
+        select(func.count()).select_from(Payment).join(Invoice).where(
+            Invoice.tenant_id == tenant_id,
+            Payment.paid_on >= from_date,
+        )
+    ).scalar() or 0
+    tasks_created = db.execute(select(func.count()).select_from(Task).where(
+        Task.tenant_id == tenant_id,
+        Task.created_at >= from_date,
+    )).scalar() or 0
+    tasks_completed = db.execute(select(func.count()).select_from(Task).where(
+        Task.tenant_id == tenant_id,
+        Task.status == "completed",
+        Task.updated_at >= from_date,
+    )).scalar() or 0
     return {
         "from_date": from_date.isoformat(),
         "to_date": today.isoformat(),
-        "tasks_created": 0,
-        "tasks_completed": 0,
-        "tasks_opened": 0,
-        "tasks_closed": 0,
+        "tasks_created": tasks_created,
+        "tasks_completed": tasks_completed,
+        "tasks_opened": tasks_created,
+        "tasks_closed": tasks_completed,
         "clients_added": 0,
         "documents_uploaded": 0,
-        "invoices_issued": 0,
-        "payments_received": 0,
+        "invoices_issued": invoices_issued,
+        "payments_received": payments_received,
     }
 
 
@@ -472,19 +499,21 @@ async def get_upcoming_deadlines(
     end_date = today + timedelta(days=days)
 
     deadlines = db.execute(select(Deadline).where(
+        Deadline.tenant_id == tenant_id,
         Deadline.statutory_due_date >= today,
         Deadline.statutory_due_date <= end_date,
     )).scalars().all()
 
     rows = []
     for dl in deadlines:
-        days_remaining = (dl.statutory_due_date - today).days if dl.statutory_due_date else 0
+        due_date = dl.statutory_due_date.date() if dl.statutory_due_date else None
+        days_remaining = (due_date - today).days if due_date else 0
         client = db.get(Client, dl.client_id) if dl.client_id else None
         rows.append({
             "task_id": str(dl.task_id) if dl.task_id else None,
             "client_id": str(dl.client_id) if dl.client_id else None,
             "client_name": client.legal_name if client else None,
-            "title": dl.rule_name or "Compliance deadline",
+            "title": dl.notes or "Compliance deadline",
             "statutory_due_date": dl.statutory_due_date.isoformat() if dl.statutory_due_date else None,
             "internal_due_date": dl.internal_due_date.isoformat() if dl.internal_due_date else None,
             "days_remaining": days_remaining,
@@ -502,11 +531,15 @@ async def get_productivity(
 ) -> Any:
     principal = await get_current_user(request, db)
     tenant_id = principal.tenant_id
+    from datetime import date, timedelta
+    today = date.today()
     return {
-        "tasks_per_user": [],
-        "tasks_per_week": [],
-        "avg_days_to_complete": 0,
-        "completion_rate": 0,
+        "total_completed": 0,
+        "total_logged_hours": 0,
+        "period_start": (today - timedelta(days=30)).isoformat(),
+        "period_end": today.isoformat(),
+        "rows": [],
+        "notes": [],
     }
 
 
@@ -518,9 +551,11 @@ async def get_bottlenecks(
     principal = await get_current_user(request, db)
     tenant_id = principal.tenant_id
     return {
-        "by_status": [],
-        "by_assignee": [],
-        "avg_dwell_days": {},
+        "slowest_stage": None,
+        "aging": [],
+        "dwell": [],
+        "recurrence_delay": [],
+        "notes": [],
     }
 
 

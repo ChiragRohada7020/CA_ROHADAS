@@ -7,7 +7,7 @@ file owning one or more related tables.
 from __future__ import annotations
 
 from app.models.tenant import Tenant, Branch, TenantStatus
-from app.models.user import User, RefreshToken, ClientPortalUser, Role, RolePermission, Permission, user_roles
+from app.models.user import User, RefreshToken, ClientPortalUser, Role, RolePermission, Permission, user_roles, UserPermissionOverride
 from app.models.client import (
     Client, LegalEntity, ClientEntityLink, Contact, Registration,
     ClientStatus, ClientType,
@@ -30,18 +30,19 @@ from app.models.document import (
     DocumentShare, DocumentAccessLog, DocumentStatus,
 )
 from app.models.invoice import (
-    Invoice, InvoiceLine, Payment, BillingSettings, ClientSummaryRow,
-    InvoiceStatus, GstTaxType, PaymentMethod,
+    Invoice, InvoiceLine, Payment, PaymentAllocation, BillingSettings, ClientSummaryRow, CreditNote, RecurringSchedule,
+    InvoiceStatus, GstTaxType, PaymentMethod, CreditNoteType, CreditNoteStatus, RecurringFrequency, RecurringStatus,
+    PaymentReminder, Receipt,
 )
 from app.models.messaging import (
     Conversation, ConversationMessage, Notification,
     IntegrationConnection, ImportJob,
 )
-from app.models.audit_models import Review, Approval
+from app.models.audit_models import Review, Approval, AuditLog
 
 __all__ = [
     "Tenant", "Branch", "TenantStatus",
-    "User", "RefreshToken", "ClientPortalUser", "Role", "RolePermission", "Permission", "user_roles",
+    "User", "RefreshToken", "ClientPortalUser", "Role", "RolePermission", "Permission", "user_roles", "UserPermissionOverride", "UserPermissionOverride",
     "Client", "LegalEntity", "ClientEntityLink", "Contact", "Registration",
     "ClientStatus", "ClientType",
     "Service", "ClientService", "Engagement", "FinancialYear", "ServiceCategory",
@@ -53,9 +54,10 @@ __all__ = [
     "DeadlineOverride", "FilingRecord", "Acknowledgement", "RuleStatus",
     "Document", "DocumentVersion", "DocumentLink", "DocumentRequest",
     "DocumentShare", "DocumentAccessLog", "DocumentStatus",
-    "Invoice", "InvoiceLine", "Payment", "BillingSettings", "ClientSummaryRow",
-    "InvoiceStatus", "GstTaxType", "PaymentMethod",
+    "Invoice", "InvoiceLine", "Payment", "PaymentAllocation", "BillingSettings", "ClientSummaryRow", "CreditNote",
+    "InvoiceStatus", "GstTaxType", "PaymentMethod", "CreditNoteType", "CreditNoteStatus",
+    "PaymentReminder", "Receipt",
     "Conversation", "ConversationMessage", "Notification",
     "IntegrationConnection", "ImportJob",
-    "Review", "Approval",
+    "Review", "Approval", "AuditLog",
 ]

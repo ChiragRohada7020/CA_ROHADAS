@@ -1,59 +1,37 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
-
+import { PageHeader } from "@/components/ui";
 import { CreateInvoiceForm } from "@/components/CreateInvoiceForm";
-import { ErrorState, LoadingState } from "@/components/ui";
-import { api } from "@/lib/api";
-import type { InvoiceDetail } from "@/lib/types";
+import { useRouter } from "next/navigation";
 
 /**
- * Create / Edit Invoice page.
+ * Full-page invoice creation with live split-pane preview.
  *
- * When `?edit={id}` is present, the page loads the existing draft and opens the
- * form in edit mode. Without it, a fresh invoice is created.
- *
- * This is the full-screen editor with a live preview. The invoices list page
- * toggles a simpler inline `NewInvoiceForm`; this route is the complete workflow.
+ * This is the "raise an invoice" surface — distinct from the slide-over
+ * `NewInvoiceForm` on the invoices list page. The split-pane layout puts the
+ * form and the live preview side by side, so every keystroke is reflected
+ * immediately in the rendered invoice.
  */
 export default function NewInvoicePage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const editId = searchParams?.get("edit");
-  const [created, setCreated] = useState<InvoiceDetail | null>(null);
 
-  const existing = useQuery({
-    queryKey: ["invoice", editId ?? null],
-    queryFn: () => api.get<InvoiceDetail>(`/invoices/${editId}`),
-    enabled: !!editId,
-    staleTime: 60 * 1000,
-  });
-
-  const handleDone = (invoice: InvoiceDetail) => {
-    router.push(`/invoices/${invoice.id}`);
-  };
-
-  const handleCreateDone = (invoice: InvoiceDetail) => {
-    setCreated(invoice);
-  };
-
-  // Edit mode: load the existing draft
-  if (editId) {
-    if (existing.isPending) return <LoadingState label="Loading draft…" />;
-    if (existing.isError) return <ErrorState message="Could not load this draft invoice." />;
-
-    return (
-      <CreateInvoiceForm initial={existing.data!} onDone={handleDone} />
-    );
-  }
-
-  // Create mode: show the form, allow staying on the page after saving
   return (
-    <CreateInvoiceForm
-      key={created?.id ?? "new"}
-      onDone={handleCreateDone}
-    />
+    <div className="space-y-4">
+      <PageHeader
+        title="New invoice"
+        subtitle="Create a sale invoice with a live preview."
+        action={
+          <button type="button" className="btn-ghost" onClick={() => router.push("/invoices")}>
+            Back to invoices
+          </button>
+        }
+      />
+      <div className="h-[calc(100vh-8rem)]">
+        <CreateInvoiceForm
+          onDone={(invoice) => router.push(`/invoices/${invoice.id}`)}
+          onClose={() => router.push("/invoices")}
+        />
+      </div>
+    </div>
   );
 }

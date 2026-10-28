@@ -133,8 +133,12 @@ class Task(Base):
     __table_args__ = (
         CheckConstraint("progress_percent BETWEEN 0 AND 100", name="ck_tasks_progress_range"),
         CheckConstraint(
-            "reviewer_id IS DISTINCT FROM preparer_id AND approver_id IS DISTINCT FROM preparer_id",
+            "reviewer_id IS NULL OR preparer_id IS NULL OR reviewer_id <> preparer_id",
             name="ck_tasks_separation_of_duty",
+        ),
+        CheckConstraint(
+            "approver_id IS NULL OR preparer_id IS NULL OR approver_id <> preparer_id",
+            name="ck_tasks_separation_of_duty_approver",
         ),
         UniqueConstraint(
             "tenant_id", "task_code", name="uq_tasks_code"

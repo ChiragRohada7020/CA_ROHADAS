@@ -26,7 +26,7 @@ from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, Request
 from app.core.db import SessionLocal, get_db
 from app.core.errors import NotFoundError
 from app.core.clock import today_local
-from app.core.security import get_current_user
+from app.core.security import get_current_user, require_permission
 from sqlalchemy.exc import IntegrityError
 from app.models import (
     Client, ClientEntityLink, Contact, Engagement, Registration,
@@ -337,7 +337,7 @@ async def get_client(
     principal = await get_current_user(request, db)
 
     client = db.get(Client, client_id)
-    if client is None:
+    if client is None or str(client.tenant_id) != str(principal.tenant_id):
         raise NotFoundError(f"Client {client_id} not found")
 
     entities = db.execute(
@@ -346,11 +346,11 @@ async def get_client(
     ).scalars().all()
 
     contacts = db.execute(
-        select(Contact).where(Contact.client_id == client_id)
+        select(Contact).where(Contact.client_id == client_id).where(Contact.tenant_id == principal.tenant_id)
     ).scalars().all()
 
     registrations = db.execute(
-        select(Registration).where(Registration.client_id == client_id)
+        select(Registration).where(Registration.client_id == client_id).where(Registration.tenant_id == principal.tenant_id)
     ).scalars().all()
 
     services = db.execute(
@@ -571,10 +571,11 @@ async def get_client_progress(
 
 
 @router.patch("/clients/{client_id}")
+@router.put("/clients/{client_id}")
 async def update_client(
     request: Request,
     client_id: str,
-     payload: Any = Body(...),
+    payload: Any = Body(...),
     db: SessionLocal = Depends(get_db),
 ) -> Any:
     from app.core.rbac import Permission as Perm
@@ -749,6 +750,130 @@ async def add_client_service(
         )
 
     return {"id": str(cs.id), "service_id": str(cs.service_id), "is_active": cs.is_active}
+
+
+@router.delete("/clients/{client_id}/services/{service_id}")
+async def detach_client_service(
+    request: Request,
+    client_id: str,
+    service_id: str,
+    db: SessionLocal = Depends(get_db),
+) -> Any:
+    principal = await get_current_user(request, db)
+    if "client.update" not in principal.permissions and "*:*" not in principal.permissions:
+        raise HTTPException(status_code=403, detail="Permission 'client.update' is required")
+
+    client = db.get(Client, client_id)
+    if client is None:
+        raise NotFoundError(f"Client {client_id} not found")
+
+    from app.models import ClientService
+    cs = db.query(ClientService).filter(
+        ClientService.client_id == client_id,
+        ClientService.service_id == service_id,
+        ClientService.tenant_id == client.tenant_id,
+    ).first()
+    if cs is None:
+        raise NotFoundError("Client service not found")
+
+    db.delete(cs)
+    db.commit()
+    return {"ok": True}
+
+
+@router.get("/search")
+async def global_search(
+    request: Request,
+    q: str = "",
+    limit: int = 20,
+    db: SessionLocal = Depends(get_db),
+) -> Any:
+    principal = await get_current_user(request, db)
+    tenant_id = principal.tenant_id
+    query = (q or "").strip()
+    if not query:
+        return {"items": []}
+
+    results = []
+
+    # Clients
+    try:
+        from sqlalchemy import text
+        rows = db.execute(text("""
+            SELECT id, legal_name, client_code, status FROM clients
+            WHERE tenant_id = CAST(:tenant AS uuid)
+            AND (legal_name ILIKE :q OR client_code ILIKE :q OR display_name ILIKE :q)
+            ORDER BY legal_name LIMIT :lim
+        """), {"tenant": str(tenant_id), "q": f"%{query}%", "lim": limit}).fetchall()
+        for r in rows:
+            results.append({
+                "type": "client",
+                "id": str(r.id),
+                "title": r.legal_name,
+                "subtitle": r.client_code or r.status,
+                "url": f"/clients/{r.id}",
+            })
+    except Exception:
+        pass
+
+    # Tasks
+    try:
+        rows = db.execute(text("""
+            SELECT id, title, task_number, status FROM tasks
+            WHERE tenant_id = CAST(:tenant AS uuid)
+            AND (title ILIKE :q OR task_number ILIKE :q)
+            ORDER BY created_at DESC LIMIT :lim
+        """), {"tenant": str(tenant_id), "q": f"%{query}%", "lim": limit}).fetchall()
+        for r in rows:
+            results.append({
+                "type": "task",
+                "id": str(r.id),
+                "title": r.title or r.task_number,
+                "subtitle": r.task_number or r.status,
+                "url": f"/tasks/{r.id}",
+            })
+    except Exception:
+        pass
+
+    # Documents
+    try:
+        rows = db.execute(text("""
+            SELECT id, title FROM documents
+            WHERE tenant_id = CAST(:tenant AS uuid)
+            AND title ILIKE :q
+            ORDER BY created_at DESC LIMIT :lim
+        """), {"tenant": str(tenant_id), "q": f"%{query}%", "lim": limit}).fetchall()
+        for r in rows:
+            results.append({
+                "type": "document",
+                "id": str(r.id),
+                "title": r.title,
+                "subtitle": "Document",
+                "url": f"/documents/{r.id}",
+            })
+    except Exception:
+        pass
+
+    # Invoices
+    try:
+        rows = db.execute(text("""
+            SELECT id, invoice_number, client_name FROM invoices
+            WHERE tenant_id = CAST(:tenant AS uuid)
+            AND (invoice_number ILIKE :q OR client_name ILIKE :q)
+            ORDER BY created_at DESC LIMIT :lim
+        """), {"tenant": str(tenant_id), "q": f"%{query}%", "lim": limit}).fetchall()
+        for r in rows:
+            results.append({
+                "type": "invoice",
+                "id": str(r.id),
+                "title": r.invoice_number or r.id,
+                "subtitle": r.client_name,
+                "url": f"/invoices/{r.id}",
+            })
+    except Exception:
+        pass
+
+    return {"items": results}
 
 
 @router.get("/clients/{client_id}/invoices")

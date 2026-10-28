@@ -1,8 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
 
 import { Icon, type IconName } from "@/components/Icon";
 import {
@@ -14,12 +14,14 @@ import {
   type ChipTone,
   type DonutSegment,
 } from "@/components/charts";
-import { Badge, Card, EmptyState, ErrorState, LoadingState, PageHeader } from "@/components/ui";
+import { Badge, Button, Card, EmptyState, ErrorState, LoadingState, PageHeader, Skeleton } from "@/components/ui";
 import { ApiError, api } from "@/lib/api";
 import { cn, formatMoney, formatPercent, formatRelative, humanise } from "@/lib/format";
 import { riskTone, utilisationTone } from "@/lib/status";
 import { useSession } from "@/lib/session";
-import type { ComplianceCategoryRow, FirmDashboard } from "@/lib/types";
+import type { FirmDashboard } from "@/lib/types";
+
+type ComplianceCategoryRow = FirmDashboard["compliance"][number];
 
 /**
  * The partner's home screen.
@@ -77,7 +79,49 @@ export default function DashboardPage() {
   });
   const { data: session } = useSession();
 
-  if (isPending) return <LoadingState label="Building your dashboard…" />;
+  if (isPending) {
+    return (
+      <div className="dashboard-page min-h-screen space-y-10 py-8">
+        <PageHeader
+          title="Loading dashboard..."
+          subtitle="Fetching your latest practice insights."
+        />
+        <section className="grid grid-cols-2 gap-5 sm:grid-cols-3 xl:grid-cols-5">
+          {[...Array(5)].map((_, i) => (
+            <Card key={i} className="relative p-5">
+              <div className="flex items-start justify-between">
+                <Skeleton className="h-11 w-11 rounded-xl" />
+                <Skeleton className="h-5 w-12" />
+              </div>
+              <Skeleton className="mt-4 h-8 w-16" />
+              <Skeleton className="mt-2 h-3 w-24" />
+            </Card>
+          ))}
+        </section>
+        <div className="grid grid-cols-1 gap-10 xl:grid-cols-3">
+          <Card className="xl:col-span-2">
+            <div className="card-header">
+              <Skeleton className="h-5 w-40" />
+            </div>
+            <div className="card-body">
+              <Skeleton className="h-48 w-full" />
+            </div>
+          </Card>
+          <Card>
+            <div className="card-header">
+              <Skeleton className="h-5 w-32" />
+            </div>
+            <div className="card-body space-y-3">
+              {[...Array(4)].map((_, i) => (
+                <Skeleton key={i} className="h-12 w-full" />
+              ))}
+            </div>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
   if (isError) {
     return (
       <ErrorState
@@ -97,7 +141,7 @@ export default function DashboardPage() {
     <div className="dashboard-page min-h-screen space-y-8 py-2">
       <PageHeader
         title={`${greeting(data)}${session?.user?.full_name ? `, ${session.user.full_name.split(" ")[0]}` : ""}`}
-        subtitle="Here&rsquo;s what&rsquo;s important for your practice today."
+        subtitle="Here’s what’s important for your practice today."
         action={
           <div className="text-right text-xs text-slate-500">
             <p className="font-medium text-slate-700">
@@ -220,35 +264,47 @@ function HeadlineCard({
     warning: "border-t-amber-200",
     info: "border-t-sky-200",
     success: "border-t-emerald-200",
-    neutral: "border-t-slate-200",
-    progress: "border-t-indigo-200",
     violet: "border-t-violet-200",
+    progress: "border-t-indigo-200",
+    neutral: "border-t-slate-200",
+  };
+
+  const iconBg: Record<ChipTone, string> = {
+    danger: "bg-rose-50 text-rose-600",
+    warning: "bg-amber-50 text-amber-600",
+    info: "bg-sky-50 text-sky-600",
+    success: "bg-emerald-50 text-emerald-600",
+    violet: "bg-violet-50 text-violet-600",
+    progress: "bg-indigo-50 text-indigo-600",
+    neutral: "bg-slate-50 text-slate-600",
   };
 
   return (
-    <Link
-      href={href}
-      className={cn(
-        "dashboard-stat stat-fade-in card group flex items-start gap-3 p-4 shadow-sm",
-        "border-t",
-        toneBorder[tone],
-      )}
-      style={{ animationDelay: `${index * 60}ms` }}
-    >
-      <IconChip tone={tone}>
-        <Icon name={icon} className="h-5 w-5" />
-      </IconChip>
-      <div className="min-w-0">
-        <p className="tabular text-2xl font-semibold text-slate-900">{value}</p>
-        <p className="text-xs font-medium text-slate-600">{label}</p>
-        <p className="mt-0.5">
-          {trend ? (
-            <TrendPill delta={trend.delta} comparedTo={trend.compared_to} goodDirection="down" />
-          ) : (
-            hint && <span className="text-xs text-slate-400">{hint}</span>
-          )}
-        </p>
-      </div>
+    <Link href={href} className="block group">
+      <Card
+        className={cn(
+          "dashboard-card dashboard-stat relative overflow-hidden border-t-2 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg",
+          toneBorder[tone],
+        )}
+        style={{ animationDelay: `${index * 60}ms` }}
+      >
+        <div className="stat-fade-in p-4">
+          <div className="flex items-start justify-between">
+            <div className={cn("flex h-10 w-10 items-center justify-center rounded-lg", iconBg[tone])}>
+              <Icon name={icon} className="h-5 w-5" />
+            </div>
+            {trend ? (
+              <TrendPill delta={trend.delta} comparedTo={trend.compared_to} />
+            ) : hint ? (
+              <Badge tone="neutral" className="text-[10px]">
+                {hint}
+              </Badge>
+            ) : null}
+          </div>
+          <p className="mt-3 text-xs font-medium text-slate-500">{label}</p>
+          <p className="mt-1 text-2xl font-semibold tabular tracking-tight text-slate-900">{value}</p>
+        </div>
+      </Card>
     </Link>
   );
 }
@@ -272,7 +328,11 @@ function ComplianceSummary({
 
   if (!rows || rows.length === 0) {
     return (
-      <Card title="Compliance Summary" className={cn(className, "dashboard-card dashboard-card--compliance")}>
+      <Card
+        title="Compliance Summary"
+        className={cn(className, "dashboard-card dashboard-card--compliance")}
+        style={{ animationDelay: "180ms" }}
+      >
          <EmptyState message="No work has been generated yet." />
        </Card>
     );
@@ -313,9 +373,9 @@ function ComplianceSummary({
        subtitle="Work by service category, counted at read time."
        className={cn(className, "dashboard-card dashboard-card--compliance")}
       action={
-        <Link href="/tasks" className="btn-ghost px-2 py-1 text-xs">
-          View all
-        </Link>
+        <Button asChild variant="ghost" size="sm">
+          <Link href="/tasks">View tasks</Link>
+        </Button>
       }
     >
       <div className="px-4 pb-3">
@@ -399,12 +459,12 @@ function UpcomingDeadlines({ rows }: { rows: FirmDashboard["upcoming_deadlines"]
   return (
     <Card
       title="Upcoming Deadlines"
-      subtitle="Next statutory dates across the firm."
+      subtitle="Confirmed statutory dates, plus tasks due soon."
       className="dashboard-card dashboard-card--deadlines"
       action={
-        <Link href="/calendar" className="btn-ghost px-2 py-1 text-xs">
-          View calendar
-        </Link>
+        <Button asChild variant="ghost" size="sm">
+          <Link href="/calendar">View calendar</Link>
+        </Button>
       }
     >
       {soon.length === 0 ? (
@@ -494,9 +554,9 @@ function WorkPipeline({ stages }: { stages: FirmDashboard["pipeline"] }) {
       subtitle={`${total} task(s) in flight, across ${safeStages.length} stages.`}
       className="dashboard-card dashboard-card--pipeline"
       action={
-        <Link href="/tasks" className="btn-ghost px-2 py-1 text-xs">
-          View all
-        </Link>
+        <Button asChild variant="ghost" size="sm">
+          <Link href="/tasks">View all</Link>
+        </Button>
       }
     >
       <div className="flex flex-wrap items-stretch gap-2 p-4">
@@ -558,9 +618,9 @@ function ClientPortfolio({ portfolio }: { portfolio: FirmDashboard["portfolio"] 
        subtitle={`${p.clients_total ?? 0} client(s) on the books.`}
        className="dashboard-card dashboard-card--portfolio"
       action={
-        <Link href="/clients" className="btn-ghost px-2 py-1 text-xs">
-          View all
-        </Link>
+        <Button asChild variant="ghost" size="sm">
+          <Link href="/clients">View all</Link>
+        </Button>
       }
     >
       <div className="grid grid-cols-2 gap-3 p-4 lg:grid-cols-4">
@@ -600,9 +660,9 @@ function FinancialOverview({ financials }: { financials: FirmDashboard["financia
        subtitle={`${financials.period_label} · outstanding is as at today`}
        className="dashboard-card dashboard-card--financial"
       action={
-        <Link href="/receivables" className="btn-ghost px-2 py-1 text-xs">
-          View report
-        </Link>
+        <Button asChild variant="ghost" size="sm">
+          <Link href="/receivables">View report</Link>
+        </Button>
       }
     >
        <div className="grid grid-cols-2 gap-3 p-4">
@@ -676,9 +736,9 @@ function ClientsNeedingAttention({ rows }: { rows: FirmDashboard["at_risk_client
       subtitle="Ranked by risk, then by how much is late."
       className="dashboard-card dashboard-card--at-risk"
       action={
-        <Link href="/clients" className="btn-ghost px-2 py-1 text-xs">
-          View all
-        </Link>
+        <Button asChild variant="ghost" size="sm">
+          <Link href="/clients">View all</Link>
+        </Button>
       }
     >
       {top.length === 0 ? (
@@ -745,9 +805,9 @@ function TeamWorkload({ rows }: { rows: FirmDashboard["workload"] }) {
       subtitle="Utilisation is complexity-weighted effort, not a task count."
       className="dashboard-card dashboard-card--workload"
       action={
-        <Link href="/team" className="btn-ghost px-2 py-1 text-xs">
-          View team
-        </Link>
+        <Button asChild variant="ghost" size="sm">
+          <Link href="/team">View team</Link>
+        </Button>
       }
     >
       {top.length === 0 ? (
@@ -802,9 +862,9 @@ function RecentActivity({ rows }: { rows: FirmDashboard["recent_activity"] }) {
       subtitle="Append-only: the firm's own record of what happened."
       className="dashboard-card dashboard-card--activity"
       action={
-        <Link href="/reports" className="btn-ghost px-2 py-1 text-xs">
-          View all
-        </Link>
+        <Button asChild variant="ghost" size="sm">
+          <Link href="/reports">View all</Link>
+        </Button>
       }
     >
       {top.length === 0 ? (

@@ -104,20 +104,32 @@ def decode_token(
     token: str,
     *,
     expected_type: str = "access",
-    expected_audience: str = "staff",
+    expected_audience: str | None = "staff",
 ) -> TokenPayload:
     """Decode and validate a JWT token.
 
     Raises ``HTTPException`` with the appropriate status for expired, invalid,
     or mismatched-type tokens.
+
+    Pass ``expected_audience=None`` to skip audience verification (e.g. when
+    decoding refresh tokens that may belong to either the ``staff`` or
+    ``client`` audience).
     """
     try:
+        decode_kwargs: dict[str, Any] = {
+            "algorithms": [settings.JWT_ALGORITHM],
+            "options": {"require": ["exp", "iat", "type", "sub", "tenant_id"]},
+        }
+        if expected_audience is None:
+            # Skip audience verification entirely — the token may belong to
+            # either the "staff" or "client" audience.
+            decode_kwargs["options"]["verify_aud"] = False
+        else:
+            decode_kwargs["audience"] = expected_audience
         payload = jwt.decode(
             token,
             settings.JWT_SECRET,
-            algorithms=[settings.JWT_ALGORITHM],
-            audience=expected_audience,
-            options={"require": ["exp", "iat", "type", "sub", "tenant_id"]},
+            **decode_kwargs,
         )
     except ExpiredSignatureError:
         raise HTTPException(
@@ -206,7 +218,7 @@ def get_bearer_token(request: Request) -> str | None:
     refresh_cookie = request.cookies.get("ca_refresh_token")
     if refresh_cookie:
         try:
-            payload = decode_token(refresh_cookie, expected_type="refresh")
+            decode_token(refresh_cookie, expected_type="refresh", expected_audience=None)
             return refresh_cookie
         except HTTPException:
             return None
@@ -236,8 +248,20 @@ async def get_current_user(
     # Lazily import to avoid circular import at module load
     from app.models.user import User
 
+    # A malformed ``sub`` (e.g. not a valid UUID) must surface as 401, not a
+    # 500 from the database driver rejecting the parameter cast against the
+    # ``users.id`` UUID column.
+    try:
+        user_uuid = UUID(payload.sub)
+    except (ValueError, AttributeError, TypeError):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     user_row = db.execute(
-        select(User).where(User.id == payload.sub)
+        select(User).where(User.id == user_uuid)
     ).scalar_one_or_none()
 
     if user_row is None:

@@ -1,0 +1,69 @@
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual environments (we install into the system Python in Docker)
+.venv/
+venv/
+env/
+
+# Testing
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.coverage.*
+tests/
+
+# Build / packaging
+build/
+dist/
+*.egg-info/
+*.egg
+
+# Git
+.git/
+.gitignore
+
+# Docker files belong to the image, not the build context
+Dockerfile
+.dockerignore
+
+# Env files — never bake secrets into the image
+.env
+.env.*
+!.env.example
+
+# Logs and scratch output
+*.log
+logs/
+
+# Local blob storage data
+var/
+/tmp/ca_imports
+
+# Data-manipulation scripts (not runtime code)
+_gen_ca_data.py
+_check_*.py
+_fix_*.py
+_test_*.py
+_debug_*.py
+_find_*.py
+inspect_db.py
+test_backend_import.py
+
+# Database introspection artefacts
+data_manifest.json
+data_report.json
+out.txt
+err.txt
+
+# IDE / editor
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store

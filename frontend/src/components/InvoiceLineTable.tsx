@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { ServiceCombobox, type ServiceOption } from "@/components/ServiceCombobox";
 import { Icon } from "@/components/Icon";
@@ -34,7 +34,7 @@ export interface LineItemTableProps {
   clientServicesLoading?: boolean;
 }
 
-function lineAmount(line: DraftLine): number {
+export function lineAmount(line: DraftLine): number {
   const qty = Number(line.quantity ?? 1);
   const rate = Number(line.unit_price ?? 0);
   const disc = Number(line.discount ?? 0);
@@ -45,12 +45,9 @@ export function lineSubtotal(lines: DraftLine[]): number {
   return lines.reduce((sum, line) => sum + lineAmount(line), 0);
 }
 
-/**
- * Editable line-item table with service autocomplete.
- *
- * Columns: #, Service, Description, SAC/HSN, Qty, Rate, Discount, Tax Rate, Amount, Actions.
- * Selecting a service auto-fills the description, SAC code, rate, and service_id.
- */
+// Column widths mirror hisaabo's invoice editor grid.
+const COLUMNS = "1fr 170px 70px 86px 56px 56px 82px 28px";
+
 export function InvoiceLineTable({
   lines,
   taxRate,
@@ -74,150 +71,183 @@ export function InvoiceLineTable({
   }
 
   return (
-    <div className="space-y-3">
-      <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
-        <table className="invoice-table w-full min-w-[72rem]">
-          <thead>
-            <tr className="border-b border-slate-300 bg-slate-50">
-              <th className="th w-8">#</th>
-              <th className="th w-36">Service</th>
-              <th className="th">Description</th>
-              <th className="th w-20">SAC / HSN</th>
-              <th className="th w-14 text-right">Qty</th>
-              <th className="th w-20 text-right">Rate</th>
-              <th className="th w-18 text-right">Discount</th>
-              {showTaxColumn && <th className="th w-16 text-right">Tax Rate</th>}
-              <th className="th w-20 text-right">Amount</th>
-              <th className="th w-10" />
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {lines.map((line, index) => {
-              const amount = lineAmount(line);
-              const showRemove = lines.length > 1;
-              const isRowEmpty = !line.description.trim();
-
-              return (
-                <tr key={line.key} className={isRowEmpty ? "bg-slate-50" : ""}>
-                  <td className="td py-3 text-xs text-slate-400 tabular">{index + 1}</td>
-
-                  <td className="td py-3">
-                    <ServiceCombobox
-                      value={line.service_id ?? ""}
-                      onChange={(s) => handleServiceSelect(line.key, s)}
-                      clientServices={clientServices}
-                      loading={clientServicesLoading}
-                      placeholder="Search services…"
-                    />
-                  </td>
-
-                  <td className="td py-3">
-                    <input
-                      className="input py-2 text-sm"
-                      placeholder="Service description…"
-                      maxLength={300}
-                      value={line.description}
-                      onChange={(e) => onUpdate(line.key, { description: e.target.value })}
-                    />
-                  </td>
-
-                  <td className="td py-3">
-                    <input
-                      className="input py-2 text-xs font-mono"
-                      placeholder="9982"
-                      maxLength={10}
-                      value={line.sac_code ?? ""}
-                      onChange={(e) =>
-                        onUpdate(line.key, { sac_code: e.target.value || null })
-                      }
-                    />
-                  </td>
-
-                  <td className="td py-3">
-                    <input
-                      type="number"
-                      min={0}
-                      step={0.01}
-                      className="input py-2 text-right tabular text-sm"
-                      value={String(line.quantity ?? 1)}
-                      onChange={(e) => onUpdate(line.key, { quantity: Number(e.target.value) })}
-                    />
-                  </td>
-
-                  <td className="td py-3">
-                    <input
-                      type="number"
-                      min={0}
-                      step={0.01}
-                      className="input py-2 text-right tabular text-sm"
-                      value={String(line.unit_price ?? 0)}
-                      onChange={(e) => onUpdate(line.key, { unit_price: Number(e.target.value) })}
-                    />
-                  </td>
-
-                  <td className="td py-3">
-                    <input
-                      type="number"
-                      min={0}
-                      step={0.01}
-                      className="input py-2 text-right tabular text-sm"
-                      value={String(line.discount ?? 0)}
-                      onChange={(e) => onUpdate(line.key, { discount: Number(e.target.value) })}
-                    />
-                  </td>
-
-                  {showTaxColumn && (
-                    <td className="td py-3 text-right tabular text-sm text-slate-500">
-                      {line.is_taxable ? `${taxRate}%` : "—"}
-                    </td>
-                  )}
-
-                  <td className="td py-3 tabular text-right text-sm font-medium text-slate-800">
-                    {isRowEmpty ? "—" : formatMoney(amount)}
-                  </td>
-
-                  <td className="td py-3">
-                    {showRemove && (
-                      <button
-                        type="button"
-                        className="rounded p-1 text-slate-400 opacity-0 transition-all duration-200 hover:opacity-100 hover:bg-slate-100 hover:text-rose-600 group-hover:opacity-100"
-                        onClick={() => onRemove(line.key)}
-                        aria-label="Remove line"
-                      >
-                        <Icon name="trash" className="h-3.5 w-3.5" />
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-          <tfoot>
-            <tr>
-              <td colSpan={showTaxColumn ? 9 : 8} className="td py-3">
-                <button
-                  type="button"
-                  className="flex items-center gap-1 text-sm font-medium text-sky-700 hover:text-sky-800"
-                  onClick={onAdd}
-                >
-                  <Icon name="plus" className="h-4 w-4" />
-                  Add a line
-                </button>
-              </td>
-              <td className="td py-3 tabular text-right text-sm font-semibold text-slate-900">
-                {formatMoney(lineSubtotal(lines))}
-              </td>
-              <td className="td py-3" />
-            </tr>
-          </tfoot>
-        </table>
+    <div className="space-y-4">
+      {/* Header row */}
+      <div
+        className="grid gap-2 px-3 py-2 text-[10px] font-medium"
+        style={{
+          gridTemplateColumns: COLUMNS,
+          background: "var(--h-dark-surface-1)",
+          color: "var(--h-dark-text-tertiary)",
+        }}
+      >
+        <span>Service</span>
+        <span>Description</span>
+        <span className="text-right">SAC / HSN</span>
+        <span className="text-right">Qty</span>
+        <span className="text-right">Rate</span>
+        <span className="text-right">Discount</span>
+        {showTaxColumn && <span className="text-right">Tax %</span>}
+        <span className="text-right">Amount</span>
+        <span />
       </div>
 
-      {usable.length === 0 && (
-        <p className="text-sm text-slate-500">
-          Add a line to get started. Rows with no description are excluded from the invoice.
-        </p>
-      )}
+      {/* Line item rows */}
+      <div className="divide-y" style={{ borderColor: "var(--h-dark-border-light)" }}>
+        {lines.map((line, index) => {
+          const amount = lineAmount(line);
+          const showRemove = lines.length > 1;
+          const isRowEmpty = !line.description.trim();
+
+          return (
+            <div
+              key={line.key}
+              className={`grid gap-2 px-3 py-2 items-center rounded-lg transition-colors duration-100 ${
+                isRowEmpty ? "bg-[var(--h-dark-surface-1)]/50" : "hover:bg-[var(--h-dark-surface-2)]"
+              }`}
+              style={{
+                gridTemplateColumns: COLUMNS,
+                border: `1px solid var(--h-dark-border-color)`,
+              }}
+            >
+              {/* Row number */}
+              <div className="text-[10px] tabular text-[var(--h-dark-text-tertiary)]">
+                {index + 1}
+              </div>
+
+              {/* Service selector */}
+              <div>
+                <ServiceCombobox
+                  value={line.service_id ?? ""}
+                  onChange={(s) => handleServiceSelect(line.key, s)}
+                  clientServices={clientServices}
+                  loading={clientServicesLoading}
+                  placeholder="Search services…"
+                />
+              </div>
+
+              {/* Description */}
+              <div>
+                <input
+                  className="w-full px-2 py-1.5 rounded text-[10px] outline-none"
+                  placeholder="Describe the service…"
+                  maxLength={300}
+                  value={line.description}
+                  onChange={(e) => onUpdate(line.key, { description: e.target.value })}
+                  style={{
+                    background: "var(--h-dark-surface-1)",
+                    border: "1px solid var(--h-dark-border-color)",
+                    color: "var(--h-dark-text-primary)",
+                  }}
+                />
+              </div>
+
+              {/* SAC / HSN */}
+              <div>
+                <input
+                  className="w-full px-2 py-1.5 rounded text-center font-mono text-[10px] outline-none"
+                  placeholder="9982"
+                  maxLength={10}
+                  value={line.sac_code ?? ""}
+                  onChange={(e) => onUpdate(line.key, { sac_code: e.target.value || null })}
+                  style={{
+                    background: "var(--h-dark-surface-1)",
+                    border: "1px solid var(--h-dark-border-color)",
+                    color: "var(--h-dark-text-primary)",
+                  }}
+                />
+              </div>
+
+              {/* Qty */}
+              <div>
+                <input
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  className="w-full px-2 py-1.5 rounded text-right tabular-nums text-[10px] outline-none"
+                  value={String(line.quantity ?? 1)}
+                  onChange={(e) => onUpdate(line.key, { quantity: Number(e.target.value) })}
+                  style={{
+                    background: "var(--h-dark-surface-1)",
+                    border: "1px solid var(--h-dark-border-color)",
+                    color: "var(--h-dark-text-primary)",
+                  }}
+                />
+              </div>
+
+              {/* Rate */}
+              <div>
+                <input
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  className="w-full px-2 py-1.5 rounded text-right tabular-nums text-[10px] outline-none"
+                  value={String(line.unit_price ?? 0)}
+                  onChange={(e) => onUpdate(line.key, { unit_price: Number(e.target.value) })}
+                  style={{
+                    background: "var(--h-dark-surface-1)",
+                    border: "1px solid var(--h-dark-border-color)",
+                    color: "var(--h-dark-text-primary)",
+                  }}
+                />
+              </div>
+
+              {/* Discount */}
+              <div>
+                <input
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  className="w-full px-2 py-1.5 rounded text-right tabular-nums text-[10px] outline-none"
+                  value={String(line.discount ?? 0)}
+                  onChange={(e) => onUpdate(line.key, { discount: Number(e.target.value) })}
+                  style={{
+                    background: "var(--h-dark-surface-1)",
+                    border: "1px solid var(--h-dark-border-color)",
+                    color: "var(--h-dark-text-primary)",
+                  }}
+                />
+              </div>
+
+              {showTaxColumn && (
+                <div className="text-right tabular-nums text-[10px] text-[var(--h-dark-text-tertiary)]">
+                  {line.is_taxable ? `${taxRate}%` : "—"}
+                </div>
+              )}
+
+              {/* Amount */}
+              <div className="text-right tabular-nums text-sm font-semibold" style={{ color: "var(--h-dark-text-primary)" }}>
+                {isRowEmpty ? "—" : formatMoney(amount)}
+              </div>
+
+              {/* Remove */}
+              <div className="text-center">
+                {showRemove && (
+                  <button
+                    type="button"
+                    className="p-1 rounded hover:bg-[var(--h-dark-surface-2)] text-[var(--h-brand-600)] disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
+                    onClick={() => onRemove(line.key)}
+                    aria-label="Remove line item"
+                    disabled={!showRemove}
+                  >
+                    <Icon name="trash" className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Add row button */}
+      <button
+        type="button"
+        className="inline-flex items-center gap-2 rounded-lg border border-[var(--h-dark-border-color)] bg-[var(--h-dark-surface-0)] px-4 py-2 text-[10px] font-medium text-[var(--h-dark-text-secondary)] shadow-sm transition-all hover:border-[var(--h-brand-600)] hover:bg-[var(--h-dark-surface-2)] hover:text-[var(--h-brand-600)]"
+        onClick={onAdd}
+      >
+        <Icon name="plus" className="h-4 w-4" />
+        Add line item
+      </button>
     </div>
   );
 }

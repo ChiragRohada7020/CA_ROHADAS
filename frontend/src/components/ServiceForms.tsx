@@ -11,6 +11,7 @@ import {
   TextAreaField,
   TextField,
 } from "@/components/form";
+import { Button, useToast } from "@/components/ui";
 import { api } from "@/lib/api";
 import type {
   FeeModel,
@@ -52,9 +53,35 @@ function useCategoryOptions() {
   return (query.data ?? []).map((row) => ({ value: row.value, label: row.label }));
 }
 
+/**
+ * A not-yet-saved checklist step typed by the Add-service form. The backend
+ * `POST /task-templates/{id}/steps` accepts the same flags, so this maps 1:1
+ * onto `TaskTemplateStepRow` minus the server-generated identity.
+ */
+interface StepDraft {
+  name: string;
+  is_mandatory: boolean;
+  requires_review: boolean;
+  requires_approval: boolean;
+  requires_filing: boolean;
+  requires_document: boolean;
+}
+
+function newStep(): StepDraft {
+  return {
+    name: "",
+    is_mandatory: true,
+    requires_review: false,
+    requires_approval: false,
+    requires_filing: false,
+    requires_document: false,
+  };
+}
+
 /** Add a service line to the catalogue. */
 export function AddServiceForm({ onDone }: { onDone: () => void }) {
   const queryClient = useQueryClient();
+  const toast = useToast();
   const categories = useCategoryOptions();
 
   const [code, setCode] = useState("");
@@ -67,10 +94,13 @@ export function AddServiceForm({ onDone }: { onDone: () => void }) {
   const [feeModel, setFeeModel] = useState("");
   const [standardFee, setStandardFee] = useState("");
   const [sacCode, setSacCode] = useState("9982");
+  const [addChecklist, setAddChecklist] = useState(false);
+  const [checklistName, setChecklistName] = useState("");
+  const [steps, setSteps] = useState<StepDraft[]>(() => [newStep()]);
 
   const create = useMutation({
-    mutationFn: () =>
-      api.post<ServiceRow>("/services", {
+    mutationFn: async () => {
+      const created = await api.post<ServiceRow>("/services", {
         code: code.trim(),
         name: name.trim(),
         category,
@@ -81,9 +111,38 @@ export function AddServiceForm({ onDone }: { onDone: () => void }) {
         default_fee_model: feeModel || null,
         standard_fee: standardFee === "" ? null : Number(standardFee),
         sac_code: sacCode.trim() || "9982",
-      }),
-    onSuccess: () => {
+      });
+
+      // Optionally seed the service's checklist: one task template carrying the
+      // steps the user defined. The service id is only known after creation.
+      if (addChecklist) {
+        await api.post("/task-templates", {
+          service_id: created.id,
+          code: `${created.code}-CHK`,
+          name: checklistName.trim() || created.name || "Checklist",
+          is_recurring: isRecurring,
+          frequency: isRecurring ? frequency : null,
+          steps: steps
+            .filter((s) => s.name.trim())
+            .map((s, i) => ({
+              sequence: i + 1,
+              name: s.name.trim(),
+              is_mandatory: s.is_mandatory,
+              requires_review: s.requires_review,
+              requires_approval: s.requires_approval,
+              requires_filing: s.requires_filing,
+              requires_document: s.requires_document,
+            })),
+        });
+      }
+
+      return created;
+    },
+    onSuccess: (created) => {
       void queryClient.invalidateQueries({ queryKey: ["services"] });
+      void queryClient.invalidateQueries({ queryKey: ["task-templates"] });
+      void queryClient.invalidateQueries({ queryKey: ["service", created.id] });
+      toast.push({ type: "success", message: "Service added." });
       onDone();
     },
   });
@@ -192,6 +251,50 @@ export function AddServiceForm({ onDone }: { onDone: () => void }) {
         />
       </div>
 
+      <CheckboxField
+        label="Add a checklist"
+        checked={addChecklist}
+        onChange={setAddChecklist}
+        hint="Define the task template and its steps now, so recurring work generates correctly from day one."
+      />
+      {addChecklist && (
+        <div className="space-y-4 rounded-lg border border-slate-200 p-4">
+          <TextField
+            label="Checklist name"
+            value={checklistName}
+            onChange={setChecklistName}
+            placeholder={name ? `${name} checklist` : "e.g. Compliance checklist"}
+            maxLength={150}
+          />
+
+          <div className="flex flex-col gap-3">
+            {steps.map((step, i) => (
+              <StepEditor
+                key={i}
+                index={i}
+                step={step}
+                isOnly={steps.length === 1}
+                onChange={(field, value) =>
+                  setSteps((prev) =>
+                    prev.map((s, j) => (j === i ? { ...s, [field]: value } : s)),
+                  )
+                }
+                onRemove={() => setSteps((prev) => prev.filter((_, j) => j !== i))}
+              />
+            ))}
+          </div>
+
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => setSteps((prev) => [...prev, newStep()])}
+          >
+            + Add step
+          </Button>
+        </div>
+      )}
+
       <FormActions
         submitLabel="Add service"
         busy={create.isPending}
@@ -199,6 +302,70 @@ export function AddServiceForm({ onDone }: { onDone: () => void }) {
         onCancel={onDone}
       />
     </form>
+  );
+}
+
+
+interface StepEditorProps {
+  index: number;
+  step: StepDraft;
+  isOnly: boolean;
+  onChange: (field: keyof StepDraft, value: string | boolean) => void;
+  onRemove: () => void;
+}
+
+function StepEditor({ index, step, isOnly, onChange, onRemove }: StepEditorProps) {
+  return (
+    <div className="space-y-3 rounded-lg border border-slate-100 bg-white p-3">
+      <div className="flex items-start justify-between gap-3">
+        <TextField
+          label={`Step ${index + 1}`}
+          value={step.name}
+          onChange={(v) => onChange("name", v)}
+          placeholder="e.g. Reconcile with GSTR-2B"
+          required
+          maxLength={250}
+        />
+        {!isOnly && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={onRemove}
+          >
+            Remove
+          </Button>
+        )}
+      </div>
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <CheckboxField
+          label="Mandatory"
+          checked={step.is_mandatory}
+          onChange={(v) => onChange("is_mandatory", v)}
+        />
+        <CheckboxField
+          label="Requires review"
+          checked={step.requires_review}
+          onChange={(v) => onChange("requires_review", v)}
+        />
+        <CheckboxField
+          label="Requires approval"
+          checked={step.requires_approval}
+          onChange={(v) => onChange("requires_approval", v)}
+        />
+        <CheckboxField
+          label="Requires filing"
+          checked={step.requires_filing}
+          onChange={(v) => onChange("requires_filing", v)}
+          hint="Stops the task closing before the ARN is recorded."
+        />
+        <CheckboxField
+          label="Requires document"
+          checked={step.requires_document}
+          onChange={(v) => onChange("requires_document", v)}
+        />
+      </div>
+    </div>
   );
 }
 
@@ -211,8 +378,15 @@ export function AddServiceForm({ onDone }: { onDone: () => void }) {
  * Clearing a fee sends `clear_fee` rather than a null, because the API cannot tell a
  * null from an omitted field once the body is parsed.
  */
-export function EditServiceForm({ service }: { service: ServiceDetailRow }) {
+export function EditServiceForm({
+  service,
+  onCancel,
+}: {
+  service: ServiceDetailRow;
+  onCancel?: () => void;
+}) {
   const queryClient = useQueryClient();
+  const toast = useToast();
   const categories = useCategoryOptions();
 
   const [name, setName] = useState(service.name);
@@ -264,6 +438,7 @@ export function EditServiceForm({ service }: { service: ServiceDetailRow }) {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["services"] });
       void queryClient.invalidateQueries({ queryKey: ["service", service.id] });
+      toast.push({ type: "success", message: "Service updated." });
     },
   });
 
@@ -276,11 +451,6 @@ export function EditServiceForm({ service }: { service: ServiceDetailRow }) {
       }}
     >
       {update.isError && <FormError error={update.error} />}
-      {update.isSuccess && !update.isPending && (
-        <p className="rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-900 ring-1 ring-inset ring-emerald-200">
-          Saved.
-        </p>
-      )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <TextField label="Name" value={name} onChange={setName} required maxLength={150} />
@@ -365,6 +535,7 @@ export function EditServiceForm({ service }: { service: ServiceDetailRow }) {
         submitLabel="Save changes"
         busy={update.isPending}
         disabled={!name.trim() || (isRecurring && !frequency)}
+        onCancel={onCancel}
       />
     </form>
   );

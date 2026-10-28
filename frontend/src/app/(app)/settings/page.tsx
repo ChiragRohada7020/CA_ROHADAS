@@ -3,20 +3,39 @@
 import { useState, useEffect } from "react";
 
 import { Icon } from "@/components/Icon";
+import { Button, Input, PageHeader } from "@/components/ui";
 import { cn } from "@/lib/format";
+import { useTheme } from "@/lib/theme";
 
 const MCP_URL = process.env.NEXT_PUBLIC_MCP_URL || "http://127.0.0.1:8000/mcp";
 
 export default function SettingsPage() {
   const [copied, setCopied] = useState(false);
+  const { theme, setTheme } = useTheme();
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Settings</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Firm-wide configuration and integrations.
-        </p>
-      </div>
+      <PageHeader title="Settings" subtitle="Firm-wide configuration and integrations." />
+
+      <section className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 shadow-sm">
+        <div className="flex items-center gap-3 border-b border-slate-200 dark:border-slate-700 px-5 py-4">
+          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-sky-50 text-sky-600 ring-1 ring-inset ring-sky-100 dark:bg-sky-900/25 dark:text-sky-300 dark:ring-sky-800">
+            <Icon name="settings" className="h-5 w-5" />
+          </span>
+          <div>
+            <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Appearance</h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Choose how Rohadas CA looks in this browser.
+            </p>
+          </div>
+        </div>
+        <div className="px-5 py-4">
+          <FieldSet legend="Theme">
+            <ThemeOption value="light" label="Light" description="Always use light mode." current={theme} set={setTheme} />
+            <ThemeOption value="dark" label="Dark" description="Always use dark mode." current={theme} set={setTheme} />
+            <ThemeOption value="system" label="System" description="Follow your device setting." current={theme} set={setTheme} />
+          </FieldSet>
+        </div>
+      </section>
 
       <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <div className="flex items-center gap-3 border-b border-slate-200 px-5 py-4">
@@ -35,17 +54,10 @@ export default function SettingsPage() {
             Endpoint URL
           </label>
           <div className="flex gap-2">
-            <input
-              className="flex-1 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 font-mono text-sm text-slate-700 focus:border-sky-300 focus:outline-none focus:ring-2 focus:ring-sky-100"
-              readOnly
-              value={MCP_URL}
-            />
-            <button
+            <Input className="flex-1 font-mono" readOnly value={MCP_URL} />
+            <Button
               type="button"
-              className={cn(
-                "inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white transition",
-                copied ? "bg-emerald-600" : "bg-sky-600 hover:bg-sky-700",
-              )}
+              className={cn(copied ? "bg-emerald-600 hover:bg-emerald-700" : "")}
               onClick={() => {
                 navigator.clipboard.writeText(MCP_URL);
                 setCopied(true);
@@ -54,7 +66,7 @@ export default function SettingsPage() {
             >
               <Icon name={copied ? "check-circle" : "settings"} className="h-4 w-4" />
               {copied ? "Copied" : "Copy link"}
-            </button>
+            </Button>
           </div>
           <p className="text-xs text-slate-500">
             Set <code className="rounded bg-slate-100 px-1 py-0.5">NEXT_PUBLIC_MCP_URL</code> to
@@ -84,6 +96,57 @@ export default function SettingsPage() {
 }
 
 
+/** A labelled radio option for the theme selector. */
+function ThemeOption({
+  value,
+  label,
+  description,
+  current,
+  set,
+}: {
+  value: "light" | "dark" | "system";
+  label: string;
+  description: string;
+  current: "light" | "dark" | "system";
+  set: (v: "light" | "dark" | "system") => void;
+}) {
+  const selected = current === value;
+  return (
+    <label className="flex items-start gap-3 rounded-lg border border-slate-200 px-3 py-2 dark:border-slate-700 has-[:checked]:border-sky-600 has-[:checked]:ring-2 has-[:checked]:ring-sky-200/50 dark:has-[:checked]:ring-sky-800/50">
+      <input
+        type="radio"
+        name="theme"
+        value={value}
+        checked={selected}
+        onChange={() => set(value)}
+        className="mt-1 h-4 w-4 shrink-0 cursor-pointer accent-sky-600"
+      />
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-medium text-slate-900 dark:text-slate-100">{label}</p>
+        <p className="text-xs text-slate-500 dark:text-slate-400">{description}</p>
+      </div>
+    </label>
+  );
+}
+
+/** A simple fieldset wrapper with label, matching the settings style. */
+function FieldSet({
+  legend,
+  children,
+}: {
+  legend: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <fieldset className="space-y-2">
+      <legend className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+        {legend}
+      </legend>
+      {children}
+    </fieldset>
+  );
+}
+
 function WhatsAppConnection() {
   const [qrData, setQrData] = useState<any>(null);
   const [status, setStatus] = useState<any>(null);
@@ -92,6 +155,10 @@ function WhatsAppConnection() {
   const fetchStatus = async () => {
     try {
       const res = await fetch("/api/whatsapp/status");
+      if (!res.ok) {
+        setStatus({ configured: false, provider: "none" });
+        return;
+      }
       const data = await res.json();
       setStatus(data);
     } catch (e) {
@@ -103,6 +170,13 @@ function WhatsAppConnection() {
     setLoading(true);
     try {
       const res = await fetch("/api/whatsapp/qr");
+      if (!res.ok) {
+        setQrData({
+          qr_code: null,
+          instructions: "WhatsApp integration is not configured.",
+        });
+        return;
+      }
       const data = await res.json();
       setQrData(data);
     } catch (e) {

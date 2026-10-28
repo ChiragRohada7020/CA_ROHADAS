@@ -167,11 +167,11 @@ export default function IntegrationsPage() {
       >
         {connections.isPending && <LoadingState label="Loading connections…" />}
         {connections.isSuccess &&
-          (connections.data.items.length === 0 ? (
+          ((connections.data?.items.length ?? 0) === 0 ? (
             <EmptyState message="No integration connection is registered. Imports work without one — a connection just records where the files come from." />
           ) : (
             <ul className="divide-y divide-slate-100">
-              {connections.data.items.map((connection) => (
+              {(connections.data?.items ?? []).map((connection) => (
                 <li key={connection.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
                   <span className="text-sm font-medium text-slate-900">{connection.name}</span>
                   <Badge tone="neutral">{humanise(connection.provider)}</Badge>
@@ -196,7 +196,7 @@ export default function IntegrationsPage() {
         {providers.isPending && <LoadingState label="Loading providers…" />}
         {providers.isSuccess && (
           <div className="divide-y divide-slate-100">
-            {providers.data.map((provider) => (
+            {providers.data?.map((provider) => (
               <div key={provider.provider} className="space-y-2 px-4 py-3">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-sm font-medium text-slate-900">{provider.name}</span>

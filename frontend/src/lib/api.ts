@@ -39,6 +39,22 @@ export class ApiError extends Error {
 }
 
 /**
+ * Credential endpoints: public routes where a 401 means "wrong credentials",
+ * not "access token expired".
+ *
+ * A 401 from ``/auth/login`` or ``/auth/onboarding`` never implies a stale
+ * bearer token — these endpoints don't accept one. Triggering a refresh here
+ * is pointless (there is no session to rotate) and produces a spurious,
+ * failed ``POST /auth/refresh`` that clutters the console with a misleading
+ * 401. Excluding them makes the error the user sees match the action they took.
+ */
+const CREDENTIAL_PATHS = ["/auth/login", "/auth/onboarding"];
+
+function isCredentialEndpoint(path: string): boolean {
+  return CREDENTIAL_PATHS.some((prefix) => path.startsWith(prefix));
+}
+
+/**
  * In-flight refresh, shared so concurrent 401s trigger exactly one refresh.
  *
  * This is not an optimisation. `POST /auth/refresh` **rotates** the refresh token:
@@ -105,8 +121,10 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
     body: body === undefined ? undefined : JSON.stringify(body),
   });
 
-  if (response.status === 401 && !_retried) {
+  if (response.status === 401 && !_retried && !isCredentialEndpoint(path)) {
     // The access token is short-lived by design. Refresh once, then replay.
+    // Credential endpoints (login, onboarding) are excluded: their 401 means
+    // "wrong credentials", not "expired token".
     if (await refreshSession()) {
       return apiRequest<T>(path, { ...options, _retried: true });
     }

@@ -1,0 +1,121 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# docker-compose.yml — CA Rohadas full-stack (Next.js frontend + FastAPI backend)
+# ──────────────────────────────────────────────────────────────────────────────
+#
+# Usage:
+#   docker compose up --build        # build and start all services
+#   docker compose down -v            # stop and remove containers + volumes
+#
+# The services communicate over an isolated Docker network. The frontend proxies
+# /api/* to the backend service (BACKEND_ORIGIN baked at build time). Postgres
+# data persists in a named volume.
+#
+# ── Environment variables ────────────────────────────────────────────────────
+# Override by creating a `.env` file in the project root, or pass them inline:
+#   POSTGRES_PASSWORD=secret JWT_SECRET=abc123 docker compose up --build
+# See .env.docker.example for the full list and secure-generation commands.
+
+name: ca-rohadas
+
+services:
+  # ── PostgreSQL ─────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:17-alpine
+    container_name: ca-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-ca_software}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Backend (FastAPI + uvicorn) ────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ca-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+psycopg://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-ca_software}
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      # ── Auth ── (assert_production_ready blocks startup in prod with defaults)
+      JWT_SECRET: ${JWT_SECRET:-dev-only-insecure-secret-change-me}
+      JWT_ALGORITHM: HS256
+      # ── Cron ──
+      CRON_SECRET: ${CRON_SECRET:-dev-cron-secret-change-me}
+      # ── AI ──
+      AI_PROVIDER: ${AI_PROVIDER:-kilo}
+      AI_MODEL: ${AI_MODEL:-kilo-auto/free}
+      AI_API_KEY: ${AI_API_KEY:-}
+      # ── CORS (development: allow all; production: set to frontend origin) ──
+      CORS_ORIGINS: ${CORS_ORIGINS:-*}
+      # ── Storage ──
+      STORAGE_BACKEND: ${STORAGE_BACKEND:-local}
+      LOCAL_STORAGE_PATH: /app/backend/var/storage
+      # ── WhatsApp ──
+      WHATSAPP_PROVIDER: ${WHATSAPP_PROVIDER:-baileys}
+      WHATSAPP_API_URL: ${WHATSAPP_API_URL:-http://baileys-gateway:3001}
+      # ── Imports ──
+      IMPORT_DIR: /tmp/ca_imports
+      # ── Misc ──
+      MCP_RATE_LIMIT_ENABLED: ${MCP_RATE_LIMIT_ENABLED:-false}
+    volumes:
+      # Persist uploaded documents and CSV imports locally
+      - backend_storage:/app/backend/var/storage
+      - backend_imports:/tmp/ca_imports
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+
+  # ── Frontend (Next.js 16) ──────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # Baked into the build (next.config.ts resolves BACKEND_ORIGIN at build time)
+        BACKEND_ORIGIN: http://backend:8000
+    container_name: ca-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      - NEXT_TELEMETRY_DISABLED=1
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+
+  # ── Baileys gateway (WhatsApp) ─────────────────────────────────────────────
+  # Optional: comment out or remove if WhatsApp is not needed.
+  baileys-gateway:
+    build:
+      context: ./baileys-gateway
+      dockerfile: Dockerfile
+    container_name: ca-baileys-gateway
+    restart: unless-stopped
+    volumes:
+      - baileys_sessions:/app/wa-sessions
+    environment:
+      - PORT=3001
+    ports:
+      - "${WHATSAPP_PORT:-3001}:3001"
+
+volumes:
+  postgres_data:
+  backend_storage:
+  backend_imports:
+  baileys_sessions:

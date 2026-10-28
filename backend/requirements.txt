@@ -22,3 +22,7 @@ boto3==1.35.0
 aiosmtplib==2.0.2
 Pillow==10.4.0
 reportlab==4.2.4
+
+# Test dependencies
+pytest==8.3.4
+pytest-asyncio==0.24.2

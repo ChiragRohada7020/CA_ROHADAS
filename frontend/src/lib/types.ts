@@ -52,6 +52,23 @@ export interface TokenResponse {
   scope: string;
 }
 
+export interface UserPermissionInfo {
+  user_id: string;
+  email: string;
+  full_name: string;
+  roles: string[];
+  base_permissions: string[];
+  effective_permissions: string[];
+  overrides: Array<{
+    permission_code: string;
+    action: "grant" | "revoke";
+    expires_at: string | null;
+    scope: "code" | "module" | "section" | "role";
+    module: string | null;
+    covers: string[];
+  }>;
+}
+
 export interface StatusCount {
   status: string;
   count: number;
@@ -611,7 +628,7 @@ export interface ServiceDetailRow extends ServiceRow {
   client_count: number;
   clients: ServiceClientRef[];
   /** The service's checklist lives here — these templates' steps, not a second copy. */
-  templates: TaskTemplateRow[];
+  templates?: TaskTemplateRow[];
 }
 
 export interface ServiceCategoryOption {
@@ -1283,6 +1300,7 @@ export interface PermissionDef {
 export interface RolesResponse {
   roles: RoleRow[];
   catalogue: PermissionDef[];
+  assignable: string[];
 }
 
 export interface UserCreatePayload {
@@ -1827,6 +1845,7 @@ export interface PartyDetails {
   pincode: string | null;
   email: string | null;
   phone: string | null;
+  whatsapp_number: string | null;
 }
 
 export interface InvoiceLine {
@@ -1853,6 +1872,20 @@ export interface Payment {
   notes: string | null;
   recorded_by_id: string | null;
   created_at: string;
+}
+
+export interface ReceiptRow {
+  id: string;
+  invoice_id: string;
+  receipt_number: string | null;
+  issued_at: string | null;
+}
+
+export interface Receipt {
+  id: string;
+  receipt_number: string | null;
+  payment_id: string | null;
+  issued_at: string | null;
 }
 
 /**
@@ -1895,6 +1928,7 @@ export interface Invoice {
   sent_at: string | null;
   cancelled_at: string | null;
   cancelled_reason: string | null;
+  bank_details?: Record<string, string | null> | null;
   created_by_id: string | null;
   created_at: string;
   updated_at: string;
@@ -1903,6 +1937,8 @@ export interface Invoice {
 export interface InvoiceDetail extends Invoice {
   lines: InvoiceLine[];
   payments: Payment[];
+  receipts: Receipt[];
+  line_count?: number;
   /** Why this invoice carries CGST+SGST, IGST or nothing. */
   tax_note: string;
   client: PartyDetails | null;
@@ -2101,3 +2137,47 @@ export interface BillingSummary {
   recent_payments: RecentPaymentRow[];
   clients: Array<{ id: string; code: string | null; name: string | null }>;
 }
+
+export interface RecurringSchedule {
+  id: string;
+  client_id: string;
+  client_name?: string;
+  service_id?: string;
+  service_name?: string;
+  frequency: string;
+  fee: number;
+  tax_rate: number;
+  status: string;
+  next_billing_date?: string;
+  created_at?: string;
+}
+
+export interface CreditNoteRow {
+  id: string;
+  note_number?: string | null;
+  invoice_id?: string;
+  invoice_number?: string | null;
+  client_name?: string | null;
+  client_id?: string;
+  status: string;
+  total: number;
+  reason?: string | null;
+  created_at?: string;
+}
+
+export interface CreditNoteCreatePayload {
+  invoice_id: string;
+  reason?: string | null;
+  items: Array<{
+    description: string;
+    quantity: number;
+    unit_price: number;
+    discount?: number;
+    amount: number;
+    is_taxable?: boolean;
+    sac_code?: string;
+  }>;
+  tax_rate?: number;
+  note_type?: 'credit' | 'debit';
+}
+

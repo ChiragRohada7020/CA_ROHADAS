@@ -68,7 +68,7 @@ export function DonutChart({
               r={RADIUS}
               fill="none"
               strokeWidth={thickness}
-              className="stroke-slate-100"
+              className="stroke-slate-200 dark:stroke-slate-700"
             />
             {drawable.map((segment) => {
               const fraction = total > 0 ? segment.value / total : 0;
@@ -97,9 +97,9 @@ export function DonutChart({
         </svg>
 
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-          <span className="tabular text-2xl font-semibold text-slate-900">{total}</span>
+          <span className="tabular text-2xl font-semibold text-slate-900 dark:text-slate-100">{total}</span>
           {totalLabel && (
-            <span className="mt-0.5 max-w-[6rem] text-center text-[11px] leading-tight text-slate-500">
+            <span className="mt-0.5 max-w-[6rem] text-center text-[11px] leading-tight text-slate-500 dark:text-slate-400">
               {totalLabel}
             </span>
           )}
@@ -111,16 +111,16 @@ export function DonutChart({
           const percent = total > 0 ? Math.round((segment.value / total) * 100) : 0;
           return (
             <li key={segment.key} className="flex items-center justify-between gap-4 text-sm">
-              <span className="flex items-center gap-2 text-slate-600">
+              <span className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
                 <span
                   aria-hidden="true"
                   className={cn("h-2.5 w-2.5 shrink-0 rounded-full", dotClass(segment.className))}
                 />
                 {segment.label}
               </span>
-              <span className="tabular text-slate-700">
+              <span className="tabular text-slate-700 dark:text-slate-300">
                 {segment.value}
-                <span className="ml-1 text-xs text-slate-400">({percent}%)</span>
+                <span className="ml-1 text-xs text-slate-400 dark:text-slate-500">({percent}%)</span>
               </span>
             </li>
           );
@@ -141,14 +141,14 @@ function dotClass(strokeClass: string): string {
  * `tone` picks the wash and the glyph inherits it, so a chip cannot end up with a blue
  * circle around a red icon.
  */
-const CHIP_TONES = {
-  danger: "bg-rose-50 text-rose-600 ring-rose-100",
-  warning: "bg-amber-50 text-amber-600 ring-amber-100",
-  info: "bg-sky-50 text-sky-600 ring-sky-100",
-  progress: "bg-indigo-50 text-indigo-600 ring-indigo-100",
-  success: "bg-emerald-50 text-emerald-600 ring-emerald-100",
-  neutral: "bg-slate-100 text-slate-600 ring-slate-200",
-  violet: "bg-violet-50 text-violet-600 ring-violet-100",
+const CHIP_TONES: Record<string, string> = {
+  danger: "bg-rose-50 text-rose-600 ring-rose-100 dark:bg-rose-900/20 dark:text-rose-300 dark:ring-rose-800",
+  warning: "bg-amber-50 text-amber-600 ring-amber-100 dark:bg-amber-900/20 dark:text-amber-300 dark:ring-amber-800",
+  info: "bg-sky-50 text-sky-600 ring-sky-100 dark:bg-sky-900/20 dark:text-sky-300 dark:ring-sky-800",
+  progress: "bg-indigo-50 text-indigo-600 ring-indigo-100 dark:bg-indigo-900/20 dark:text-indigo-300 dark:ring-indigo-800",
+  success: "bg-emerald-50 text-emerald-600 ring-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-300 dark:ring-emerald-800",
+  neutral: "bg-slate-100 text-slate-600 ring-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:ring-slate-700",
+  violet: "bg-violet-50 text-violet-600 ring-violet-100 dark:bg-violet-900/20 dark:text-violet-300 dark:ring-violet-800",
 } as const;
 
 export type ChipTone = keyof typeof CHIP_TONES;
@@ -201,7 +201,7 @@ export function TrendPill({
 }) {
   if (delta === 0) {
     return (
-      <span className="text-xs text-slate-500">
+      <span className="text-xs text-slate-500 dark:text-slate-400">
         No change{comparedTo ? ` ${comparedTo}` : ""}
       </span>
     );
@@ -219,7 +219,7 @@ export function TrendPill({
       title={`${rising ? "+" : ""}${delta}${comparedTo ? ` ${comparedTo}` : ""}`}
     >
       {rising ? "↑" : "↓"} {Math.abs(delta)}
-      {comparedTo && <span className="ml-1 font-normal text-slate-500">{comparedTo}</span>}
+      {comparedTo && <span className="ml-1 font-normal text-slate-500 dark:text-slate-400">{comparedTo}</span>}
     </span>
   );
 }
@@ -236,9 +236,9 @@ export function MiniBar({
 }) {
   const clamped = Math.min(100, Math.max(0, percent));
   return (
-    <div className={cn("h-1.5 w-full overflow-hidden rounded-full bg-slate-200", trackClassName)}>
+    <div className={cn("h-1.5 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700", trackClassName)}>
       <div
-        className={cn("h-full rounded-full", className ?? "bg-slate-400")}
+        className={cn("h-full rounded-full", className ?? "bg-slate-400 dark:bg-slate-500")}
         style={{ width: `${clamped}%` }}
       />
     </div>
@@ -247,12 +247,12 @@ export function MiniBar({
 
 /** A small round monogram. The colour is derived from the name, so it is stable. */
 const AVATAR_TONES = [
-  "bg-sky-100 text-sky-700",
-  "bg-violet-100 text-violet-700",
-  "bg-emerald-100 text-emerald-700",
-  "bg-amber-100 text-amber-700",
-  "bg-rose-100 text-rose-700",
-  "bg-indigo-100 text-indigo-700",
+  "bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300",
+  "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300",
+  "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300",
+  "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
+  "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300",
+  "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300",
 ];
 
 export function Avatar({ name, size = "md" }: { name: string; size?: "sm" | "md" }) {

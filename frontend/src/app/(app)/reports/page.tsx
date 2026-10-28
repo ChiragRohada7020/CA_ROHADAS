@@ -355,7 +355,7 @@ export default function ReportsPage() {
                 />
               </div>
 
-              {productivity.data.rows.length === 0 ? (
+              {(productivity.data.rows?.length ?? 0) === 0 ? (
                 <EmptyState message="Nobody has completed work in this period." />
               ) : (
                 <div className="overflow-x-auto">
@@ -406,7 +406,7 @@ export default function ReportsPage() {
                 </div>
               )}
 
-              {productivity.data.notes.length > 0 && (
+              {(productivity.data.notes?.length ?? 0) > 0 && (
                 <ul className="space-y-1 border-t border-slate-200 px-4 py-3 text-xs text-slate-600">
                   {productivity.data.notes.map((note) => (
                     <li key={note}>{note}</li>
@@ -436,7 +436,7 @@ export default function ReportsPage() {
                    <h4 className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">
                      Where work is sitting now
                    </h4>
-                   {bottlenecks.data.aging.length === 0 ? (
+                   {(bottlenecks.data.aging?.length ?? 0) === 0 ? (
                      <EmptyState message="No open work." />
                    ) : (
                      <table className="w-full">
@@ -486,7 +486,7 @@ export default function ReportsPage() {
                    <h4 className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">
                      How long each stage takes
                    </h4>
-                  {bottlenecks.data.dwell.length === 0 ? (
+                  {bottlenecks.data.dwell?.length ?? 0 === 0 ? (
                     <EmptyState message="No status changes recorded in the window." />
                   ) : (
                     <table className="w-full">
@@ -520,7 +520,7 @@ export default function ReportsPage() {
                    <h4 className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">
                      Recurrence delays
                   </h4>
-                  {bottlenecks.data.recurrence_delay.length === 0 ? (
+                  {(bottlenecks.data.recurrence_delay?.length ?? 0) === 0 ? (
                     <EmptyState message="No recurring work to report." />
                   ) : (
                     <table className="w-full">
@@ -558,7 +558,7 @@ export default function ReportsPage() {
                 </div>
               </div>
 
-              {bottlenecks.data.notes.length > 0 && (
+              {(bottlenecks.data.notes?.length ?? 0) > 0 && (
                 <ul className="space-y-1 border-t border-slate-200 px-4 py-3 text-xs text-slate-600">
                   {bottlenecks.data.notes.map((note) => (
                     <li key={note}>{note}</li>
@@ -581,7 +581,7 @@ export default function ReportsPage() {
                 <StatCard label="Services covered" value={clientServices.data.services_covered} />
               </div>
 
-              {clientServices.data.rows.length === 0 ? (
+              {(clientServices.data.rows?.length ?? 0) === 0 ? (
                 <EmptyState message="No client has generated work yet." />
               ) : (
                 <div className="max-h-72 overflow-auto">
@@ -659,7 +659,7 @@ export default function ReportsPage() {
                 </div>
               )}
 
-              {clientServices.data.notes.length > 0 && (
+              {(clientServices.data.notes?.length ?? 0) > 0 && (
                 <ul className="space-y-1 border-t border-slate-200 px-4 py-3 text-xs text-slate-600">
                   {clientServices.data.notes.map((note) => (
                     <li key={note}>{note}</li>

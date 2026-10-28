@@ -18,7 +18,7 @@ import { Icon, type IconName } from "@/components/Icon";
 import { ApiError, api, buildQuery } from "@/lib/api";
 import { cn, formatDate, humanise } from "@/lib/format";
 import { useDebouncedValue, usePaging } from "@/lib/hooks";
-import { useSession } from "@/lib/session";
+import { useSession, usePermissions } from "@/lib/session";
 import { badgeClasses, sortStatuses, statusDotClass, statusRequiresReason, taskStatusLabel, taskStatusTone, TASK_STATUS_ORDER } from "@/lib/status";
 import { initials, useUserDirectory } from "@/lib/users";
 import type {
@@ -366,6 +366,19 @@ function ProgressBar({ percent }: { percent: number }) {
 function RowActionsMenu({ task, onOpen }: { task: TaskListItem; onOpen: () => void }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const { canSee } = usePermissions();
+  const canDelete = canSee("task.delete");
+  const queryClient = useQueryClient();
+
+  const handleDelete = async () => {
+    if (!confirm(`Delete task "${task.task_code}"? This cannot be undone.`)) return;
+    try {
+      await api.delete(`/tasks/${task.id}`);
+      void queryClient.invalidateQueries({ queryKey: ["tasks"] });
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   useEffect(() => {
     function onOutside(e: MouseEvent) {
@@ -400,7 +413,7 @@ function RowActionsMenu({ task, onOpen }: { task: TaskListItem; onOpen: () => vo
         <Icon name="more-vertical" className="h-4 w-4" />
       </button>
       {open && (
-        <div className="absolute right-0 top-full z-30 mt-1 w-44 overflow-hidden rounded-[10px] border border-[#E2E8F0] bg-white shadow-lg">
+        <div className="absolute right-0 top-full z-30 mt-1 w-48 overflow-hidden rounded-[10px] border border-[#E2E8F0] bg-white shadow-lg">
           <button
             type="button"
             className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-[#101B3D] hover:bg-[#F6F8FC]"
@@ -413,6 +426,31 @@ function RowActionsMenu({ task, onOpen }: { task: TaskListItem; onOpen: () => vo
             <Icon name="eye" className="h-3 w-3" />
             Open task
           </button>
+          <a
+            href={`/tasks/${task.id}`}
+            className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-[#101B3D] hover:bg-[#F6F8FC]"
+            onClick={(e) => {
+              e.stopPropagation();
+              setOpen(false);
+            }}
+          >
+            <Icon name="envelope" className="h-3 w-3" />
+            Email task link
+          </a>
+          {canDelete && (
+            <button
+              type="button"
+              className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-[#DC2626] hover:bg-[#FEF2F2]"
+              onClick={(e) => {
+                e.stopPropagation();
+                setOpen(false);
+                void handleDelete();
+              }}
+            >
+              <Icon name="trash" className="h-3 w-3" />
+              Delete
+            </button>
+          )}
         </div>
       )}
     </div>

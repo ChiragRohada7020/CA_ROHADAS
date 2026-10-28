@@ -1436,6 +1436,8 @@ class Invoice(BaseModel):
     terms: str | None = None
     issued_at: str | None = None
     sent_at: str | None = None
+    cancelled_at: str | None = None
+    cancelled_reason: str | None = None
 
     model_config = {"from_attributes": True}
 
@@ -1443,6 +1445,10 @@ class Invoice(BaseModel):
 class InvoiceDetail(Invoice):
     lines: list[InvoiceLine] = []
     payments: list[Payment] = []
+    tax_note: str | None = None
+    client: PartyDetails | None = None
+    firm: PartyDetails | None = None
+    share_link_active: bool = False
 
 
 class FirmBillingSettings(BaseModel):
@@ -1483,16 +1489,25 @@ class GenerateResult(BaseModel):
     total: float
 
 
+class SendOutcome(BaseModel):
+    channel: str
+    recipient: str | None = None
+    status: str
+    detail: str | None = None
+
+
 class InvoiceSendResult(BaseModel):
-    success: bool
-    messages_sent: int
-    errors: list[str] = []
+    invoice_id: str
+    invoice_number: str | None
+    outcomes: list[SendOutcome]
+    share_url: str | None = None
 
 
 class ShareLinkResult(BaseModel):
-    share_id: str
-    token: str
-    url: str
+    invoice_id: str
+    invoice_number: str | None
+    share_url: str
+    expires_at: str | None = None
 
 
 class PaymentRecord(BaseModel):

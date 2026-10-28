@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import (
-    Boolean, Column, DateTime, Enum, Float, ForeignKey, Integer, String, Text
+    Boolean, Column, DateTime, Enum, Float, ForeignKey, Integer, JSON, String, Text
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
@@ -35,6 +35,77 @@ class PaymentMethod(str, enum.Enum):
     CHEQUE = "cheque"
     CARD = "card"
     OTHER = "other"
+
+
+class CreditNoteType(str, enum.Enum):
+    CREDIT = "credit"
+    DEBIT = "debit"
+
+
+class CreditNoteStatus(str, enum.Enum):
+    DRAFT = "draft"
+    ISSUED = "issued"
+    CANCELLED = "cancelled"
+
+
+class CreditNote(Base):
+    __tablename__ = "credit_notes"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    note_number = Column(String(50), nullable=True)
+    note_type = Column(String(20), default=CreditNoteType.CREDIT, nullable=False)
+    invoice_id = Column(UUID(as_uuid=True), ForeignKey("invoices.id", ondelete="CASCADE"), nullable=True)
+    client_id = Column(UUID(as_uuid=True), ForeignKey("clients.id"), nullable=False)
+    reason = Column(Text, nullable=True)
+    status = Column(String(50), default=CreditNoteStatus.DRAFT, nullable=False)
+    subtotal = Column(Float, default=0.0, nullable=False)
+    discount_total = Column(Float, default=0.0, nullable=False)
+    taxable_total = Column(Float, default=0.0, nullable=False)
+    cgst_amount = Column(Float, default=0.0, nullable=False)
+    sgst_amount = Column(Float, default=0.0, nullable=False)
+    igst_amount = Column(Float, default=0.0, nullable=False)
+    total = Column(Float, default=0.0, nullable=False)
+    created_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    issued_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    invoice = relationship("Invoice", foreign_keys=[invoice_id], back_populates="credit_notes")
+
+
+class RecurringFrequency(str, enum.Enum):
+    MONTHLY = "monthly"
+    QUARTERLY = "quarterly"
+    HALF_YEARLY = "half_yearly"
+    ANNUAL = "annual"
+
+
+class RecurringStatus(str, enum.Enum):
+    ACTIVE = "active"
+    PAUSED = "paused"
+    ENDED = "ended"
+
+
+class RecurringSchedule(Base):
+    __tablename__ = "recurring_schedules"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    client_id = Column(UUID(as_uuid=True), ForeignKey("clients.id"), nullable=False)
+    service_id = Column(UUID(as_uuid=True), ForeignKey("services.id"), nullable=True)
+    engagement_id = Column(UUID(as_uuid=True), ForeignKey("engagements.id"), nullable=True)
+    frequency = Column(String(20), default=RecurringFrequency.MONTHLY, nullable=False)
+    fee = Column(Float, default=0.0, nullable=False)
+    tax_rate = Column(Float, default=0.0, nullable=False)
+    gst_tax_type = Column(String(50), default=GstTaxType.NONE, nullable=False)
+    sac_code = Column(String(20), nullable=True)
+    description = Column(Text, nullable=True)
+    next_billing_date = Column(DateTime(timezone=True), nullable=False)
+    status = Column(String(20), default=RecurringStatus.ACTIVE, nullable=False)
+    created_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
 
 class Invoice(Base):
@@ -69,12 +140,23 @@ class Invoice(Base):
     terms = Column(Text, nullable=True)
     issued_at = Column(DateTime(timezone=True), nullable=True)
     sent_at = Column(DateTime(timezone=True), nullable=True)
+    cancelled_at = Column(DateTime(timezone=True), nullable=True)
+    cancelled_reason = Column(Text, nullable=True)
+    share_token = Column(String(100), nullable=True, unique=True)
     created_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    bank_details = Column(JSON, nullable=True)
 
     lines = relationship("InvoiceLine", back_populates="invoice", cascade="all, delete-orphan")
     payments = relationship("Payment", back_populates="invoice", cascade="all, delete-orphan")
+    credit_notes = relationship("CreditNote", back_populates="invoice", cascade="all, delete-orphan")
+    receipts = relationship("Receipt", cascade="all, delete-orphan")
+
+    @property
+    def share_link_active(self) -> bool:
+        """Whether a client-facing share link currently exists for this invoice."""
+        return self.share_token is not None
 
 
 class InvoiceLine(Base):
@@ -100,7 +182,9 @@ class Payment(Base):
     __tablename__ = "payments"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    invoice_id = Column(UUID(as_uuid=True), ForeignKey("invoices.id", ondelete="CASCADE"), nullable=False)
+    tenant_id = Column(UUID(as_uuid=True), nullable=True, index=True)
+    invoice_id = Column(UUID(as_uuid=True), ForeignKey("invoices.id", ondelete="CASCADE"), nullable=True)
+    receipt_id = Column(UUID(as_uuid=True), nullable=True)
     amount = Column(Float, nullable=False)
     paid_on = Column(DateTime(timezone=True), nullable=False)
     method = Column(String(50), nullable=False)
@@ -110,6 +194,21 @@ class Payment(Base):
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
 
     invoice = relationship("Invoice", back_populates="payments")
+    allocations = relationship("PaymentAllocation", back_populates="payment", cascade="all, delete-orphan")
+
+
+class PaymentAllocation(Base):
+    __tablename__ = "payment_allocations"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    payment_id = Column(UUID(as_uuid=True), ForeignKey("payments.id", ondelete="CASCADE"), nullable=False)
+    invoice_id = Column(UUID(as_uuid=True), ForeignKey("invoices.id", ondelete="CASCADE"), nullable=False)
+    amount = Column(Float, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+
+    payment = relationship("Payment", back_populates="allocations")
+    invoice = relationship("Invoice")
 
 
 class BillingSettings(Base):
@@ -156,3 +255,31 @@ class ClientSummaryRow(Base):
     itr_clients = Column(Integer, default=0)
     tds_clients = Column(Integer, default=0)
     roc_clients = Column(Integer, default=0)
+
+
+class PaymentReminder(Base):
+    __tablename__ = "payment_reminders"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    invoice_id = Column(UUID(as_uuid=True), ForeignKey("invoices.id", ondelete="CASCADE"), nullable=False)
+    client_id = Column(UUID(as_uuid=True), ForeignKey("clients.id"), nullable=True)
+    reminder_type = Column(String(20), default="email", nullable=False)
+    status = Column(String(20), default="queued", nullable=False)
+    message = Column(Text, nullable=True)
+    sent_at = Column(DateTime(timezone=True), nullable=True)
+    created_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+
+
+class Receipt(Base):
+    __tablename__ = "receipts"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    invoice_id = Column(UUID(as_uuid=True), ForeignKey("invoices.id", ondelete="CASCADE"), nullable=False)
+    payment_id = Column(UUID(as_uuid=True), ForeignKey("payments.id"), nullable=True)
+    receipt_number = Column(String(50), nullable=True)
+    issued_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+    created_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    invoice = relationship("Invoice", back_populates="receipts")

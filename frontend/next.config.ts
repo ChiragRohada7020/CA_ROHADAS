@@ -24,6 +24,7 @@ const backendOrigin = process.env.BACKEND_ORIGIN ?? "http://127.0.0.1:8000";
  *   python -c "import json;print(json.load(open('.next/routes-manifest.json'))['rewrites'])"
  */
 const nextConfig: NextConfig = {
+  allowedDevOrigins: ["127.0.0.1", "localhost"],
   async rewrites() {
     if (process.env.VERCEL) {
       return [];

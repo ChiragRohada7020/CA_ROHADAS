@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 
-import { Badge, EmptyState, ErrorState, LoadingState } from "@/components/ui";
+import { Badge, Button, EmptyState, ErrorState, LoadingState, Table, TableBody, TableCell, TableHeader, TableHead, TableRow } from "@/components/ui";
 import { ChecklistEditor } from "@/components/ChecklistEditor";
 import { EditServiceForm } from "@/components/ServiceForms";
 import { ApiError, api, buildQuery } from "@/lib/api";
@@ -13,6 +13,23 @@ import { taskStatusLabel, taskStatusTone } from "@/lib/status";
 import type { Page, ServiceDetailRow, TaskListItem } from "@/lib/types";
 
 type DrawerTab = "overview" | "assignments" | "tasks" | "checklist" | "templates";
+
+function onDrawerTabKeyDown(
+  event: React.KeyboardEvent<HTMLDivElement>,
+  order: DrawerTab[],
+  current: DrawerTab,
+  select: (key: DrawerTab) => void,
+) {
+  if (event.key !== "ArrowLeft" && event.key !== "ArrowRight" && event.key !== "Home" && event.key !== "End") return;
+  event.preventDefault();
+  const index = order.indexOf(current);
+  let next = index;
+  if (event.key === "ArrowLeft") next = Math.max(0, index - 1);
+  else if (event.key === "ArrowRight") next = Math.min(order.length - 1, index + 1);
+  else if (event.key === "Home") next = 0;
+  else if (event.key === "End") next = order.length - 1;
+  if (next !== index) select(order[next]);
+}
 
 /**
  * One service, as a slide-over.
@@ -57,8 +74,10 @@ export function ServiceDetailDrawer({
     { key: "assignments", label: "Assignments", count: row?.client_count },
     { key: "tasks", label: "Tasks" },
     { key: "checklist", label: "Checklist", count: steps.length },
-    { key: "templates", label: "Templates", count: row?.templates.length },
+    { key: "templates", label: "Templates", count: row?.templates?.length },
   ];
+
+  const order: DrawerTab[] = ["overview", "assignments", "tasks", "checklist", "templates"];
 
   return (
     <>
@@ -91,9 +110,13 @@ export function ServiceDetailDrawer({
               )}
             </div>
             <div className="flex shrink-0 items-center gap-2">
-              <Link href={`/services/${serviceId}`} className="btn-ghost px-2 py-1 text-xs">
-                Open full page
-              </Link>
+              <Button
+                asChild
+                variant="ghost"
+                size="sm"
+              >
+                <Link href={`/services/${serviceId}`}>Open full page</Link>
+              </Button>
               <button
                 type="button"
                 onClick={onClose}
@@ -105,28 +128,41 @@ export function ServiceDetailDrawer({
             </div>
           </div>
 
-          <nav className="mt-3 flex flex-wrap items-center gap-1">
-            {tabs.map((entry) => (
-              <button
-                key={entry.key}
-                type="button"
-                onClick={() => setTab(entry.key)}
-                className={cn(
-                  "rounded px-2.5 py-1 text-xs font-medium",
-                  entry.key === tab
-                    ? "bg-sky-50 text-sky-700"
-                    : "text-slate-500 hover:bg-slate-100 hover:text-slate-800",
-                )}
-              >
-                {entry.label}
-                {entry.count != null && entry.count > 0 && (
-                  <span className="tabular ml-1 text-[10px] text-slate-400">
-                    ({entry.count})
-                  </span>
-                )}
-              </button>
-            ))}
-          </nav>
+          <div
+            role="tablist"
+            aria-label="Service detail tabs"
+            className="mt-3 flex flex-wrap items-center gap-1"
+            onKeyDown={(event) =>
+              onDrawerTabKeyDown(event, order, tab, setTab)
+            }
+          >
+            {tabs.map((entry) => {
+              const isActive = entry.key === tab;
+              return (
+                <button
+                  key={entry.key}
+                  type="button"
+                  role="tab"
+                  aria-selected={isActive}
+                  tabIndex={isActive ? 0 : -1}
+                  onClick={() => setTab(entry.key)}
+                  className={cn(
+                    "rounded px-2.5 py-1 text-xs font-medium",
+                    isActive
+                      ? "bg-sky-50 text-sky-700"
+                      : "text-slate-500 hover:bg-slate-100 hover:text-slate-800",
+                  )}
+                >
+                  {entry.label}
+                  {entry.count != null && entry.count > 0 && (
+                    <span className="tabular ml-1 text-[10px] text-slate-400">
+                      ({entry.count})
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
         </header>
 
         <div className="min-h-0 flex-1 overflow-y-auto">
@@ -210,8 +246,8 @@ function OverviewTab({
   setEditing: (value: boolean) => void;
   onManageChecklist: () => void;
 }) {
-  const steps = row.templates.flatMap((tpl) => tpl.steps);
-  const template = row.templates[0];
+  const steps = (row.templates ?? []).flatMap((tpl) => tpl.steps);
+  const template = row.templates?.[0];
 
   return (
     <div className="divide-y divide-slate-200">
@@ -229,7 +265,10 @@ function OverviewTab({
           }
         />
         {editing ? (
-          <EditServiceForm service={row} />
+          <EditServiceForm
+            service={row}
+            onCancel={() => setEditing(false)}
+          />
         ) : (
           <dl className="divide-y divide-slate-100">
             <Field label="Service Name" value={row.name} />
@@ -437,17 +476,17 @@ function TasksTab({
       <table className="w-full">
         <thead className="bg-slate-50">
           <tr>
-            <th className="th">Task</th>
-            <th className="th">Client</th>
-            <th className="th">Period</th>
-            <th className="th">Status</th>
-            <th className="th">Internal due</th>
+            <TableHead>Task</TableHead>
+            <TableHead>Client</TableHead>
+            <TableHead>Period</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead>Internal due</TableHead>
           </tr>
         </thead>
-        <tbody className="divide-y divide-slate-100">
+        <TableBody>
           {tasks.map((task) => (
-            <tr key={task.id}>
-              <td className="td">
+            <TableRow key={task.id}>
+              <TableCell>
                 <Link
                   href={`/tasks/${task.id}`}
                   className="font-medium text-slate-900 underline-offset-2 hover:text-sky-700 hover:underline"
@@ -457,25 +496,25 @@ function TasksTab({
                 <span className="block font-mono text-[10px] text-slate-400">
                   {task.task_code}
                 </span>
-              </td>
-              <td className="td text-xs text-slate-700">{task.client_name ?? "—"}</td>
-              <td className="td text-xs text-slate-600">{task.period_key ?? "—"}</td>
-              <td className="td">
+              </TableCell>
+              <TableCell className="text-xs text-slate-700">{task.client_name ?? "—"}</TableCell>
+              <TableCell className="text-xs text-slate-600">{task.period_key ?? "—"}</TableCell>
+              <TableCell>
                 <Badge tone={taskStatusTone(task.status)}>
                   {taskStatusLabel(task.status)}
                 </Badge>
-              </td>
-              <td
+              </TableCell>
+              <TableCell
                 className={cn(
-                  "td tabular text-xs",
+                  "tabular text-xs",
                   task.is_overdue ? "text-rose-700" : "text-slate-600",
                 )}
               >
                 {formatDate(task.internal_due_date)}
-              </td>
-            </tr>
+              </TableCell>
+            </TableRow>
           ))}
-        </tbody>
+        </TableBody>
       </table>
     </div>
   );
@@ -507,16 +546,16 @@ function AssignmentsTab({ row }: { row: ServiceDetailRow }) {
       <table className="w-full">
         <thead className="bg-slate-50">
           <tr>
-            <th className="th">Client</th>
-            <th className="th">Status</th>
-            <th className="th">Taken since</th>
-            <th className="th">Link</th>
+            <TableHead>Client</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead>Taken since</TableHead>
+            <TableHead>Link</TableHead>
           </tr>
         </thead>
-        <tbody className="divide-y divide-slate-100">
+        <TableBody>
           {row.clients.map((client) => (
-            <tr key={`${client.client_id}-${client.start_date ?? "none"}`}>
-              <td className="td">
+            <TableRow key={`${client.client_id}-${client.start_date ?? "none"}`}>
+              <TableCell>
                 <Link
                   href={`/clients/${client.client_id}`}
                   className="font-medium text-slate-900 underline-offset-2 hover:text-sky-700 hover:underline"
@@ -526,28 +565,28 @@ function AssignmentsTab({ row }: { row: ServiceDetailRow }) {
                 <span className="block font-mono text-[10px] text-slate-400">
                   {client.client_code}
                 </span>
-              </td>
-              <td className="td">
+              </TableCell>
+              <TableCell>
                 <Badge tone={client.client_status === "active" ? "success" : "neutral"}>
                   {humanise(client.client_status)}
                 </Badge>
-              </td>
-              <td className="td text-xs text-slate-600">{formatDate(client.start_date)}</td>
-              <td className="td">
+              </TableCell>
+              <TableCell className="text-xs text-slate-600">{formatDate(client.start_date)}</TableCell>
+              <TableCell>
                 <Badge tone={client.link_is_active ? "success" : "neutral"}>
                   {client.link_is_active ? "Active" : "Ended"}
                 </Badge>
-              </td>
-            </tr>
+              </TableCell>
+            </TableRow>
           ))}
-        </tbody>
+        </TableBody>
       </table>
     </div>
   );
 }
 
 function ChecklistTab({ row }: { row: ServiceDetailRow }) {
-  if (row.templates.length === 0) {
+  if (row.templates?.length === 0) {
     return (
       <EmptyState message="No task template is linked to this service, so there is no checklist to edit and no recurring work will be generated for it." />
     );
@@ -559,7 +598,7 @@ function ChecklistTab({ row }: { row: ServiceDetailRow }) {
         These steps are copied onto every task generated for this service. Editing them
         changes future work only — tasks already created hold their own copies.
       </p>
-      {row.templates.map((template) => (
+      {row.templates?.map((template) => (
         <ChecklistEditor key={template.id} template={template} />
       ))}
     </div>
@@ -567,7 +606,7 @@ function ChecklistTab({ row }: { row: ServiceDetailRow }) {
 }
 
 function TemplatesTab({ row }: { row: ServiceDetailRow }) {
-  if (row.templates.length === 0) {
+  if (row.templates?.length === 0) {
     return (
       <EmptyState message="Nothing generates work for this service yet. Link a task template to make it recurring." />
     );
@@ -575,7 +614,7 @@ function TemplatesTab({ row }: { row: ServiceDetailRow }) {
 
   return (
     <dl className="divide-y divide-slate-100">
-      {row.templates.map((template) => (
+      {row.templates?.map((template) => (
         <div key={template.id} className="divide-y divide-slate-100">
           <Field label="Template" value={template.name} />
           <Field

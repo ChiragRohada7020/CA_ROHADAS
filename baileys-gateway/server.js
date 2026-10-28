@@ -1,100 +1,147 @@
-hunkData);
-        }
-        const ensured = chunksBeingEnsured.get(chunkPath) ?? Promise.resolve().then(()=>ensureChunk(chunkPath)).finally(()=>chunksBeingEnsured.delete(chunkPath));
-        chunksBeingEnsured.set(chunkPath, ensured);
-        return ensured.then(()=>loadChunkAsync.call(this, chunkData));
+import express from "express";
+import qrcode from "qrcode";
+import multer from "multer";
+import cors from "cors";
+import path from "path";
+import fs from "fs";
+import pino from "pino";
+
+const PORT = parseInt(process.env.PORT || "3001", 10);
+const AUTH_DIR = path.join(process.cwd(), "auth_info");
+
+fs.mkdirSync(AUTH_DIR, { recursive: true });
+
+const app = express();
+app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 * 1024 * 1024 } });
+
+let sock = null;
+let currentQrCode = null;
+let currentPairingCode = null;
+let connectionStatus = {
+  connected: false,
+  status: "initializing",
+  last_disconnect: null,
+  reconnect_count: 0,
+};
+
+let baileys = null;
+let baileysReady = false;
+let baileysError = null;
+
+async function loadBaileys() {
+  if (baileysReady || baileysError) return;
+  try {
+    baileys = await import("baileys");
+    baileysReady = true;
+  } catch (err) {
+    baileysError = err;
+    console.error("Failed to load baileys:", err.message);
+  }
+}
+
+function normalizePhone(phone) {
+  const digits = phone.replace(/\D/g, "");
+  if (!digits.startsWith("91") && digits.length === 10) {
+    return "91" + digits;
+  }
+  return digits;
+}
+
+function jidFor(phone) {
+  return `${normalizePhone(phone)}@s.whatsapp.net`;
+}
+
+function updateConnection(partial) {
+  connectionStatus = { ...connectionStatus, ...partial };
+}
+
+async function initializeSocket() {
+  if (sock) return sock;
+  await loadBaileys();
+  if (!baileysReady) {
+    throw new Error(baileysError ? baileysError.message : "baileys not available");
+  }
+
+  const { makeWASocket, useMultiFileAuthState, Browsers } = baileys;
+  const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
+
+  sock = makeWASocket({
+    auth: state,
+    printQRInTerminal: false,
+    logger: pino({ level: "silent" }),
+    browser: Browsers.macOS("Desktop"),
+  });
+
+  sock.ev.on("creds.save", saveCreds);
+
+  sock.ev.on("connection.update", (update) => {
+    const { connection, lastDisconnect, qr } = update;
+    if (qr) {
+      qrcode
+        .toDataURL(qr)
+        .then((url) => {
+          currentQrCode = url;
+          updateConnection({ status: "qr_ready", connected: false });
+        })
+        .catch((err) => {
+          console.error("QR generation error:", err.message);
+        });
     }
-    nodeDevContextPrototype.l = loadChunkAsyncOnDemand;
-}
-/**
- * Instantiates a module in development mode using shared HMR logic.
- */ function instantiateModule(id, sourceType, sourceData) {
-    // Node.js: creates base module object (hot API added by shared code)
-    const createModuleObjectFn = (moduleId)=>{
-        return createModuleWithDirection(moduleId);
-    };
-    // Node.js: creates Context (no refresh parameter)
-    const createContext = (module1, exports, _refresh)=>{
-        return new Context(module1, exports);
-    };
-    // Node.js: no hooks wrapper, just execute directly
-    const runWithHooks = (_module, exec)=>{
-        exec(undefined); // no refresh context
-    };
-    // Use shared instantiation logic (includes hot API setup)
-    const newModule = instantiateModuleShared(id, sourceType, sourceData, moduleFactories, devModuleCache, runtimeModules, createModuleObjectFn, createContext, runWithHooks);
-    newModule.loaded = true;
-    return newModule;
-}
-/**
- * Instantiates a runtime module in development mode.
- */ function instantiateRuntimeModule(chunkPath, moduleId) {
-    return instantiateModule(moduleId, SourceType.Runtime, chunkPath);
-}
-/**
- * Retrieves a module from the cache, or instantiate it as a runtime module if it is not cached.
- */ // @ts-ignore TypeScript doesn't separate this module space from the browser runtime
-function getOrInstantiateRuntimeModule(chunkPath, moduleId) {
-    const module1 = devModuleCache.get(moduleId);
-    if (module1) {
-        if (module1.error) {
-            throw module1.error;
-        }
-        return module1;
+    if (connection === "close") {
+      const reason = lastDisconnect ? lastDisconnect.error : new Error("connection closed");
+      updateConnection({
+        connected: false,
+        status: "disconnected",
+        last_disconnect: new Date().toISOString(),
+      });
+      if (!reason || reason.message?.includes("connection closed")) {
+        return;
+      }
+      setTimeout(() => {
+        updateConnection({ reconnect_count: connectionStatus.reconnect_count + 1 });
+        initializeSocket();
+      }, 3000);
     }
-    return instantiateRuntimeModule(chunkPath, moduleId);
-}
-/**
- * Retrieves a module from the cache, or instantiate it if it is not cached.
- * Also tracks parent-child relationships for HMR dependency tracking.
- */ // @ts-ignore
-function getOrInstantiateModuleFromParent(id, sourceModule) {
-    // Track parent-child relationship
-    const module1 = devModuleCache.get(id);
-    trackModuleImport(sourceModule, id, module1);
-    if (module1) {
-        if (module1.error) {
-            throw module1.error;
-        }
-        return module1;
+    if (connection === "open") {
+      currentQrCode = null;
+      currentPairingCode = null;
+      updateConnection({ connected: true, status: "connected", last_disconnect: null });
     }
-    const newModule = instantiateModule(id, SourceType.Parent, sourceModule.id);
-    // Track again after instantiation to ensure the relationship is recorded
-    trackModuleImport(sourceModule, id, newModule);
-    return newModule;
+  });
+
+  sock.ev.on("messages.upsert", () => {
+    // Message receipts handled elsewhere if needed
+  });
+
+  return sock;
 }
-module.exports = (sourcePath)=>({
-        m: (id)=>getOrInstantiateRuntimeModule(sourcePath, id),
-        c: (chunkData)=>loadRuntimeChunk(sourcePath, chunkData)
-    });
-/// <reference path="../../shared/runtime/dev-protocol.d.ts" />
-/// <reference path="../../shared/runtime/hmr-runtime.ts" />
-/* eslint-disable @typescript-eslint/no-unused-vars */ /**
- * Appends the module code with //# sourceURL and //# sourceMappingURL so
- * that Node.js can resolve stack frames from `eval`ed server HMR modules back to
- * their original source files. Mirrors the browser's _eval in dev-backend-dom.ts.
- */ function inlineSourcemaps(entry) {
-    const [chunkPath, moduleId] = entry.url.split('?', 2);
-    const absolutePath = path.resolve(RUNTIME_ROOT, chunkPath);
-    const fileHref = url.pathToFileURL(absolutePath).href;
-    const sourceURL = moduleId ? `${fileHref}?${moduleId}` : fileHref;
-    let code = entry.code + '\n\n//# sourceURL=' + sourceURL;
-    if (entry.map) {
-        code += '\n//# sourceMappingURL=data:application/json;charset=utf-8;base64,' + Buffer.from(entry.map).toString('base64');
-    }
-    return code;
+
+function ensureSocket() {
+  if (!sock) {
+    throw new Error("Socket not initialized");
+  }
+  return sock;
 }
-let serverHmrUpdateHandler = null;
-function initializeServerHmr(moduleFactories, devModuleCache) {
-    if (serverHmrUpdateHandler != null) {
-        throw new Error('[Server HMR] Server HMR client is already initialized');
-    }
-    // Register the update handler for the server ru;
-});
 
 // ── Endpoints ──────────────────────────────────────────────
 
-app.get("/qr", (req, res) => {
+app.get("/qr", async (_req, res) => {
+  try {
+    await initializeSocket();
+  } catch (err) {
+    return res.status(503).json({
+      qr_code: null,
+      pairing_code: null,
+      instructions: "WhatsApp gateway failed to initialize: " + err.message,
+      provider: "baileys",
+      connected: false,
+      connection_info: { ...connectionStatus },
+    });
+  }
+
   if (connectionStatus.connected) {
     return res.json({
       qr_code: null,
@@ -128,7 +175,9 @@ app.get("/qr", (req, res) => {
 });
 
 app.post("/pair", async (req, res) => {
-  if (!sock) {
+  try {
+    ensureSocket();
+  } catch (err) {
     return res.status(503).json({ error: "Socket not initialized" });
   }
 
@@ -137,7 +186,6 @@ app.post("/pair", async (req, res) => {
     return res.status(400).json({ error: "phone_number is required" });
   }
 
-  // Baileys v7 should have requestPairingCode on the socket instance
   if (typeof sock.requestPairingCode !== "function") {
     return res.status(501).json({
       error: "Pairing code not supported in this Baileys version. Use QR code pairing instead.",
@@ -154,7 +202,7 @@ app.post("/pair", async (req, res) => {
   }
 });
 
-app.get("/status", (req, res) => {
+app.get("/status", (_req, res) => {
   res.json({
     configured: true,
     provider: "baileys",
@@ -164,6 +212,60 @@ app.get("/status", (req, res) => {
   });
 });
 
-app.listen(PORT, () => {
-  console.log(`Baileys gateway running on http://127.0.0.1:${PORT}`);
+app.post("/send-message", async (req, res) => {
+  try {
+    ensureSocket();
+  } catch (err) {
+    return res.status(503).json({ error: "Socket not initialized" });
+  }
+
+  const { phone_number, message } = req.body;
+  if (!phone_number) {
+    return res.status(400).json({ error: "phone_number is required" });
+  }
+  if (!message) {
+    return res.status(400).json({ error: "message is required" });
+  }
+
+  try {
+    await sock.sendMessage(jidFor(phone_number), { text: message });
+    res.json({ success: true, recipient: phone_number, provider: "baileys" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
+
+app.post("/send-media", upload.single("file"), async (req, res) => {
+  try {
+    ensureSocket();
+  } catch (err) {
+    return res.status(503).json({ error: "Socket not initialized" });
+  }
+
+  const { phone_number, caption } = req.body;
+  if (!phone_number) {
+    return res.status(400).json({ error: "phone_number is required" });
+  }
+  if (!req.file) {
+    return res.status(400).json({ error: "file is required" });
+  }
+
+  try {
+    await sock.sendMessage(jidFor(phone_number), {
+      document: req.file.buffer,
+      mimetype: req.file.mimetype || "application/pdf",
+      fileName: req.file.originalname || "document.pdf",
+      caption: caption || undefined,
+    });
+    res.json({ success: true, recipient: phone_number, provider: "baileys" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.listen(PORT, async () => {
+  console.log(`Baileys gateway running on http://127.0.0.1:${PORT}`);
+  await initializeSocket();
+});
+
+export default app;

@@ -41,6 +41,7 @@ class Permission(str, Enum):
     TASK_ASSIGN = "task.assign"
     TASK_COMMENT = "task.comment"
     TASK_CLOSE = "task.close"
+    TASK_DELETE = "task.delete"
 
     # Compliance
     COMPLIANCE_READ = "compliance.read"
@@ -60,6 +61,7 @@ class Permission(str, Enum):
     INVOICE_CANCEL = "invoice.cancel"
     INVOICE_SEND = "invoice.send"
     INVOICE_SHARE = "invoice.share"
+    INVOICE_DELETE = "invoice.delete"
     PAYMENT_READ = "payment.read"
     PAYMENT_WRITE = "payment.write"
     BILLING_SETTINGS = "billing.settings"
@@ -69,6 +71,15 @@ class Permission(str, Enum):
     USER_WRITE = "user.write"
     ROLE_READ = "role.read"
     ROLE_WRITE = "role.write"
+
+    # Per-user permission overrides (owner / admin only)
+    USER_PERMISSION_MANAGE = "user.permission.manage"
+
+    # Field-level permissions — allow the owner to hide sensitive fields
+    CLIENT_SENSITIVE_READ = "client.read.sensitive"
+    INVOICE_FINANCIAL_READ = "invoice.read.financial"
+    PAYMENT_DETAIL_READ = "payment.read.detail"
+    CLIENT_NOTE_READ = "client.read.notes"
 
     # Integrations / imports
     INTEGRATION_READ = "integration.read"
@@ -86,6 +97,8 @@ class Permission(str, Enum):
 
     # Reports
     REPORT_READ = "report.read"
+    CREDIT_NOTE_WRITE = "credit_note.write"
+    RECURRING_WRITE = "recurring.write"
 
     # Assistant / MCP
     ASSISTANT_USE = "assistant.use"
@@ -142,15 +155,17 @@ def permissions_for_role(role_code: RoleCode | str) -> set[str]:
             "service.read", "service.write",
             "engagement.read", "engagement.write",
             "task.read", "task.write", "task.approve", "task.assign",
-            "task.comment", "task.close",
+            "task.comment", "task.close", "task.delete",
             "compliance.read", "compliance.write", "compliance.verify",
             "document.read", "document.write", "document.upload", "document.share",
             "invoice.read", "invoice.write", "invoice.issue", "invoice.cancel",
-            "invoice.send", "invoice.share",
+            "invoice.send", "invoice.share", "invoice.delete",
             "payment.read", "payment.write",
+            "credit_note.write", "recurring.write",
             "billing.settings",
             "user.read", "user.write",
             "role.read", "role.write",
+            "user.permission.manage",
             "integration.read", "integration.write",
             "import.read", "import.write",
             "communication.read", "communication.send",
@@ -165,25 +180,27 @@ def permissions_for_role(role_code: RoleCode | str) -> set[str]:
             "registration.read", "registration.write",
             "engagement.read", "engagement.write",
             "task.read", "task.write", "task.approve", "task.assign",
-            "task.comment",
+            "task.comment", "task.delete",
             "compliance.read", "compliance.write", "compliance.verify",
             "document.read", "document.write", "document.upload", "document.share",
-            "invoice.read", "invoice.write", "invoice.issue",
+            "invoice.read", "invoice.write", "invoice.issue", "invoice.delete",
             "payment.read",
             "user.read",
             "notification.read",
             "report.read",
             "assistant.use", "mcp.tool_use",
         ],
-        RoleCode.MANAGER.value: [
+         RoleCode.MANAGER.value: [
             "client.read", "client.write", "client.status",
             "contact.read", "contact.write",
             "registration.read", "registration.write",
             "engagement.read", "engagement.write",
-            "task.read", "task.write", "task.assign", "task.comment",
+            "task.read", "task.write", "task.assign", "task.comment", "task.delete",
             "compliance.read", "compliance.write",
             "document.read", "document.write", "document.upload", "document.share",
-            "invoice.read",
+            "invoice.read", "invoice.delete",
+            "payment.read", "payment.write",
+            "credit_note.write", "recurring.write",
             "user.read",
             "notification.read",
             "report.read",
@@ -197,7 +214,10 @@ def permissions_for_role(role_code: RoleCode | str) -> set[str]:
             "task.read", "task.write", "task.comment",
             "compliance.read",
             "document.read", "document.upload",
-            "invoice.read",
+            "invoice.read", "payment.read", "payment.write",
+            "credit_note.write", "recurring.write",
+            "client.read.sensitive", "client.read.notes",
+            "invoice.read.financial",
             "notification.read",
             "assistant.use",
         ],
@@ -207,7 +227,10 @@ def permissions_for_role(role_code: RoleCode | str) -> set[str]:
             "task.read", "task.write", "task.comment",
             "compliance.read",
             "document.read", "document.upload",
-            "invoice.read",
+            "invoice.read", "payment.read", "payment.write",
+            "credit_note.write", "recurring.write",
+            "client.read.sensitive", "client.read.notes",
+            "invoice.read.financial",
             "notification.read",
         ],
         RoleCode.ARTICLE_ASSISTANT.value: [
@@ -215,6 +238,7 @@ def permissions_for_role(role_code: RoleCode | str) -> set[str]:
             "task.read", "task.comment",
             "compliance.read",
             "document.read",
+            "client.read.sensitive", "client.read.notes",
             "notification.read",
         ],
         RoleCode.ACCOUNTS_STAFF.value: [
@@ -222,16 +246,21 @@ def permissions_for_role(role_code: RoleCode | str) -> set[str]:
             "task.read",
             "compliance.read",
             "document.read", "document.upload",
+            "client.read.notes",
             "invoice.read", "payment.read", "payment.write",
+            "payment.read.detail",
             "notification.read",
         ],
         RoleCode.ACCOUNTANT.value: [
             "client.read", "client.write",
+            "client.read.sensitive", "client.read.notes",
             "task.read", "task.write", "task.comment",
             "compliance.read",
             "document.read", "document.upload",
             "invoice.read", "invoice.write", "invoice.issue",
+            "invoice.read.financial",
             "payment.read", "payment.write",
+            "payment.read.detail",
             "billing.settings",
             "notification.read",
             "report.read",
@@ -244,3 +273,93 @@ def permissions_for_role(role_code: RoleCode | str) -> set[str]:
     if code == RoleCode.FIRM_OWNER.value:
         return set(_DEFAULTS[RoleCode.BRANCH_PARTNER.value])
     return set(_DEFAULTS.get(code, []))
+
+
+# Human-readable display names for every built-in system role.
+_DEFAULT_ROLE_NAMES: dict[str, str] = {
+    RoleCode.FIRM_OWNER.value: "Firm Owner",
+    RoleCode.BRANCH_PARTNER.value: "Branch Partner",
+    RoleCode.PARTNER.value: "Partner",
+    RoleCode.ADMIN.value: "Administrator",
+    RoleCode.MANAGER.value: "Manager",
+    RoleCode.SENIOR_ASSOCIATE.value: "Senior Associate",
+    RoleCode.CA_SENIOR.value: "CA Senior",
+    RoleCode.ARTICLE_ASSISTANT.value: "Article Assistant",
+    RoleCode.ACCOUNTS_STAFF.value: "Accounts Staff",
+    RoleCode.ACCOUNTANT.value: "Accountant",
+    RoleCode.SYSTEM_ADMIN.value: "System Administrator",
+}
+
+# System roles (besides the client portal) that every tenant should have.
+_DEFAULT_TENANT_ROLE_CODES: list[str] = [
+    RoleCode.FIRM_OWNER.value,
+    RoleCode.BRANCH_PARTNER.value,
+    RoleCode.PARTNER.value,
+    RoleCode.ADMIN.value,
+    RoleCode.MANAGER.value,
+    RoleCode.SENIOR_ASSOCIATE.value,
+    RoleCode.CA_SENIOR.value,
+    RoleCode.ARTICLE_ASSISTANT.value,
+    RoleCode.ACCOUNTS_STAFF.value,
+    RoleCode.ACCOUNTANT.value,
+    RoleCode.SYSTEM_ADMIN.value,
+]
+
+
+def seed_default_roles(db, tenant_id) -> list[str]:
+    """Create all built-in system roles for a tenant and assign their permissions.
+
+    Idempotent: roles that already exist for the tenant are left untouched, so
+    this is safe to call multiple times (including on every onboarding attempt).
+
+    ``firm_owner`` receives every permission in the catalogue (matching the
+    legacy onboarding behaviour). All other roles receive their canonical
+    permission set from :func:`permissions_for_role`.
+
+    Returns the list of role codes that were newly created.
+    """
+    # Lazy imports avoid circular-dependency at module load time.
+    from app.models.user import Role, RolePermission
+    from app.models import Permission
+    from sqlalchemy import select
+
+    tid = tenant_id
+    created: list[str] = []
+
+    # Collect all permission codes once (firm_owner gets everything).
+    all_perm_codes = [p.code for p in db.execute(select(Permission)).scalars().all()]
+
+    for code in _DEFAULT_TENANT_ROLE_CODES:
+        existing = db.execute(
+            select(Role).where(Role.code == code, Role.tenant_id == tid)
+        ).scalar_one_or_none()
+        if existing is not None:
+            continue
+
+        role = Role(
+            tenant_id=tid,
+            code=code,
+            name=_DEFAULT_ROLE_NAMES.get(code, code.replace("_", " ").title()),
+            description=None,
+            data_scope="firm",
+            is_system=True,
+            is_active=True,
+        )
+        db.add(role)
+        db.flush()  # populate role.id
+
+        if code == RoleCode.FIRM_OWNER.value:
+            perm_codes = all_perm_codes
+        else:
+            perm_codes = list(permissions_for_role(code))
+
+        for perm_code in perm_codes:
+            db.execute(
+                RolePermission.__table__.insert().values(
+                    role_id=role.id, permission_code=perm_code
+                )
+            )
+        created.append(code)
+
+    db.commit()
+    return created

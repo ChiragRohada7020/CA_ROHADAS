@@ -19,7 +19,7 @@ export function InvoiceSheet({ invoice }: { invoice: InvoiceDetail }) {
   const client = invoice.client;
 
   return (
-    <article className="print-sheet mx-auto w-full max-w-[210mm] bg-white p-6 text-slate-900">
+    <article className="print-sheet force-light mx-auto w-full max-w-[210mm] bg-white p-6 text-slate-900">
       <header className="print-block flex flex-wrap items-start justify-between gap-4 border-b-2 border-slate-900 pb-4">
         <div className="min-w-0">
           <h1 className="text-xl font-bold tracking-tight">{firm?.name ?? "The firm"}</h1>
@@ -167,6 +167,20 @@ export function InvoiceSheet({ invoice }: { invoice: InvoiceDetail }) {
           )}
         </dl>
       </section>
+
+      {invoice.bank_details && Object.values(invoice.bank_details).some((v: any) => v) && (
+        <section className="print-block mt-6 border-t border-slate-200 pt-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Bank Details</p>
+          <div className="mt-1 grid grid-cols-1 gap-0.5 text-xs text-slate-700 sm:grid-cols-2">
+            {(invoice.bank_details as any).bank_name && <p><span className="font-medium">Bank:</span> {(invoice.bank_details as any).bank_name}</p>}
+            {(invoice.bank_details as any).account_name && <p><span className="font-medium">Account Name:</span> {(invoice.bank_details as any).account_name}</p>}
+            {(invoice.bank_details as any).account_number && <p><span className="font-medium">A/c No.:</span> {(invoice.bank_details as any).account_number}</p>}
+            {(invoice.bank_details as any).ifsc_code && <p><span className="font-medium">IFSC:</span> {(invoice.bank_details as any).ifsc_code}</p>}
+            {(invoice.bank_details as any).upi_id && <p><span className="font-medium">UPI ID:</span> {(invoice.bank_details as any).upi_id}</p>}
+            {(invoice.bank_details as any).payment_reference && <p><span className="font-medium">Payment Ref:</span> {(invoice.bank_details as any).payment_reference}</p>}
+          </div>
+        </section>
+      )}
 
       {invoice.terms && (
         <section className="print-block mt-6 border-t border-slate-200 pt-3">

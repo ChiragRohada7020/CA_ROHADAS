@@ -10,29 +10,33 @@ import { useSession } from "@/lib/session";
 import type { PermissionDef, RoleRow, RolesResponse } from "@/lib/types";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Design tokens (spec colours)
+// Design tokens (CSS variables with dark-mode support via globals.css)
 // ─────────────────────────────────────────────────────────────────────────────
 
-const BG = "#F6F8FC";
-const BORDER = "#E2E8F0";
-const INK = "#101B3D";
-const MUTED = "#64748B";
-const PRIMARY = "#1677FF";
-const PRIMARY_HOVER = "#0865E8";
-const SELECTED_BG = "#E2EEFF";
-const SELECTED_TEXT = "#0759C7";
-const MODULE_BG = "#EDF4FB";
-const ROW_HOVER = "#F8FBFF";
-const ROW_BORDER = "#F0F3F8";
+const BG = "var(--role-page-bg)";
+const BORDER = "var(--role-page-border)";
+const INK = "var(--role-page-ink)";
+const MUTED = "var(--role-page-muted)";
+const PRIMARY = "var(--role-page-primary)";
+const PRIMARY_HOVER = "var(--role-page-primary-hover)";
+const SELECTED_BG = "var(--role-page-selected-bg)";
+const SELECTED_TEXT = "var(--role-page-selected-text)";
+const MODULE_BG = "var(--role-page-module-bg)";
+const ROW_HOVER = "var(--role-page-row-hover)";
+const ROW_BORDER = "var(--role-page-row-border)";
 
 type RoleKey =
   | "firm_owner"
+  | "branch_partner"
   | "partner"
+  | "admin"
   | "system_admin"
   | "manager"
   | "senior_associate"
-  | "associate"
-  | "intern"
+  | "ca_senior"
+  | "article_assistant"
+  | "accounts_staff"
+  | "accountant"
   | "client_portal";
 
 type RoleConfig = {
@@ -50,26 +54,44 @@ const ROLE_CONFIG: Record<RoleKey, RoleConfig> = {
     label: "Firm Owner",
     description: "Full access to all features and data across the entire firm.",
     icon: "crown",
-    iconBg: "#DBEAFE",
-    iconColor: PRIMARY,
+    iconBg: "var(--role-icon-bg-sky)",
+    iconColor: "var(--role-icon-text-sky)",
     userCount: 1,
+    protected: true,
+  },
+  branch_partner: {
+    label: "Branch Partner",
+    description: "Full access to data for their branch and below.",
+    icon: "crown",
+    iconBg: "var(--role-icon-bg-sky)",
+    iconColor: "var(--role-icon-text-sky)",
+    userCount: 0,
     protected: true,
   },
   partner: {
     label: "Partner",
     description: "Full access to all features and data at the branch level.",
     icon: "crown",
-    iconBg: "#DBEAFE",
-    iconColor: PRIMARY,
+    iconBg: "var(--role-icon-bg-sky)",
+    iconColor: "var(--role-icon-text-sky)",
     userCount: 2,
+    protected: true,
+  },
+  admin: {
+    label: "Administrator",
+    description: "Platform-level administration (billing, integrations, audit log).",
+    icon: "shield-check",
+    iconBg: "var(--role-icon-bg-violet)",
+    iconColor: "var(--role-icon-text-violet)",
+    userCount: 0,
     protected: true,
   },
   manager: {
     label: "Manager",
     description: "Manage team, clients and compliance.",
     icon: "users-round",
-    iconBg: "#F3E8FF",
-    iconColor: "#8B5CF6",
+    iconBg: "var(--role-icon-bg-violet)",
+    iconColor: "var(--role-icon-text-violet)",
     userCount: 4,
     protected: true,
   },
@@ -77,35 +99,53 @@ const ROLE_CONFIG: Record<RoleKey, RoleConfig> = {
     label: "Senior Associate",
     description: "Handle assigned clients and tasks.",
     icon: "users-round",
-    iconBg: "#DCFCE7",
-    iconColor: "#16A34A",
+    iconBg: "var(--role-icon-bg-emerald)",
+    iconColor: "var(--role-icon-text-emerald)",
     userCount: 6,
     protected: false,
   },
-  associate: {
-    label: "Associate",
-    description: "Work on assigned tasks.",
-    icon: "user-round",
-    iconBg: "#FEF3C7",
-    iconColor: "#F59E0B",
-    userCount: 8,
+  ca_senior: {
+    label: "CA Senior",
+    description: "Oversee workpapers and supervise juniors.",
+    icon: "users-round",
+    iconBg: "var(--role-icon-bg-emerald)",
+    iconColor: "var(--role-icon-text-emerald)",
+    userCount: 0,
     protected: false,
   },
-  intern: {
-    label: "Intern",
-    description: "Limited access for learning.",
+  article_assistant: {
+    label: "Article Assistant",
+    description: "Learning role with limited access to assigned tasks.",
     icon: "graduation-cap",
-    iconBg: "#FEE2E2",
-    iconColor: "#F87171",
+    iconBg: "var(--role-icon-bg-rose)",
+    iconColor: "var(--role-icon-text-rose)",
     userCount: 3,
+    protected: false,
+  },
+  accounts_staff: {
+    label: "Accounts Staff",
+    description: "Manage invoices, payments and receivables.",
+    icon: "user-round",
+    iconBg: "var(--role-icon-bg-amber)",
+    iconColor: "var(--role-icon-text-amber)",
+    userCount: 0,
+    protected: false,
+  },
+  accountant: {
+    label: "Accountant",
+    description: "Full billing, payment and financial reporting access.",
+    icon: "user-round",
+    iconBg: "var(--role-icon-bg-amber)",
+    iconColor: "var(--role-icon-text-amber)",
+    userCount: 0,
     protected: false,
   },
   system_admin: {
     label: "System Administrator",
     description: "Platform-level administration (billing, integrations, audit log).",
     icon: "shield-check",
-    iconBg: "#F3E8FF",
-    iconColor: "#8B5CF6",
+    iconBg: "var(--role-icon-bg-violet)",
+    iconColor: "var(--role-icon-text-violet)",
     userCount: 0,
     protected: true,
   },
@@ -113,8 +153,8 @@ const ROLE_CONFIG: Record<RoleKey, RoleConfig> = {
     label: "Client (Portal)",
     description: "Access to own data only.",
     icon: "building-2",
-    iconBg: "#DBEAFE",
-    iconColor: PRIMARY,
+    iconBg: "var(--role-icon-bg-sky)",
+    iconColor: "var(--role-icon-text-sky)",
     userCount: 12,
     protected: true,
   },
@@ -122,16 +162,20 @@ const ROLE_CONFIG: Record<RoleKey, RoleConfig> = {
 
 const ROLE_ORDER: RoleKey[] = [
   "firm_owner",
+  "branch_partner",
   "partner",
+  "admin",
   "system_admin",
   "manager",
   "senior_associate",
-  "associate",
-  "intern",
+  "ca_senior",
+  "article_assistant",
+  "accounts_staff",
+  "accountant",
   "client_portal",
 ];
 
-// Match a backend RoleRow to one of the six spec role cards.
+// Match a backend role code to one of the spec cards.
 function configKeyFor(role: RoleRow): RoleKey | null {
   const name = role.name.toLowerCase().trim();
   const code = role.code.toLowerCase().trim();
@@ -148,19 +192,18 @@ function configKeyFor(role: RoleRow): RoleKey | null {
   );
   if (byCode) return byCode;
 
-  // Match backend role codes to frontend spec keys via a mapping.
-  // Each backend code maps to exactly one spec card so no two roles
-  // resolve to the same editable card.
+  // Explicit code → key mapping for roles whose code differs from the key name.
   const codeToKey: Record<string, RoleKey> = {
     firm_owner: "firm_owner",
-    branch_partner: "partner",
+    branch_partner: "branch_partner",
     partner: "partner",
+    admin: "admin",
     manager: "manager",
     senior_associate: "senior_associate",
-    ca_senior: "senior_associate",
-    article_assistant: "associate",
-    accounts_staff: "intern",
-    accountant: "intern",
+    ca_senior: "ca_senior",
+    article_assistant: "article_assistant",
+    accounts_staff: "accounts_staff",
+    accountant: "accountant",
     client: "client_portal",
     system_admin: "system_admin",
   };
@@ -454,10 +497,10 @@ export default function RolesPage() {
   }
 
   const canManageRoles = session.data
-    ? session.data.permissions.includes("role.manage")
+    ? session.data.permissions.includes("role.write")
     : false;
   const canViewRoles = session.data
-    ? session.data.permissions.includes("role.view")
+    ? session.data.permissions.includes("role.read")
     : false;
 
   return (
@@ -525,7 +568,7 @@ export default function RolesPage() {
               style={{
                 width: 138,
                 height: 42,
-                background: canManageRoles ? PRIMARY : "#c7d2ec",
+                background: canManageRoles ? PRIMARY : "var(--role-page-disabled)",
                 color: "#fff",
                 fontSize: 14,
                 fontWeight: 600,
@@ -576,8 +619,8 @@ export default function RolesPage() {
                   style={{
                     minHeight: 128,
                     padding: 16,
-                    background: isSelected ? "#FFF" : "#FFF",
-                    border: `1px solid ${isSelected ? PRIMARY : BORDER}`,
+                    background: "var(--role-page-card-bg)",
+                    borderColor: isSelected ? "var(--role-page-primary)" : "var(--role-page-border)",
                     borderRadius: 9,
                     boxShadow: isSelected
                       ? "0 0 0 3px rgba(22,119,255,0.12), 0 1px 2px rgba(15,23,42,0.04)"
@@ -589,7 +632,7 @@ export default function RolesPage() {
                   }}
                   onMouseEnter={(e) => {
                     if (!isSelected)
-                      (e.currentTarget).style.borderColor = "#c7d2ec";
+                      (e.currentTarget).style.borderColor = "var(--role-page-disabled)";
                   }}
                   onMouseLeave={(e) => {
                     if (!isSelected)
@@ -638,10 +681,10 @@ export default function RolesPage() {
                     </p>
                   </div>
                   <div style={{
-                    marginTop: "auto",
+                     marginTop: "auto",
                     fontSize: 12,
                     fontWeight: 500,
-                    color: "#172554",
+                    color: MUTED,
                   }}>
                     {config.userCount} users
                   </div>
@@ -709,10 +752,14 @@ export default function RolesPage() {
                 border: `1px solid ${BORDER}`,
                 borderRadius: 10,
               }}
-            >
+              >
               <div
-                className="flex items-center justify-between border-b border-slate-200 px-4 py-3 bg-[#F8FAFC] rounded-t-10"
-                style={{ padding: "18px 19px 14px 19px" }}
+                className="flex items-center justify-between border-b px-4 py-3"
+                style={{
+                  padding: "18px 19px 14px 19px",
+                  backgroundColor: "var(--role-page-table-header)",
+                  borderBottomColor: BORDER,
+                }}
               >
                 <div className="min-w-0 flex items-center gap-3">
                   <h2
@@ -734,7 +781,7 @@ export default function RolesPage() {
                     aria-label="View permissions by"
                     className="inline-flex"
                     style={{
-                      background: "#F1F5F9",
+                       background: "var(--role-page-toggle-bg)",
                       borderRadius: 7,
                       padding: 3,
                       display: "inline-flex",
@@ -755,7 +802,7 @@ export default function RolesPage() {
                             padding: "8px 12px",
                             borderRadius: 5,
                             cursor: "pointer",
-                            color: active ? SELECTED_TEXT : "#334155",
+                             color: active ? SELECTED_TEXT : MUTED,
                             fontWeight: active ? 600 : 400,
                             background: active ? SELECTED_BG : "transparent",
                             minWidth: 56,
@@ -781,20 +828,20 @@ export default function RolesPage() {
                       onKeyDown={(e) => {
                         if (e.key === "Escape") setSearchQuery("");
                       }}
-                      className="w-[190px] h-[36px] rounded-md border border-[#DCE4EF] bg-white pl-9 pr-3 text-[12px] outline-none transition"
-                      style={{
-                        border: "1px solid #DCE4EF",
-                        borderRadius: 7,
-                        fontSize: 12,
-                        paddingLeft: 34,
-                        paddingRight: 10,
-                        background: "#FFF",
-                      }}
-                      onFocus={(e) => {
-                        (e.target).style.borderColor = PRIMARY;
-                      }}
-                      onBlur={(e) => {
-                        (e.target).style.borderColor = "#DCE4EF";
+                      className="w-[190px] h-[36px] rounded-md pl-9 pr-3 text-[12px] outline-none transition"
+                       style={{
+                         borderColor: "var(--role-page-search-border)",
+                         borderRadius: 7,
+                         fontSize: 12,
+                         paddingLeft: 34,
+                         paddingRight: 10,
+                         backgroundColor: "var(--role-page-card-bg)",
+                       }}
+                       onFocus={(e) => {
+                         (e.target).style.borderColor = PRIMARY;
+                       }}
+                       onBlur={(e) => {
+                         (e.target).style.borderColor = "var(--role-page-search-border)";
                       }}
                     />
                     {searchQuery && (
@@ -827,18 +874,18 @@ export default function RolesPage() {
                       style={{ borderSpacing: 0 }}
                     >
                       <thead>
-                        <tr className="sticky top-0 z-10 bg-white">
-                          <th
-                            className="text-left"
-                            style={{
-                              padding: "15px 15px 15px 0",
-                              fontSize: 12,
-                              fontWeight: 600,
-                              color: "#334155",
-                              borderBottom: `1px solid ${BORDER}`,
-                              position: "sticky",
-                              left: 0,
-                              background: "#FFFFFF",
+                          <tr className="sticky top-0 z-10 bg-white dark:bg-slate-800">
+                            <th
+                              className="text-left"
+                              style={{
+                                padding: "15px 15px 15px 0",
+                                fontSize: 12,
+                                fontWeight: 600,
+                                color: MUTED,
+                                borderBottom: `1px solid ${BORDER}`,
+                                position: "sticky",
+                                left: 0,
+                                background: "var(--role-page-table-header)",
                               zIndex: 11,
                               width: 315,
                             }}
@@ -859,7 +906,7 @@ export default function RolesPage() {
                                   borderBottom: `1px solid ${BORDER}`,
                                   position: "sticky",
                                   top: 0,
-                                  background: "#FFFFFF",
+                background: "var(--role-page-card-bg)",
                                   zIndex: 11,
                                 }}
                                 title={`${config.label} · ${backendRole?.data_scope ?? "—"}`}
@@ -923,7 +970,7 @@ export default function RolesPage() {
                                                     background: MODULE_BG,
                                                     fontSize: 12,
                                                     fontWeight: 700,
-                                                    color: "#172554",
+                                      color: INK,
                                                     borderBottom: `1px solid ${BORDER}`,
                                                     display: "flex",
                                                     alignItems: "center",
@@ -1274,7 +1321,7 @@ export default function RolesPage() {
         title="Create Role"
         size="md"
       >
-        <form onSubmit={handleCreateSubmit} className="space-y-4">
+        <form onSubmit={handleCreateSubmit} className="space-y-4 p-5">
           <div>
             <label className="block text-xs font-medium text-slate-700 mb-1">
               Role name <span className="text-rose-600 ml-1">*</span>
