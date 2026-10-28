@@ -29,6 +29,7 @@ from app.routers.auth import router as auth_router
 from app.routers.billing import router as billing_router
 from app.routers.credit_notes import router as credit_notes_router
 from app.routers.invoice_pdf import router as invoice_pdf_router
+from app.routers.voice import router as voice_router
 from app.routers.clients import router as clients_router
 from app.routers.compliance import router as compliance_router
 from app.routers.communications import router as communications_router
@@ -147,6 +148,7 @@ def create_app() -> FastAPI:
         whatsapp_router,
     ):
         app.include_router(router, prefix="/api")
+    app.include_router(voice_router, prefix="/api")
     app.include_router(public_share_router)
 
     # ── MCP server mount ─────────────────────────────────────────────────

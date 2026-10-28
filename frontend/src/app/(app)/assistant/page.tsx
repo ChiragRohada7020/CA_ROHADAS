@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { VoiceAssistant } from "@/components/VoiceAssistant";
 
 import { AssistantActivity, type ActivityStep, toolLabel } from "@/components/AssistantActivity";
 import { ActionButtons, StructuredCard, type AssistantAction } from "@/components/AssistantCards";
@@ -115,6 +116,7 @@ export default function AssistantPage() {
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [voiceMode, setVoiceMode] = useState(false);
+  const [showVoice, setShowVoice] = useState(false);
   const recognitionRef = useRef<any>(null);
   const silenceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [input, setInput] = useState("");
@@ -456,6 +458,16 @@ export default function AssistantPage() {
             </svg>
           </button>
           <button
+            type="button"
+            onClick={() => setShowVoice(true)}
+            className="flex h-10 items-center justify-center rounded-xl border border-slate-200 px-3 text-slate-600 hover:bg-slate-50"
+            title="Voice Assistant"
+          >
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+            </svg>
+          </button>
+          <button
             type="submit"
             disabled={running || !input.trim()}
             className="flex h-10 items-center gap-2 rounded-xl bg-gradient-to-r from-sky-600 to-indigo-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:from-sky-700 hover:to-indigo-700 disabled:from-slate-300 disabled:to-slate-300 disabled:shadow-none"
@@ -468,6 +480,7 @@ export default function AssistantPage() {
           first.
         </p>
       </div>
+      <VoiceAssistant open={showVoice} onClose={() => setShowVoice(false)} />
     </div>
   );
 }
