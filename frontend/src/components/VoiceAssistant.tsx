@@ -81,21 +81,31 @@ export function VoiceAssistant({ open, onClose }: { open: boolean; onClose: () =
     if (!text.trim() || !isActiveRef.current) return;
     setState("thinking");
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
       const res = await fetch("/api/assistant/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: text.trim() }),
         credentials: "include",
+        signal: controller.signal,
       });
+      clearTimeout(timeoutId);
       if (!res.ok) throw new Error("Failed");
       const data = await res.json();
       const answer = data.response || data.error || "I didn't catch that.";
       setResponse(answer);
       speak(answer);
     } catch (e: any) {
-      setError(e.message);
+      if (e.name === 'AbortError') {
+        setError("Request timed out");
+      } else {
+        setError(e.message);
+      }
       setState("listening");
-      setTimeout(() => startListening(), 1000);
+      if (isActiveRef.current) {
+        setTimeout(() => startListening(), 1000);
+      }
     }
   };
 
