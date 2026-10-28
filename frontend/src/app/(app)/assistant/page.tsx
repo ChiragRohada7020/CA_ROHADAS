@@ -109,9 +109,13 @@ export default function AssistantPage() {
     {
       role: "assistant",
       content:
-        "Hello. I work directly on your firm's records — clients, tasks, compliance, documents and deadlines — under your own permissions.\n\nAsk me anything, or start with one of the suggestions below.",
+        "Hey there. I can help you with clients, tasks, invoices, compliance... just talk to me naturally.",
     },
   ]);
+  const [isListening, setIsListening] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [continuous, setContinuous] = useState(false);
+  const recognitionRef = useRef<any>(null);
   const [input, setInput] = useState("");
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
@@ -177,6 +181,18 @@ export default function AssistantPage() {
     }
   }
 
+  const speakResponse = (text: string) => {
+    if (typeof window === "undefined" || !window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text.replace(/\n/g, " ").slice(0, 500));
+    utterance.lang = "en-IN";
+    utterance.rate = 0.95;
+    utterance.pitch = 1;
+    utterance.onstart = () => setIsSpeaking(true);
+    utterance.onend = () => setIsSpeaking(false);
+    window.speechSynthesis.speak(utterance);
+  };
+
   async function sendMessage(
     text: string,
     args?: Record<string, unknown>,
@@ -211,6 +227,9 @@ export default function AssistantPage() {
       );
 
       if (payload.session_id) setSessionId(payload.session_id);
+      if (payload.response && !payload.pending_confirmation) {
+        speakResponse(payload.response);
+      }
       setMessages((prev) => [
         ...prev,
         {
