@@ -92,8 +92,23 @@ export function VoiceAssistant({ open, onClose }: { open: boolean; onClose: () =
       });
       clearTimeout(timeoutId);
       if (!res.ok) throw new Error("Failed");
-      const data = await res.json();
-      const answer = data.response || data.error || "I didn't catch that.";
+      const text = await res.text();
+      // Parse SSE or JSON
+      let answer = "I didn't catch that.";
+      if (text.includes('data:')) {
+        const match = text.match(/data: ({.*})/);
+        if (match) {
+          try {
+            const json = JSON.parse(match[1]);
+            answer = json.response || json.message || answer;
+          } catch {}
+        }
+      } else {
+        try {
+          const data = JSON.parse(text);
+          answer = data.response || data.error || answer;
+        } catch {}
+      }
       setResponse(answer);
       speak(answer);
     } catch (e: any) {
