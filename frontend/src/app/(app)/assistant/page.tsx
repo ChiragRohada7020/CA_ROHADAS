@@ -187,18 +187,19 @@ export default function AssistantPage() {
     window.speechSynthesis.cancel();
     // Clean markdown and make it conversational
     const cleanText = text
-      .replace(/\[\[\(].*?[\]\)\]]/g, "")
+      .replace(/\[\[.*?\]\]/g, "")
       .replace(/\*\*(.*?)\*\*/g, "$1")
       .replace(/\*(.*?)\*/g, "$1")
       .replace(/#{1,6}\s+/g, "")
-      .replace(/\n+/g, ". ")
+      .replace(/
++/g, ". ")
       .replace(/\s+/g, " ")
       .trim();
-    const utterance = new SpeechSynthesisUtterance(cleanText.slice(0, 300));
+    const utterance = new SpeechSynthesisUtterance(cleanText.slice(0, 200));
     utterance.lang = "en-IN";
-    utterance.rate = 1.0;
-    utterance.pitch = 1.05;
-    utterance.volume = 0.9;
+    utterance.rate = 0.9;
+    utterance.pitch = 0.95;
+    utterance.volume = 0.6;
     utterance.onstart = () => {
       setIsSpeaking(true);
       setIsListening(false);
@@ -206,8 +207,7 @@ export default function AssistantPage() {
     utterance.onend = () => {
       setIsSpeaking(false);
       if (voiceMode) {
-        // Start listening again for bidirectional conversation
-        setTimeout(() => startListening(), 500);
+        setTimeout(() => startListening(), 300);
       }
     };
     window.speechSynthesis.speak(utterance);
