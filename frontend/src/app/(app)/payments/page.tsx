@@ -319,6 +319,24 @@ export default function PaymentsPage() {
             <button
               type="button"
               className="btn-ghost flex items-center gap-2"
+              onClick={() => {
+                const csv = ['Date,Client,Invoice,Method,Amount,Reference']
+                  .concat(paymentsAll.map(p => [
+                    p.date,
+                    `"${(p.client.name||'').replace(/"/g,'""')}"`,
+                    p.invoice.number || '',
+                    p.method,
+                    p.amount,
+                    `"${(p.reference||'').replace(/"/g,'""')}"`
+                  ].join(',')))
+                  .join('\n');
+                const blob = new Blob([csv], { type: 'text/csv' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'payments.csv';
+                a.click();
+              }}
             >
               <Icon name="download" className="h-4 w-4" />
               <span className="hidden sm:inline">Export</span>
@@ -573,7 +591,9 @@ export default function PaymentsPage() {
                                   setOpenActionId(null);
                                   if (p.invoice.id) {
                                     issueReceipt.mutate(p.invoice.id);
-                                    window.open(`/api/invoices/${p.invoice.id}/receipts`, '_blank');
+                                    setTimeout(() => {
+                                      window.open(`/api/invoices/${p.invoice.id}/pdf`, '_blank');
+                                    }, 500);
                                   }
                                 }}
                                 className="flex w-full items-center gap-3 px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
