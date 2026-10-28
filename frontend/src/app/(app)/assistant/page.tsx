@@ -114,8 +114,9 @@ export default function AssistantPage() {
   ]);
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const [continuous, setContinuous] = useState(false);
+  const [voiceMode, setVoiceMode] = useState(false);
   const recognitionRef = useRef<any>(null);
+  const silenceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [input, setInput] = useState("");
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
@@ -184,13 +185,67 @@ export default function AssistantPage() {
   const speakResponse = (text: string) => {
     if (typeof window === "undefined" || !window.speechSynthesis) return;
     window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text.replace(/\n/g, " ").slice(0, 500));
+    // Clean markdown and make it conversational
+    const cleanText = text
+      .replace(/\[\[\(].*?[\]\)\]]/g, "")
+      .replace(/\*\*(.*?)\*\*/g, "$1")
+      .replace(/\*(.*?)\*/g, "$1")
+      .replace(/#{1,6}\s+/g, "")
+      .replace(/\n+/g, ". ")
+      .replace(/\s+/g, " ")
+      .trim();
+    const utterance = new SpeechSynthesisUtterance(cleanText.slice(0, 300));
     utterance.lang = "en-IN";
-    utterance.rate = 0.95;
-    utterance.pitch = 1;
-    utterance.onstart = () => setIsSpeaking(true);
-    utterance.onend = () => setIsSpeaking(false);
+    utterance.rate = 1.0;
+    utterance.pitch = 1.05;
+    utterance.volume = 0.9;
+    utterance.onstart = () => {
+      setIsSpeaking(true);
+      setIsListening(false);
+    };
+    utterance.onend = () => {
+      setIsSpeaking(false);
+      if (voiceMode) {
+        // Start listening again for bidirectional conversation
+        setTimeout(() => startListening(), 500);
+      }
+    };
     window.speechSynthesis.speak(utterance);
+  };
+
+  const startListening = () => {
+    if (typeof window === "undefined" || running || isSpeaking) return;
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) return;
+    if (recognitionRef.current) {
+      try { recognitionRef.current.stop(); } catch {}
+    }
+    const recognition = new SpeechRecognition();
+    recognitionRef.current = recognition;
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = "en-IN";
+    recognition.maxAlternatives = 1;
+    recognition.onstart = () => setIsListening(true);
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript;
+      setIsListening(false);
+      if (transcript.trim()) {
+        sendMessage(transcript.trim());
+      }
+    };
+    recognition.onerror = () => {
+      setIsListening(false);
+      if (voiceMode && !isSpeaking && !running) {
+        setTimeout(() => startListening(), 1000);
+      }
+    };
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+    try {
+      recognition.start();
+    } catch {}
   };
 
   async function sendMessage(
@@ -227,8 +282,10 @@ export default function AssistantPage() {
       );
 
       if (payload.session_id) setSessionId(payload.session_id);
-      if (payload.response && !payload.pending_confirmation) {
+      if (payload.response && !payload.pending_confirmation && voiceMode) {
         speakResponse(payload.response);
+      } else if (payload.response && !payload.pending_confirmation && !voiceMode) {
+        // Don't auto-speak in normal mode
       }
       setMessages((prev) => [
         ...prev,
@@ -383,27 +440,23 @@ export default function AssistantPage() {
           <button
             type="button"
             onClick={() => {
-              if (typeof window !== "undefined") {
-                const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-                if (!SpeechRecognition) {
-                  alert("Speech recognition not supported in this browser");
-                  return;
+              setVoiceMode(!voiceMode);
+              if (!voiceMode) {
+                startListening();
+              } else {
+                if (recognitionRef.current) {
+                  try { recognitionRef.current.stop(); } catch {}
                 }
-                const recognition = new SpeechRecognition();
-                recognition.continuous = false;
-                recognition.interimResults = false;
-                recognition.lang = "en-IN";
-                recognition.onresult = (event: any) => {
-                  const transcript = event.results[0][0].transcript;
-                  setInput(transcript);
-                };
-                recognition.onerror = () => {};
-                recognition.start();
+                if (typeof window !== "undefined" && window.speechSynthesis) {
+                  window.speechSynthesis.cancel();
+                }
+                setIsListening(false);
+                setIsSpeaking(false);
               }
             }}
-            disabled={running}
-            className="flex h-10 items-center justify-center rounded-xl border border-slate-200 px-3 text-slate-600 hover:bg-slate-50 disabled:opacity-50"
-            title="Voice input"
+            disabled={running && !voiceMode}
+            className={`flex h-10 items-center justify-center rounded-xl px-3 transition ${voiceMode ? 'bg-gradient-to-r from-rose-500 to-pink-500 text-white animate-pulse' : 'border border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+            title={voiceMode ? "Stop conversation" : "Start voice conversation"}
           >
             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
