@@ -48,6 +48,10 @@ export default function InvoiceDetailPage() {
   });
   const sendingReceipt = sendReceipt;
 
+  const [recurringService, setRecurringService] = useState<ServiceOption | null>(null);
+  const [recurringFee, setRecurringFee] = useState(0);
+  const [recurringFrequency, setRecurringFrequency] = useState("month");
+  const serviceOptions: ServiceOption[] = [];
 
   if (invoice.isPending)
     return (
@@ -73,11 +77,6 @@ export default function InvoiceDetailPage() {
   const row = invoice.data;
   const interState = row.gst_tax_type === "inter_state";
   const hasTax = row.cgst_amount + row.sgst_amount + row.igst_amount > 0;
-
-  const [recurringService, setRecurringService] = useState<ServiceOption | null>(null);
-  const [recurringFee, setRecurringFee] = useState(0);
-  const [recurringFrequency, setRecurringFrequency] = useState("month");
-  const serviceOptions: ServiceOption[] = [];
 
   return (
     <motion.div

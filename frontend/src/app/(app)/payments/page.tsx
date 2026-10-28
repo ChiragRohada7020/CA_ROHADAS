@@ -388,32 +388,29 @@ export default function PaymentsPage() {
       </div>
 
       {/* Filters */}
-      <Card title="Filters" subtitle="Narrow down payments by client, invoice, or date range.">
-        <div className="p-4 space-y-3">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <Card title="Filters" className="p-0">
+        <div className="p-3 space-y-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-5">
             <div className="relative">
-              <Icon name="search" className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Icon name="search" className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
               <TextField
-                label="Search"
-                placeholder="Search by client, invoice no., payment ID..."
+                label=""
+                placeholder="Search..."
                 value={search}
                 onChange={setSearch}
               />
             </div>
             <SelectField
-              label="Client"
+              label=""
               value={clientFilter}
               onChange={setClientFilter}
               options={[
                 { value: "all", label: "All Clients" },
-                ...invoices.data?.items.map((inv) => ({
-                  value: inv.id,
-                  label: `${inv.invoice_number ?? inv.id} · ${inv.client_name ?? "Unknown"}`,
-                })) ?? [],
+                ...Array.from(new Map((paymentsAll || []).map(p => [p.client.id, p.client.name])).entries()).map(([id, name]) => ({ value: id, label: name ?? id })),
               ]}
             />
             <SelectField
-              label="Payment Method"
+              label=""
               value={methodFilter}
               onChange={(v) => setMethodFilter(v as "all" | PaymentMethod)}
               options={[
@@ -421,25 +418,25 @@ export default function PaymentsPage() {
                 ...PAYMENT_METHODS,
               ]}
             />
-            <div className="grid grid-cols-2 gap-2">
-              <TextField
-                label="From"
-                type="date"
-                value={dateFrom}
-                onChange={setDateFrom}
-              />
-              <TextField
-                label="To"
-                type="date"
-                value={dateTo}
-                onChange={setDateTo}
-              />
-            </div>
+            <TextField
+              label=""
+              type="date"
+              value={dateFrom}
+              onChange={setDateFrom}
+              placeholder="From"
+            />
+            <TextField
+              label=""
+              type="date"
+              value={dateTo}
+              onChange={setDateTo}
+              placeholder="To"
+            />
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             <button
               type="button"
-              className="btn-ghost"
+              className="btn-ghost text-xs px-2 py-1"
               onClick={() => {
                 setTab("all");
                 setSearch("");
@@ -449,8 +446,8 @@ export default function PaymentsPage() {
                 setDateTo("");
               }}
             >
-              <Icon name="x" className="h-4 w-4" />
-              Clear All
+              <Icon name="x" className="h-3 w-3" />
+              Clear
             </button>
           </div>
         </div>
@@ -491,7 +488,17 @@ export default function PaymentsPage() {
                         {formatDate(p.date)}
                       </td>
                       <td className="td">
-                        <div className="flex items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (p.client.id && p.client.id !== p.invoice.id) {
+                              window.location.href = `/clients/${p.client.id}`;
+                            } else if (p.invoice.id) {
+                              window.location.href = `/invoices/${p.invoice.id}`;
+                            }
+                          }}
+                          className="flex items-center gap-3 hover:opacity-80 text-left"
+                        >
                           <span
                             className={`h-8 w-8 rounded-full flex items-center justify-center text-xs font-medium border border-white/20 ${getClientColor(p.client.id)}`}
                           >
@@ -505,7 +512,7 @@ export default function PaymentsPage() {
                               <div className="text-[10px] text-slate-500">{p.client.code}</div>
                             )}
                           </div>
-                        </div>
+                        </button>
                       </td>
                       <td className="td">
                         <div className="flex flex-col">
@@ -566,12 +573,24 @@ export default function PaymentsPage() {
                                   setOpenActionId(null);
                                   if (p.invoice.id) {
                                     issueReceipt.mutate(p.invoice.id);
+                                    window.open(`/api/invoices/${p.invoice.id}/receipts`, '_blank');
                                   }
                                 }}
                                 className="flex w-full items-center gap-3 px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
                               >
-                                <Icon name="file-text" className="h-4 w-4" />
-                                Issue Receipt
+                                <Icon name="download" className="h-4 w-4" />
+                                Download Receipt
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setOpenActionId(null);
+                                  if (p.invoice.id) window.location.href = `/invoices/${p.invoice.id}`;
+                                }}
+                                className="flex w-full items-center gap-3 px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+                              >
+                                <Icon name="edit" className="h-4 w-4" />
+                                Edit
                               </button>
                             </div>
                           )}
