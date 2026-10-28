@@ -3,13 +3,13 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { X } from "lucide-react";
 
 import { TextField, TextAreaField, SelectField } from "@/components/form";
 import { api } from "@/lib/api";
 import { formatMoney } from "@/lib/format";
 import type { Invoice, Page, PaymentMethod } from "@/lib/types";
 import { Badge } from "@/components/ui";
+import { Icon } from "@/components/Icon";
 
 const PAYMENT_METHODS: Array<{ value: PaymentMethod; label: string }> = [
   { value: "bank_transfer", label: "Bank Transfer" },
@@ -118,7 +118,7 @@ export function RecordPaymentDrawer({
                 onClick={onClose}
                 className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
               >
-                <X className="w-5 h-5" />
+                <Icon name="x" className="w-5 h-5" />
               </button>
             </div>
 
