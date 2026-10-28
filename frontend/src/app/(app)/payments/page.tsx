@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useRef, useEffect } from "react";
+import { RecordPaymentDrawer } from "@/components/RecordPaymentDrawer";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 
@@ -140,6 +141,7 @@ export default function PaymentsPage() {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
+  const [showRecordDrawer, setShowRecordDrawer] = useState(false);
 
   const invoices = useQuery({
     queryKey: ["invoices", "list", { limit: 500 }],
@@ -324,9 +326,7 @@ export default function PaymentsPage() {
             <button
               type="button"
               className="btn-primary flex items-center gap-2"
-              onClick={() => {
-                document.getElementById('record-payment-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-              }}
+              onClick={() => setShowRecordDrawer(true)}
             >
               <Icon name="plus" className="h-4 w-4" />
               Record Payment
@@ -630,69 +630,10 @@ export default function PaymentsPage() {
       </Card>
 
       {/* Record Payment Form */}
-      <Card id="record-payment-form" title="Record a Payment" subtitle="Receive money against an invoice.">
-        <div className="p-4 space-y-3">
-          {recordError && (
-            <div className="rounded-md bg-rose-50 p-3 text-xs text-rose-800 ring-1 ring-inset ring-rose-200">
-              {recordError}
-            </div>
-          )}
-          <form onSubmit={handleSubmit} className="space-y-3">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
-              <SelectField
-                label="Invoice"
-                value={selectedInvoiceId}
-                onChange={setSelectedInvoiceId}
-                options={invoices.data?.items.map((inv) => ({
-                  value: inv.id,
-                  label: `${inv.invoice_number ?? inv.id} · ${inv.client_name ?? "Unknown"}`,
-                })) ?? []}
-                required
-              />
-              <TextField
-                label="Amount (₹)"
-                type="number"
-                value={amount}
-                onChange={setAmount}
-                required
-              />
-              <TextField
-                label="Received on"
-                type="date"
-                value={paidOn}
-                onChange={setPaidOn}
-              />
-              <SelectField
-                label="Method"
-                value={method}
-                onChange={(v) => setMethod(v as PaymentMethod)}
-                options={PAYMENT_METHODS}
-              />
-            </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
-              <TextField
-                label="Reference"
-                value={reference}
-                onChange={(v) => setReference(v)}
-                placeholder="UTR or cheque number"
-              />
-              <TextAreaField
-                label="Notes"
-                value={notes}
-                onChange={setNotes}
-                maxLength={500}
-              />
-              <button
-                type="submit"
-                className="btn-primary"
-                disabled={!selectedInvoiceId || !amount || recording}
-              >
-                {recording ? "Recording…" : "Record Payment"}
-              </button>
-            </div>
-          </form>
-        </div>
-      </Card>
+      <RecordPaymentDrawer
+        open={showRecordDrawer}
+        onClose={() => setShowRecordDrawer(false)}
+      />
     </div>
   );
 }
