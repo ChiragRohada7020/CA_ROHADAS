@@ -601,7 +601,7 @@ async def create_task(
         return _uuid.UUID(str(v))
 
     today = today_local()
-    task_code = payload.get("task_code") or f"T-{today.strftime('%Y%m%d')}-{_uuid.uuid4().hex[:6].upper()}"
+    task_code = payload.get("task_code") or f"TSK-{today.strftime('%Y%m%d')}-{_uuid.uuid4().hex[:6].upper()}"
 
     tags = payload.get("tags")
     tags_json = json.dumps(tags) if tags is not None else None

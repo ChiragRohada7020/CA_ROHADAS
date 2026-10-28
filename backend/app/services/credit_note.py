@@ -63,7 +63,7 @@ def create_credit_note(
     db.add(cn)
     db.flush()
 
-    prefix = f"CN{datetime.utcnow().strftime('%y%m')}:"
+    prefix = f"CN-{datetime.utcnow().strftime('%y%m')}-"
     max_num = db.execute(
         select(CreditNote.note_number).where(
             CreditNote.note_number.like(f"{prefix}%"),

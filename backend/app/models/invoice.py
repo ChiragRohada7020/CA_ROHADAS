@@ -182,9 +182,7 @@ class Payment(Base):
     __tablename__ = "payments"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    tenant_id = Column(UUID(as_uuid=True), nullable=True, index=True)
-    invoice_id = Column(UUID(as_uuid=True), ForeignKey("invoices.id", ondelete="CASCADE"), nullable=True)
-    receipt_id = Column(UUID(as_uuid=True), nullable=True)
+    invoice_id = Column(UUID(as_uuid=True), ForeignKey("invoices.id", ondelete="CASCADE"), nullable=False)
     amount = Column(Float, nullable=False)
     paid_on = Column(DateTime(timezone=True), nullable=False)
     method = Column(String(50), nullable=False)

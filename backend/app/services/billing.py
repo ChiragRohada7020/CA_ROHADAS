@@ -248,7 +248,7 @@ def create_invoice_record(
         due_date = invoice_date + timedelta(days=due_days)
 
     if invoice_number is None:
-        prefix = f"INV{today_date.strftime('%y%m')}:"
+        prefix = f"INV-{today_date.strftime('%y%m')}-"
         max_num = db.execute(
             select(func.max(Invoice.invoice_number)).where(
                 Invoice.invoice_number.like(f"{prefix}%"),
@@ -369,7 +369,6 @@ def record_payment(
 
     try:
         payment = Payment(
-            tenant_id=tenant_id,
             invoice_id=invoice_id,
             amount=float(amt.quantize(Decimal("0.01"))),
             paid_on=paid_on,
@@ -497,7 +496,7 @@ def _allocate_invoice_number(db, invoice, now):
     if invoice.invoice_number:
         return  # already has one
 
-    prefix = f"INV{now.strftime('%y%m')}:"
+    prefix = f"INV-{now.strftime('%y%m')}-"
     max_num = db.execute(
         select(func.max(InvoiceModel.invoice_number)).where(
             InvoiceModel.invoice_number.like(f"{prefix}%"),
@@ -803,7 +802,7 @@ def issue_receipt_service(db, tenant_id, invoice_id, payment_id=None):
         if payment is None or str(payment.invoice_id) != str(invoice_id):
             raise NotFoundError(f"Payment {payment_id} not found")
 
-    prefix = "RCT"
+    prefix = "RCT-"
     max_num = db.execute(
         select(func.max(Receipt.receipt_number)).where(Receipt.tenant_id == tenant_id)
     ).scalar()

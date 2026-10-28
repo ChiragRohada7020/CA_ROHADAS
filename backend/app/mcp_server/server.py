@@ -1064,6 +1064,7 @@ async def _tool_list_tasks(db, arguments: dict[str, Any]) -> str:
             Task.statutory_due_date < today_local(),
             Task.filing_status != "filed",
         )
+    stmt = stmt.order_by(Task.created_at.desc())
     stmt = stmt.limit(arguments.get("limit", 50))
 
     rows = db.execute(stmt).scalars().all()
@@ -1093,6 +1094,8 @@ async def _tool_list_tasks(db, arguments: dict[str, Any]) -> str:
             "preparer_id": str(r.preparer_id) if r.preparer_id else None,
             "preparer_name": user_names.get(r.preparer_id, "Unassigned") if r.preparer_id else "Unassigned",
             "reviewer_name": user_names.get(r.reviewer_id) if r.reviewer_id else None,
+            "created_at": r.created_at.isoformat() if r.created_at else None,
+            "updated_at": r.updated_at.isoformat() if r.updated_at else None,
         }
         for r in rows
     ])
@@ -1138,6 +1141,8 @@ async def _tool_get_task(db, arguments: dict[str, Any]) -> str:
         "preparer_id": str(task.preparer_id) if task.preparer_id else None,
         "reviewer_id": str(task.reviewer_id) if task.reviewer_id else None,
         "progress_percent": task.progress_percent,
+        "created_at": task.created_at.isoformat() if task.created_at else None,
+        "updated_at": task.updated_at.isoformat() if task.updated_at else None,
     })
 
 
@@ -1152,7 +1157,7 @@ async def _tool_create_task(db, arguments: dict[str, Any]) -> str:
         return json.dumps({"error": "tenant context required"})
 
     now = today_local()
-    prefix = f"T{now.strftime('%y%m')}:"
+    prefix = f"TSK{now.strftime('%y%m')}:"
 
     # Generate unique task code by querying MAX, same pattern as create_client.
     # The unique constraint is (tenant_id, task_code), so we scope the query

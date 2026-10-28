@@ -16,7 +16,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.db import get_db
-from app.core.security import get_current_user
+from app.core.security import get_current_user, require_permission
 from app.models import Client, ComplianceRule, Deadline, DeadlineOverride, FilingRecord, Task, User
 
 router = APIRouter(tags=["compliance"])
