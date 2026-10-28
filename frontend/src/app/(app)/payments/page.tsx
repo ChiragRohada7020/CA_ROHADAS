@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 
@@ -37,6 +37,7 @@ interface PaymentBackend {
   invoice_id: string;
   invoice_number: string | null;
   client_name: string | null;
+  client_id: string | null;
   amount: number;
   paid_on: string | null;
   method: PaymentMethod;
@@ -70,7 +71,7 @@ function mapPayment(p: PaymentBackend): PaymentRow {
     id: p.id,
     date: p.paid_on ?? p.created_at ?? "",
     client: {
-      id: p.id, // backend doesn't expose client_id; use payment id for color hashing
+      id: p.client_id ?? p.invoice_id ?? p.id,
       name: p.client_name,
       code: null,
     },
@@ -135,6 +136,10 @@ export default function PaymentsPage() {
   const [notes, setNotes] = useState("");
   const [recording, setRecording] = useState(false);
   const [recordError, setRecordError] = useState<string | null>(null);
+  const [openActionId, setOpenActionId] = useState<string | null>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
 
   const invoices = useQuery({
     queryKey: ["invoices", "list", { limit: 500 }],
@@ -181,6 +186,13 @@ export default function PaymentsPage() {
     },
     onError: (err: any) => {
       setRecordError(err.message || "Failed to record payment.");
+    },
+  });
+
+  const issueReceipt = useMutation({
+    mutationFn: (invoiceId: string) => api.post(`/invoices/${invoiceId}/receipts`),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["payments", "list"] });
     },
   });
 
@@ -236,7 +248,9 @@ export default function PaymentsPage() {
     });
   }, [summary.payments, tab, search, clientFilter, methodFilter, dateFrom, dateTo]);
 
-  const payments = filteredPayments;
+  const paymentsAll = filteredPayments;
+  const totalPages = Math.max(1, Math.ceil(paymentsAll.length / pageSize));
+  const payments = paymentsAll.slice((currentPage - 1) * pageSize, currentPage * pageSize);
   const data = {
     total_received: summary.total_received,
     total_payments: summary.total_payments,
@@ -310,6 +324,9 @@ export default function PaymentsPage() {
             <button
               type="button"
               className="btn-primary flex items-center gap-2"
+              onClick={() => {
+                document.getElementById('record-payment-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }}
             >
               <Icon name="plus" className="h-4 w-4" />
               Record Payment
@@ -330,14 +347,14 @@ export default function PaymentsPage() {
         <StatCard
           label="Outstanding"
           value={formatMoney(data.outstanding)}
-          hint="Uninvoiced amounts"
+          hint="Unpaid invoices"
           tone="warning"
           icon={<Icon name="clock" className="h-5 w-5" />}
         />
         <StatCard
           label="Overdue"
           value={formatMoney(data.overdue)}
-          hint="From 7 clients"
+          hint={`${receivablesData?.by_client?.filter(c => c.overdue_outstanding > 0).length ?? 0} clients`}
           tone="danger"
           icon={<Icon name="alert-circle" className="h-5 w-5" />}
         />
@@ -521,45 +538,43 @@ export default function PaymentsPage() {
                         {p.reference ?? "—"}
                       </td>
                       <td className="td text-right">
-                        <div className="relative inline-block">
+                        <div className="relative inline-block" ref={openActionId === p.id ? dropdownRef : null}>
                           <button
                             type="button"
+                            onClick={() => setOpenActionId(openActionId === p.id ? null : p.id)}
                             className="text-slate-400 hover:text-sky-600 dark:text-slate-500 dark:hover:text-sky-400"
                             aria-label="More actions"
                           >
                             <Icon name="more-vertical" className="h-4 w-4" />
                           </button>
-                          <div className="absolute right-0 mt-2 w-48 rounded-lg border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-800 py-2 z-10">
-                            <button
-                              type="button"
-                              className="flex w-full items-center gap-3 px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
-                            >
-                              <Icon name="eye" className="h-4 w-4" />
-                              View Receipt
-                            </button>
-                            <button
-                              type="button"
-                              className="flex w-full items-center gap-3 px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
-                            >
-                              <Icon name="download" className="h-4 w-4" />
-                              Download Receipt
-                            </button>
-                            <button
-                              type="button"
-                              className="flex w-full items-center gap-3 px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
-                            >
-                              <Icon name="send" className="h-4 w-4" />
-                              Send Receipt
-                            </button>
-                            <div className="h-px my-1 bg-slate-100 dark:bg-slate-700"></div>
-                            <button
-                              type="button"
-                              className="flex w-full items-center gap-3 px-3 py-2 text-sm text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/20"
-                            >
-                              <Icon name="trash" className="h-4 w-4" />
-                              Delete
-                            </button>
-                          </div>
+                          {openActionId === p.id && (
+                            <div className="absolute right-0 mt-2 w-48 rounded-lg border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-800 py-2 z-50">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setOpenActionId(null);
+                                  if (p.invoice.id) window.location.href = `/invoices/${p.invoice.id}`;
+                                }}
+                                className="flex w-full items-center gap-3 px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+                              >
+                                <Icon name="eye" className="h-4 w-4" />
+                                View Invoice
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setOpenActionId(null);
+                                  if (p.invoice.id) {
+                                    issueReceipt.mutate(p.invoice.id);
+                                  }
+                                }}
+                                className="flex w-full items-center gap-3 px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+                              >
+                                <Icon name="file-text" className="h-4 w-4" />
+                                Issue Receipt
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -568,15 +583,16 @@ export default function PaymentsPage() {
               </table>
               <div className="mt-4 flex items-center justify-between">
                 <p className="text-xs text-slate-500">
-                  Showing 1 to {Math.min(payments.length, 8)} of {payments.length} payments
+                  Showing {paymentsAll.length === 0 ? 0 : (currentPage - 1) * pageSize + 1} to {Math.min(currentPage * pageSize, paymentsAll.length)} of {paymentsAll.length} payments
                 </p>
                 <div className="flex gap-1">
-                  {[1, 2, 3, 4, 5].map((page) => (
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
                     <button
                       key={page}
                       type="button"
+                      onClick={() => setCurrentPage(page)}
                       className={
-                        page === 1
+                        page === currentPage
                           ? "px-2.5 py-1.5 text-xs rounded-md bg-sky-600 text-white"
                           : "px-2.5 py-1.5 text-xs rounded-md bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700"
                       }
@@ -584,7 +600,7 @@ export default function PaymentsPage() {
                       {page}
                     </button>
                   ))}
-                  <button type="button" className="btn-ghost px-3 py-1.5 text-xs">
+                  <button type="button" className="btn-ghost px-3 py-1.5 text-xs" disabled>
                     10 per page
                   </button>
                 </div>
@@ -595,7 +611,7 @@ export default function PaymentsPage() {
       </Card>
 
       {/* Record Payment Form */}
-      <Card title="Record a Payment" subtitle="Receive money against an invoice.">
+      <Card id="record-payment-form" title="Record a Payment" subtitle="Receive money against an invoice.">
         <div className="p-4 space-y-3">
           {recordError && (
             <div className="rounded-md bg-rose-50 p-3 text-xs text-rose-800 ring-1 ring-inset ring-rose-200">

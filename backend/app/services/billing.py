@@ -770,6 +770,7 @@ def list_payments(db, tenant_id):
             "invoice_id": str(p.invoice_id),
             "invoice_number": p.invoice.invoice_number if p.invoice else None,
             "client_name": p.invoice.client_name if p.invoice else None,
+            "client_id": str(p.invoice.client_id) if p.invoice and p.invoice.client_id else None,
             "amount": round(float(p.amount), 2),
             "paid_on": p.paid_on.isoformat() if p.paid_on else None,
             "method": p.method,
