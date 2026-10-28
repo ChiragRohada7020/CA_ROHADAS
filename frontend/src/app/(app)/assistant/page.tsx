@@ -358,9 +358,38 @@ export default function AssistantPage() {
               }
             }}
             rows={1}
-            placeholder="Ask about tasks, clients, compliance, documents…"
+            placeholder="Ask about tasks, clients, compliance, documents… or use voice"
             className="max-h-32 min-h-[2.5rem] flex-1 resize-none bg-transparent px-3 py-2.5 text-sm text-slate-800 outline-none placeholder:text-slate-400"
           />
+          <button
+            type="button"
+            onClick={() => {
+              if (typeof window !== "undefined") {
+                const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+                if (!SpeechRecognition) {
+                  alert("Speech recognition not supported in this browser");
+                  return;
+                }
+                const recognition = new SpeechRecognition();
+                recognition.continuous = false;
+                recognition.interimResults = false;
+                recognition.lang = "en-IN";
+                recognition.onresult = (event: any) => {
+                  const transcript = event.results[0][0].transcript;
+                  setInput(transcript);
+                };
+                recognition.onerror = () => {};
+                recognition.start();
+              }
+            }}
+            disabled={running}
+            className="flex h-10 items-center justify-center rounded-xl border border-slate-200 px-3 text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+            title="Voice input"
+          >
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+            </svg>
+          </button>
           <button
             type="submit"
             disabled={running || !input.trim()}

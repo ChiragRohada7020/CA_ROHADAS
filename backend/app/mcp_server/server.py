@@ -719,6 +719,43 @@ def _build_whatsapp_tool_definitions():
             "required": ["invoice_id"],
         },
     ))
+    tools.append(Tool(
+        name="add_task_step",
+        description="Add a checklist step to a task.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "task_id": {"type": "string"},
+                "name": {"type": "string"},
+                "description": {"type": "string"},
+                "is_mandatory": {"type": "boolean", "default": True},
+                "sequence": {"type": "integer"},
+            },
+            "required": ["task_id", "name"],
+        },
+    ))
+    tools.append(Tool(
+        name="update_task_step",
+        description="Update a task checklist step status.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "step_id": {"type": "string"},
+                "status": {"type": "string", "enum": ["pending", "in_progress", "completed", "skipped", "not_applicable"]},
+                "notes": {"type": "string"},
+            },
+            "required": ["step_id", "status"],
+        },
+    ))
+    tools.append(Tool(
+        name="delete_task",
+        description="Delete a task.",
+        inputSchema={
+            "type": "object",
+            "properties": {"task_id": {"type": "string"}},
+            "required": ["task_id"],
+        },
+    ))
 
     return tools
 
@@ -929,6 +966,12 @@ async def _dispatch_tool(name: str, arguments: dict[str, Any]) -> str:
             return await _tool_whatsapp_send_message(db, arguments)
         elif name == "whatsapp_send_invoice":
             return await _tool_whatsapp_send_invoice(db, arguments)
+        elif name == "add_task_step":
+            return await _tool_add_task_step(db, arguments)
+        elif name == "update_task_step":
+            return await _tool_update_task_step(db, arguments)
+        elif name == "delete_task":
+            return await _tool_delete_task(db, arguments)
         else:
             return f"Unknown tool: {name}"
     finally:
@@ -1102,8 +1145,9 @@ async def _tool_list_tasks(db, arguments: dict[str, Any]) -> str:
 
 
 async def _tool_get_task(db, arguments: dict[str, Any]) -> str:
-    from app.models import Task
+    from app.models import Task, TaskStep
     import json
+    from sqlalchemy import select
 
     task_id = arguments.get("task_id")
     if not task_id:
@@ -1127,6 +1171,18 @@ async def _tool_get_task(db, arguments: dict[str, Any]) -> str:
             is_overdue = True
             days_overdue = max((now - task.statutory_due_date).days, 0)
 
+    steps = db.execute(select(TaskStep).where(TaskStep.task_id == task.id).order_by(TaskStep.sequence)).scalars().all()
+    checklist = []
+    for s in steps:
+        checklist.append({
+            "id": str(s.id),
+            "name": s.name,
+            "description": s.description,
+            "status": s.status,
+            "is_mandatory": s.is_mandatory,
+            "sequence": s.sequence,
+        })
+
     return json.dumps({
         "id": str(task.id),
         "task_code": task.task_code,
@@ -1143,6 +1199,8 @@ async def _tool_get_task(db, arguments: dict[str, Any]) -> str:
         "progress_percent": task.progress_percent,
         "created_at": task.created_at.isoformat() if task.created_at else None,
         "updated_at": task.updated_at.isoformat() if task.updated_at else None,
+        "checklist": checklist,
+        "steps": checklist,
     })
 
 
@@ -3072,3 +3130,82 @@ def build_streamable_http_app(session_manager: Any | None = None) -> Any:
         # Wrap with tenant middleware so MCP tools receive tenant_id
         _starlette_app = _TenantMiddleware(_raw_asgi_app)
         return _starlette_app
+
+
+async def _tool_add_task_step(db, arguments: dict[str, Any]) -> str:
+    from app.models import Task, TaskStep
+    import json
+    from sqlalchemy import select
+
+    task_id = arguments.get("task_id")
+    if not task_id:
+        return json.dumps({"error": "task_id is required"})
+
+    task = db.get(Task, task_id)
+    if task is None:
+        return json.dumps({"error": f"Task {task_id} not found"})
+
+    tenant_id = arguments.get("_tenant_id")
+    if tenant_id and str(task.tenant_id) != str(tenant_id):
+        return json.dumps({"error": f"Task {task_id} not found"})
+
+    seq = arguments.get("sequence")
+    if seq is None:
+        max_seq = db.execute(select(TaskStep.sequence).where(TaskStep.task_id == task.id).order_by(TaskStep.sequence.desc())).scalars().first()
+        seq = (max_seq or 0) + 1
+
+    step = TaskStep(
+        task_id=task.id,
+        sequence=seq,
+        name=arguments.get("name", ""),
+        description=arguments.get("description"),
+        is_mandatory=arguments.get("is_mandatory", True),
+        status="pending",
+    )
+    db.add(step)
+    db.commit()
+    db.refresh(step)
+    return json.dumps({"id": str(step.id), "task_id": str(task.id), "name": step.name, "status": step.status})
+
+
+async def _tool_update_task_step(db, arguments: dict[str, Any]) -> str:
+    from app.models import TaskStep
+    import json
+
+    step_id = arguments.get("step_id")
+    if not step_id:
+        return json.dumps({"error": "step_id is required"})
+
+    step = db.get(TaskStep, step_id)
+    if step is None:
+        return json.dumps({"error": f"Step {step_id} not found"})
+
+    if arguments.get("status"):
+        step.status = arguments["status"]
+    if arguments.get("notes") is not None:
+        step.notes = arguments["notes"]
+    db.commit()
+    db.refresh(step)
+    return json.dumps({"id": str(step.id), "status": step.status})
+
+
+async def _tool_delete_task(db, arguments: dict[str, Any]) -> str:
+    from app.models import Task
+    import json
+    from datetime import datetime
+
+    task_id = arguments.get("task_id")
+    if not task_id:
+        return json.dumps({"error": "task_id is required"})
+
+    task = db.get(Task, task_id)
+    if task is None:
+        return json.dumps({"error": f"Task {task_id} not found"})
+
+    tenant_id = arguments.get("_tenant_id")
+    if tenant_id and str(task.tenant_id) != str(tenant_id):
+        return json.dumps({"error": f"Task {task_id} not found"})
+
+    task.deleted_at = datetime.utcnow()
+    db.commit()
+    return json.dumps({"success": True, "task_id": str(task.id)})
