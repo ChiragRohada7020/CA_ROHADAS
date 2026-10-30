@@ -49,7 +49,7 @@ export default function NewCreditNotePage() {
         title="Raise Credit Note"
         subtitle="Create a credit note against the invoice."
         action={
-          <Link href={`/invoices/${invoiceId}`} className="btn-ghost">
+          <Link href={`/invoices/${invoiceId}`} className="btn btn-ghost px-5 py-2.5">
             Back to invoice
           </Link>
         }

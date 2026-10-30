@@ -49,7 +49,20 @@ export function useSignOut() {
 }
 
 export function hasPermission(session: TokenResponse | undefined, code: string): boolean {
-  return Boolean(session?.permissions?.includes(code));
+  if (!session) return false;
+  const perms = session.permissions ?? [];
+  const roles = session.roles ?? [];
+
+  // Partner, owner and system admin always have full access
+  if (roles.includes("firm_owner") || roles.includes("partner") || roles.includes("system_admin")) {
+    return true;
+  }
+  if (perms.includes("*:*")) {
+    return true;
+  }
+
+  // Exact match
+  return perms.includes(code);
 }
 
 /**
@@ -72,8 +85,8 @@ export function canSee(session: TokenResponse | undefined, code: string): boolea
   const perms = session.permissions ?? [];
   const roles = session.roles ?? [];
 
-  // Owner and system admin always see everything
-  if (roles.includes("firm_owner") || roles.includes("system_admin")) {
+  // Partner, owner and system admin always see everything
+  if (roles.includes("firm_owner") || roles.includes("partner") || roles.includes("system_admin")) {
     return true;
   }
   if (perms.includes("*:*")) {
@@ -102,7 +115,7 @@ export function canSeeSection(session: TokenResponse | undefined, code: string):
   const perms = session.permissions ?? [];
   const roles = session.roles ?? [];
 
-  if (roles.includes("firm_owner") || roles.includes("system_admin")) {
+  if (roles.includes("firm_owner") || roles.includes("partner") || roles.includes("system_admin")) {
     return true;
   }
   if (perms.includes("*:*")) {

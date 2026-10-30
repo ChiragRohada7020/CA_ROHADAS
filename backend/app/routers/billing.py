@@ -1066,6 +1066,7 @@ async def get_billing_settings(
             "next_invoice_number": 1,
             "default_gst_rate": 18.0,
             "gst_registered": False,
+            "invoice_template": "modern",
         }
 
     tenant_name = getattr(principal, "tenant_name", None) or settings.legal_name or ""
@@ -1089,6 +1090,7 @@ async def get_billing_settings(
         "next_invoice_number": 1,
         "default_gst_rate": float(settings.tax_rate) if settings.tax_rate else 18.0,
         "gst_registered": bool(settings.gstin),
+        "invoice_template": settings.invoice_template,
     }
 
 
@@ -1119,6 +1121,7 @@ async def update_billing_settings(
         "address_line1", "address_line2", "city", "state",
         "state_code", "pincode", "country", "phone", "email",
         "gst_tax_type", "sac_code", "payment_terms_days", "round_off",
+        "invoice_template",
     ]
     for field in updatable_fields:
         if field in body:
@@ -1148,6 +1151,7 @@ async def update_billing_settings(
         "next_invoice_number": 1,
         "default_gst_rate": float(settings.tax_rate) if settings.tax_rate else 18.0,
         "gst_registered": bool(settings.gstin),
+        "invoice_template": settings.invoice_template,
     }
 
 # ── Recurring billing schedules ─────────────────────────────────────────

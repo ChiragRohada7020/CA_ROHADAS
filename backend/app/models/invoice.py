@@ -232,6 +232,7 @@ class BillingSettings(Base):
     sac_code = Column(String(20), nullable=True)
     payment_terms_days = Column(Integer, default=15, nullable=False)
     round_off = Column(Boolean, default=True, nullable=False)
+    invoice_template = Column(String(30), default="modern", nullable=False)
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 

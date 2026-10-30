@@ -18,7 +18,7 @@ export default function BillingSettingsPage() {
         title="Firm billing details"
         subtitle="The letterhead printed on every invoice, and the state code that decides GST."
         action={
-          <Link href="/invoices" className="btn-ghost">
+          <Link href="/invoices" className="btn btn-ghost px-5 py-2.5">
             Back to invoices
           </Link>
         }

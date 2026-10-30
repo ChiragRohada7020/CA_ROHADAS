@@ -80,6 +80,19 @@ def _today() -> date:
     return t
 
 
+def _parse_tags(tags_text: str | None) -> list[str]:
+    """Parse the tags column (stored as JSON text) into a list of strings."""
+    if not tags_text:
+        return []
+    try:
+        parsed = json.loads(tags_text)
+        if isinstance(parsed, list):
+            return [str(x) for x in parsed]
+        return []
+    except (ValueError, TypeError):
+        return []
+
+
 def _task_to_list_row(t: Task, *, client_name, service_code, service_name) -> dict:
     today = _today()
     statutory = _to_date(t.statutory_due_date)
@@ -119,7 +132,7 @@ def _task_to_list_row(t: Task, *, client_name, service_code, service_name) -> di
         "approver_id": str(t.approver_id) if t.approver_id else None,
         "parent_task_id": str(t.parent_task_id) if t.parent_task_id else None,
         "period_key": t.period_key,
-        "tags": list(t.tags) if t.tags else [],
+        "tags": _parse_tags(t.tags),
         "task_type": t.task_type,
         "category": t.category,
         "is_overdue": is_overdue,
@@ -500,7 +513,7 @@ async def get_task(
         "parent_task_code": parent_task_code,
         "parent_task_title": parent_task_title,
         "period_key": task.period_key,
-        "tags": list(task.tags) if task.tags else [],
+        "tags": _parse_tags(task.tags),
         "review_round": task.review_round,
         "escalation_level": task.escalation_level,
         "days_remaining": days_remaining,
@@ -539,11 +552,13 @@ async def update_task(
         "progress_percent", "start_date", "internal_due_date", "statutory_due_date",
         "deadline_verified", "estimated_hours", "actual_hours",
         "blocked_reason", "delay_reason", "preparer_id", "reviewer_id", "approver_id",
-        "filer_id", "client_id", "service_id", "period_key", "tags",
+        "filer_id", "client_id", "service_id", "period_key", "tags", "parent_task_id",
     }
 
     for key, value in payload.items():
-        if key not in allowed_fields or value is None:
+        if key not in allowed_fields:
+            continue
+        if value is None and key != "parent_task_id":
             continue
         if key in ("start_date", "internal_due_date", "statutory_due_date", "reminder_date"):
             try:
@@ -841,6 +856,8 @@ async def update_task_step(
 
     new_status = payload.get("status")
     notes = payload.get("notes")
+    new_name = payload.get("name")
+    new_is_mandatory = payload.get("is_mandatory")
 
     if new_status:
         clauses = "status = :status"
@@ -852,6 +869,12 @@ async def update_task_step(
     else:
         clauses = ""
         params = {}
+    if new_name is not None:
+        clauses += (", name = :name" if clauses else "name = :name")
+        params["name"] = new_name
+    if new_is_mandatory is not None:
+        clauses += (", is_mandatory = :is_mandatory" if clauses else "is_mandatory = :is_mandatory")
+        params["is_mandatory"] = new_is_mandatory
     if notes is not None:
         clauses += (", notes = :notes" if clauses else "notes = :notes")
         params["notes"] = notes
@@ -862,6 +885,43 @@ async def update_task_step(
     db.commit()
     db.refresh(step)
     return {"id": str(step.id), "status": step.status, "completed_at": step.completed_at.isoformat() if step.completed_at else None}
+
+
+@router.delete("/tasks/{task_id}/steps/{step_id}")
+async def delete_task_step(
+    request: Request,
+    task_id: str,
+    step_id: str,
+    db: Any = Depends(get_db),
+) -> Any:
+    principal = await get_current_user(request, db)
+    task = db.get(Task, task_id)
+    if task is None or str(task.tenant_id) != str(principal.tenant_id):
+        raise NotFoundError(f"Task {task_id} not found")
+
+    step = _resolve_task_step(task_id, step_id, db)
+    if step is None:
+        raise NotFoundError(f"Step {step_id} not found on task {task_id}")
+
+    db.execute(text("DELETE FROM task_steps WHERE id = CAST(:sid AS uuid)"), {"sid": str(step.id)})
+    db.commit()
+    return {"ok": True}
+
+
+@router.delete("/tasks/{task_id}/steps")
+async def delete_all_task_steps(
+    request: Request,
+    task_id: str,
+    db: Any = Depends(get_db),
+) -> Any:
+    principal = await get_current_user(request, db)
+    task = db.get(Task, task_id)
+    if task is None or str(task.tenant_id) != str(principal.tenant_id):
+        raise NotFoundError(f"Task {task_id} not found")
+
+    db.execute(text("DELETE FROM task_steps WHERE task_id = CAST(:task AS uuid)"), {"task": str(task.id)})
+    db.commit()
+    return {"ok": True}
 
 
 @router.post("/tasks/{task_id}/comments")

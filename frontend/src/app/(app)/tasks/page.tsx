@@ -299,7 +299,7 @@ function InlineStatusControl({ task }: { task: TaskListItem }) {
       </button>
 
       {dropdownOpen && (
-        <div className="absolute left-0 top-full z-30 mt-1 w-40 overflow-hidden rounded-[10px] border border-[#E2E8F0] bg-white shadow-lg">
+        <div className="absolute left-0 top-full z-30 mt-1 w-40 overflow-hidden rounded-lg border border-[#E2E8F0] bg-white shadow-lg">
           {visibleStatuses.map((s) => {
             const needsReason = statusRequiresReason(s);
             return (
@@ -310,7 +310,7 @@ function InlineStatusControl({ task }: { task: TaskListItem }) {
                   "flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs outline-none",
                   mutation.isPending
                     ? "cursor-not-allowed opacity-50"
-                    : "hover:bg-[#F6F8FC]",
+                    : "hover:bg-[#f7f6f3]",
                 )}
                 disabled={mutation.isPending}
                 onClick={(e) => {
@@ -403,7 +403,7 @@ function RowActionsMenu({ task, onOpen }: { task: TaskListItem; onOpen: () => vo
     <div ref={ref} className="relative inline-block">
       <button
         type="button"
-        className="rounded p-1 text-[#94A3B8] hover:bg-[#F6F8FC] hover:text-[#101B3D]"
+        className="rounded p-1 text-[#94A3B8] hover:bg-[#f7f6f3] hover:text-[#101B3D]"
         onClick={(e) => {
           e.stopPropagation();
           setOpen(!open);
@@ -413,10 +413,10 @@ function RowActionsMenu({ task, onOpen }: { task: TaskListItem; onOpen: () => vo
         <Icon name="more-vertical" className="h-4 w-4" />
       </button>
       {open && (
-        <div className="absolute right-0 top-full z-30 mt-1 w-48 overflow-hidden rounded-[10px] border border-[#E2E8F0] bg-white shadow-lg">
+        <div className="absolute right-0 top-full z-30 mt-1 w-48 overflow-hidden rounded-lg border border-[#E2E8F0] bg-white shadow-lg">
           <button
             type="button"
-            className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-[#101B3D] hover:bg-[#F6F8FC]"
+            className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-[#101B3D] hover:bg-[#f7f6f3]"
             onClick={(e) => {
               e.stopPropagation();
               setOpen(false);
@@ -428,7 +428,7 @@ function RowActionsMenu({ task, onOpen }: { task: TaskListItem; onOpen: () => vo
           </button>
           <a
             href={`/tasks/${task.id}`}
-            className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-[#101B3D] hover:bg-[#F6F8FC]"
+            className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-[#101B3D] hover:bg-[#f7f6f3]"
             onClick={(e) => {
               e.stopPropagation();
               setOpen(false);
@@ -545,7 +545,7 @@ export default function TasksPage() {
   const hasFilters = Object.values(filters).some(Boolean);
 
   return (
-    <div className="min-h-full bg-[#F6F8FC] space-y-4">
+    <div className="min-h-full bg-[#f7f6f3] space-y-4">
       <PageHeader
         title="Tasks"
         subtitle="Track and manage all compliance and client work."
@@ -567,7 +567,7 @@ export default function TasksPage() {
                     "cursor-pointer rounded px-2.5 py-1 text-xs font-medium transition-colors",
                     view === key
                       ? "bg-[#1677FF] text-white"
-                      : "text-[#64748B] hover:bg-[#F6F8FC]",
+                      : "text-[#64748B] hover:bg-[#f7f6f3]",
                   )}
                   aria-pressed={view === key}
                 >
@@ -575,12 +575,12 @@ export default function TasksPage() {
                 </button>
               ))}
             </div>
-            <Link href="/tasks/generate" className="btn-ghost">
+            <Link href="/tasks/generate" className="btn btn-ghost px-5 py-2.5">
               Generate work
             </Link>
             <button
               type="button"
-              className="btn-primary"
+              className="btn btn-primary px-5 py-2.5"
               onClick={() => setCreating(true)}
             >
               <Icon name="plus" className="h-4 w-4" />
@@ -601,7 +601,7 @@ export default function TasksPage() {
                 type="button"
                 onClick={() => changeTab(entry.key)}
                 className={cn(
-                  "flex items-center gap-2 rounded-[10px] border px-3 py-2 text-left transition-colors",
+                  "flex items-center gap-2 rounded-lg border px-3 py-2 text-left transition-colors",
                   isActive
                     ? "border-[#1677FF] bg-[#F0F9FF]"
                     : "border-[#E2E8F0] bg-white hover:border-[#1677FF]",
@@ -714,7 +714,7 @@ export default function TasksPage() {
         </div>
 
         {hasFilters && (
-          <div className="flex items-center justify-between gap-3 border-b border-[#E2E8F0] bg-[#F6F8FC] px-3 py-2">
+          <div className="flex items-center justify-between gap-3 border-b border-[#E2E8F0] bg-[#f7f6f3] px-3 py-2">
             <p className="text-xs text-[#64748B]">
               Showing {tasks.data?.meta.total ?? 0} of {summary.data?.all_tasks ?? 0} open tasks
             </p>
@@ -754,7 +754,7 @@ export default function TasksPage() {
               <>
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[68rem]">
-                    <thead className="bg-[#F6F8FC]">
+                    <thead className="bg-[#f7f6f3]">
                       <tr>
                         <th className="th w-8">
                           <input
@@ -782,7 +782,7 @@ export default function TasksPage() {
                         <tr
                           key={task.id}
                           className={cn(
-                            "cursor-pointer hover:bg-[#F6F8FC]",
+                            "cursor-pointer hover:bg-[#f7f6f3]",
                             selected.has(task.id) && "bg-[#F0F9FF]",
                           )}
                           onClick={() => setOpenTaskId(task.id)}
@@ -807,7 +807,7 @@ export default function TasksPage() {
                           <td className="td text-xs text-[#64748B]">{task.client_name ?? "—"}</td>
                           <td className="td">
                             {task.service_code ? (
-                              <span className="rounded bg-[#F6F8FC] px-1.5 py-0.5 font-mono text-[10px] text-[#64748B]">
+                              <span className="rounded bg-[#f7f6f3] px-1.5 py-0.5 font-mono text-[10px] text-[#64748B]">
                                 {task.service_code}
                               </span>
                             ) : (
@@ -875,7 +875,7 @@ export default function TasksPage() {
                     (task) => task.status === column.status,
                   );
                   return (
-                       <div key={column.status} className="rounded-lg bg-[#F6F8FC] p-2">
+                       <div key={column.status} className="rounded-lg bg-[#f7f6f3] p-2">
                       <div className="mb-2 flex items-center justify-between px-1">
                         <span className="text-xs font-semibold text-[#101B3D]">
                           {column.label}

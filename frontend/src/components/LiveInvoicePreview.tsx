@@ -2,8 +2,9 @@
 
 import { formatDate, formatMoney } from "@/lib/format";
 import { amountInWords, computeTotals, resolveTax } from "@/lib/billing";
+import { getTemplateAccentColor } from "@/lib/invoice_templates";
 import type { DraftLine } from "@/components/InvoiceLineTable";
-import type { FirmBillingSettings, PartyDetails } from "@/lib/types";
+import type { FirmBillingSettings, InvoiceTemplate, PartyDetails } from "@/lib/types";
 
 export interface PreviewFormState {
   /** The selected client's details (null until one is chosen). */
@@ -23,6 +24,7 @@ export interface PreviewFormState {
   lines: DraftLine[];
   terms: string;
   notes: string;
+  template?: InvoiceTemplate;
   bankDetails: {
     bank_name: string;
     account_name: string;
@@ -33,6 +35,38 @@ export interface PreviewFormState {
   };
   taxNote: string | null;
 }
+
+const HEADER_CLASSES: Record<InvoiceTemplate, string> = {
+  fintech: "bg-[#635bff] text-white",
+  corporate_premium: "border-t-4 border-[#1e3a5f] bg-[#f8fafc]",
+  editorial: "border-b border-slate-300",
+  ca_professional: "bg-[#0b3d2e] text-white",
+  modern: "bg-[#2563eb] text-white",
+  classic: "bg-[#1f4e79] text-white",
+  minimal: "border-b border-slate-300",
+  corporate: "bg-[#1a237e] text-white",
+  compact: "bg-[#111827] text-white",
+  elegant: "border-t border-[#d4a373] bg-[#fbf6ee] text-[#5c4a0d]",
+  bold: "bg-[#1f2933] text-white",
+  fresh: "border-b-2 border-[#0d9488] bg-white text-[#0f172a]",
+  heritage: "border-t-2 border-[#7f1d1d] bg-[#fdf5f0] text-[#4c0a0a]",
+};
+
+const TEXT_COLORS: Record<InvoiceTemplate, string> = {
+  fintech: "text-[#0a0a2e]",
+  corporate_premium: "text-[#1a1a2e]",
+  editorial: "text-[#1a1a2a]",
+  ca_professional: "text-[#0f1f1a]",
+  modern: "text-slate-900",
+  classic: "text-slate-900",
+  minimal: "text-slate-900",
+  corporate: "text-slate-900",
+  compact: "text-slate-900",
+  elegant: "text-[#5c4a0d]",
+  bold: "text-[#030712]",
+  fresh: "text-[#0f172a]",
+  heritage: "text-[#4c0a0a]",
+};
 
 /**
  * Live, read-only invoice preview that mirrors `InvoiceSheet`.
@@ -56,6 +90,10 @@ export function LiveInvoicePreview({
 }) {
   const firm = state.firm;
   const client = state.client;
+  const template = state.template ?? "modern";
+  const accentColor = getTemplateAccentColor(template);
+  const headerClass = HEADER_CLASSES[template] ?? HEADER_CLASSES.modern;
+  const textColor = TEXT_COLORS[template] ?? TEXT_COLORS.modern;
 
   const firmStateCode = firm?.state_code ?? null;
   const clientStateCode = client?.state_code ?? null;
@@ -75,8 +113,8 @@ export function LiveInvoicePreview({
   const billableLines = state.lines.filter((l) => l.description.trim().length > 0);
 
   return (
-    <article className="force-light w-full max-w-[210mm] overflow-hidden rounded-xl border border-slate-200 bg-white text-slate-900 shadow-lg">
-      <header className="relative border-b-2 border-slate-900 p-6 pb-4">
+    <article className={`force-light w-full max-w-[210mm] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg ${textColor}`}>
+      <header className={`relative p-6 pb-4 ${headerClass}`}>
         <div className="absolute top-4 right-4 flex flex-wrap items-center gap-1 no-print">
           {onDownloadPdf && (
             <button
@@ -102,14 +140,16 @@ export function LiveInvoicePreview({
               className="btn-ghost px-1 py-1 text-xs"
               onClick={onMoreActions}
             >
-              ⋯
+              …
             </button>
           )}
         </div>
 
         <div className="min-w-0">
           <div className="flex items-baseline gap-2">
-            <h1 className="text-xl font-bold tracking-tight">{firm?.name ?? "The firm"}</h1>
+            <h1 className="text-xl font-bold tracking-tight" style={{ color: template === "fintech" || template === "editorial" ? accentColor : undefined }}>
+              {firm?.name ?? "The firm"}
+            </h1>
             {firm?.legal_name && (
               <span className="text-xs text-slate-500">{firm.legal_name}</span>
             )}
@@ -153,9 +193,11 @@ export function LiveInvoicePreview({
           <p className="text-xs text-slate-600">
             Due date: <span className="tabular">{formatDate(state.dueDate)}</span>
           </p>
-          <p className="text-xs text-slate-600">
-            Financial year: <span className="tabular">{state.financialYear}</span>
-          </p>
+          {state.financialYear && (
+            <p className="text-xs text-slate-600">
+              Financial year: <span className="tabular">{state.financialYear}</span>
+            </p>
+          )}
         </div>
       </header>
 
@@ -227,8 +269,7 @@ export function LiveInvoicePreview({
       </div>
 
       <section className="px-6 pt-4">
-        <div className="flex justify-end">
-          <dl className="w-full max-w-xs space-y-1 text-sm">
+        <dl className="w-full max-w-xs space-y-1 text-sm">
             <div className="flex justify-between">
               <dt className="text-slate-600">Subtotal</dt>
               <dd className="tabular">{formatMoney(totals.subtotal)}</dd>
@@ -264,15 +305,14 @@ export function LiveInvoicePreview({
                 ) : null}
               </>
             )}
-            <div className="flex justify-between border-t border-slate-900 pt-1 text-base font-semibold">
+            <div className="flex justify-between border-t border-slate-200 pt-1 text-base font-semibold">
               <dt>Total</dt>
               <dd className="tabular">{formatMoney(totals.total)}</dd>
             </div>
           </dl>
-        </div>
 
-        <p className="mt-4 text-xs text-slate-500">{taxReason}</p>
-      </section>
+          <p className="mt-4 text-xs text-slate-500">{taxReason}</p>
+        </section>
 
       {state.notes && (
         <section className="px-6 pt-4">

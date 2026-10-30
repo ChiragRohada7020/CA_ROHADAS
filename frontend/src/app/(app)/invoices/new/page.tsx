@@ -21,7 +21,7 @@ export default function NewInvoicePage() {
         title="New invoice"
         subtitle="Create a sale invoice with a live preview."
         action={
-          <button type="button" className="btn-ghost" onClick={() => router.push("/invoices")}>
+          <button type="button" className="btn btn-ghost px-5 py-2.5" onClick={() => router.push("/invoices")}>
             Back to invoices
           </button>
         }

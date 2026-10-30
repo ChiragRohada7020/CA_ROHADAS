@@ -44,7 +44,7 @@ import {
 } from "@/lib/status";
 import { hasPermission, useSession } from "@/lib/session";
 import { useUserDirectory, userName } from "@/lib/users";
-import type { DocumentRequestRow, FinancialYearRow, TaskAssignmentRow, TaskCommentRow, TaskDetail, TaskStatus, TaskStatusHistoryRow, TaskUpdatePayload } from "@/lib/types";
+import type { DocumentRequestRow, FinancialYearRow, TaskAssignmentRow, TaskCommentRow, TaskDetail, TaskStatus, TaskStatusHistoryRow, TaskTemplateRow, TaskUpdatePayload } from "@/lib/types";
 
 const STEP_STATUSES = ["pending", "in_progress", "completed", "skipped", "not_applicable"] as const;
 
@@ -333,7 +333,7 @@ function DocumentRequestMenu({
     <div ref={containerRef} className="relative inline-block">
       <button
         type="button"
-        className="btn inline-flex items-center gap-1.5"
+        className="btn btn-outline inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg"
         onClick={(e) => {
           e.stopPropagation();
           if (task.client_id) setOpen(!open);
@@ -414,7 +414,7 @@ function DocumentRequestMenu({
               </button>
               <button
                 type="button"
-                className="btn btn-ghost text-xs"
+                className="btn btn-outline text-xs gap-2 px-2.5 py-1 rounded-lg"
                 onClick={(e) => {
                   e.stopPropagation();
                   handleClose();
@@ -658,6 +658,12 @@ export default function TaskDetailPage() {
   const [descriptionDraft, setDescriptionDraft] = useState("");
   const [editingTaskDetails, setEditingTaskDetails] = useState(false);
   const [editingAssignments, setEditingAssignments] = useState(false);
+  const [editingStepId, setEditingStepId] = useState<string | null>(null);
+  const [stepNameDraft, setStepNameDraft] = useState("");
+  const [newStepName, setNewStepName] = useState("");
+  const [savingTemplate, setSavingTemplate] = useState(false);
+  const [loadingTemplate, setLoadingTemplate] = useState(false);
+  const [removingSubtaskId, setRemovingSubtaskId] = useState<string | null>(null);
 
   const task = useQuery({
     queryKey: ["task", taskId],
@@ -668,6 +674,11 @@ export default function TaskDetailPage() {
   const years = useQuery({
     queryKey: ["financial-years"],
     queryFn: () => api.get<FinancialYearRow[]>("/financial-years"),
+  });
+
+  const templates = useQuery({
+    queryKey: ["task-templates", "for-select"],
+    queryFn: () => api.get<{ items: TaskTemplateRow[] }>("/task-templates?limit=200"),
   });
 
   const invalidate = () => {
@@ -700,6 +711,74 @@ export default function TaskDetailPage() {
     mutationFn: (payload: { stepId: string; status: string }) =>
       api.post(`/tasks/${taskId}/steps/${payload.stepId}`, { status: payload.status }),
     onSuccess: invalidate,
+  });
+
+  const addStep = useMutation({
+    mutationFn: (name: string) =>
+      api.post(`/tasks/${taskId}/steps`, { name }),
+    onSuccess: () => {
+      setNewStepName("");
+      invalidate();
+    },
+  });
+
+  const updateStepName = useMutation({
+    mutationFn: ({ stepId, name, is_mandatory }: { stepId: string; name: string; is_mandatory?: boolean }) =>
+      api.post(`/tasks/${taskId}/steps/${stepId}`, { name, ...(is_mandatory !== undefined ? { is_mandatory } : {}) }),
+    onSuccess: () => {
+      setEditingStepId(null);
+      invalidate();
+    },
+  });
+
+  const deleteStep = useMutation({
+    mutationFn: (stepId: string) =>
+      api.delete(`/tasks/${taskId}/steps/${stepId}`),
+    onSuccess: () => {
+      invalidate();
+    },
+  });
+
+  const saveAsTemplate = useMutation({
+    mutationFn: () => {
+      const steps = row.steps.map((s, i) => ({
+        name: s.name,
+        sequence: i + 1,
+        is_mandatory: s.is_mandatory,
+        requires_review: s.requires_review,
+        requires_approval: s.requires_approval,
+        requires_filing: s.requires_filing,
+        requires_document: s.requires_document,
+      }));
+      return api.post("/task-templates", {
+        name: row.title,
+        code: row.task_code,
+        steps,
+      });
+    },
+    onSuccess: () => {
+      setSavingTemplate(false);
+      invalidate();
+    },
+  });
+
+  const loadTemplate = useMutation({
+    mutationFn: async (templateId: string) => {
+      const detail = await api.get<TaskTemplateRow>(`/task-templates/${templateId}`);
+      for (const step of detail.steps ?? []) {
+        await api.post(`/tasks/${taskId}/steps`, { name: step.name });
+      }
+    },
+    onSuccess: invalidate,
+  });
+
+  const removeSubtask = useMutation({
+    mutationFn: (subtaskId: string) =>
+      api.patch<TaskDetail>(`/tasks/${subtaskId}`, { parent_task_id: null }),
+    onSuccess: () => {
+      setRemovingSubtaskId(null);
+      invalidate();
+    },
   });
 
   if (task.isPending) return <LoadingState label="Loading task…" />;
@@ -757,52 +836,53 @@ export default function TaskDetailPage() {
         <span className="font-mono text-slate-700">{row.task_code}</span>
       </nav>
 
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div className="min-w-0">
-          {editingTitle ? (
-            <div className="flex flex-wrap items-center gap-2">
-              <input
-                className="input text-[26px] font-semibold"
-                value={titleDraft}
-                autoFocus
-                maxLength={300}
-                aria-label="Task title"
-                onChange={(event) => setTitleDraft(event.target.value)}
-              />
-              <button
-                type="button"
-                className="btn-primary text-xs"
-                disabled={titleDraft.trim().length < 2 || editTask.isPending}
-                onClick={() => editTask.mutate({ title: titleDraft.trim() })}
-              >
-                {editTask.isPending ? "Saving…" : "Save"}
-              </button>
-              <button
-                type="button"
-                className="btn-ghost text-xs"
-                onClick={() => setEditingTitle(false)}
-              >
-                Cancel
-              </button>
-            </div>
-          ) : (
+      <Card className="relative overflow-hidden border-t-2 border-t-sky-200 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg p-4">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0">
+            {editingTitle ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <input
+                  className="input text-[26px] font-semibold"
+                  value={titleDraft}
+                  autoFocus
+                  maxLength={300}
+                  aria-label="Task title"
+                  onChange={(event) => setTitleDraft(event.target.value)}
+                />
+                <button
+                  type="button"
+                  className="btn-primary text-xs"
+                  disabled={titleDraft.trim().length < 2 || editTask.isPending}
+                  onClick={() => editTask.mutate({ title: titleDraft.trim() })}
+                >
+                  {editTask.isPending ? "Saving…" : "Save"}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-outline text-xs gap-2 px-2.5 py-1 rounded-lg"
+                  onClick={() => setEditingTitle(false)}
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : (
               <h1 className="flex flex-wrap items-center gap-2 text-[26px] font-semibold text-[#172B4D]">
                <Icon name="file-text" className="h-6 w-6 text-slate-400" />
                {row.title}
-               {canEdit && (
-                 <button
-                   type="button"
-                   className="btn-icon"
-                   aria-label="Rename this task"
-                   onClick={() => {
-                     setTitleDraft(row.title);
-                     setEditingTitle(true);
-                     editTask.reset();
-                   }}
-                 >
-                   <Icon name="pencil" className="h-4 w-4 text-sky-600" />
-                 </button>
-               )}
+                  {canEdit && (
+                <button
+                  type="button"
+                  className="p-1 cursor-pointer text-slate-400 hover:text-[#b45309]"
+                  aria-label="Edit task details"
+                  onClick={() => {
+                    setTitleDraft(row.title);
+                    setEditingTitle(true);
+                    editTask.reset();
+                  }}
+                >
+                  <Icon name="pencil" className="h-5 w-5 text-[#b45309]" />
+                </button>
+                )}
              </h1>
           )}
           <p className="mt-1 text-xs text-[#667085]">
@@ -832,7 +912,7 @@ export default function TaskDetailPage() {
           </div>
           <button
             type="button"
-            className="btn inline-flex items-center gap-1.5"
+            className="btn btn-primary inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg"
             onClick={() => {
               const el = document.getElementById("attachments");
               if (el) el.scrollIntoView({ behavior: "smooth" });
@@ -843,7 +923,7 @@ export default function TaskDetailPage() {
           </button>
           <DocumentRequestMenu task={row} onRequested={invalidate} />
         </div>
-      </header>
+      </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <StatusTransitionMenu task={row} onTransition={invalidate} />
@@ -866,6 +946,7 @@ export default function TaskDetailPage() {
           {humanise(row.priority)}
         </Badge>
       </div>
+      </Card>
 
       {row.completion_blockers.length > 0 && (
         <div className="rounded-md border border-[#FEDF89] bg-[#FFFAEB] px-4 py-3 text-sm text-[#92400E]">
@@ -940,18 +1021,19 @@ export default function TaskDetailPage() {
             title="Description"
             subtitle="Formatted task description"
             icon={<Icon name="file-text" className="h-4 w-4" />}
+            className="relative overflow-hidden border-t-2 border-t-sky-200 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg"
             action={
               !editingDescription && (
                 <button
                   type="button"
-                  className="btn-ghost text-xs"
+                  className="p-1 cursor-pointer text-slate-400 hover:text-[#b45309]"
                   onClick={() => {
                     setDescriptionDraft(row.description ?? "");
                     setEditingDescription(true);
                     editTask.reset();
                   }}
                 >
-                  Edit
+                  <Icon name="pencil" className="h-5 w-5 text-[#b45309]" />
                 </button>
               )
             }
@@ -969,7 +1051,7 @@ export default function TaskDetailPage() {
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
-                      className="btn-primary text-xs"
+                      className="btn btn-primary text-xs gap-2 px-2.5 py-1 rounded-lg"
                       disabled={editTask.isPending}
                       onClick={() =>
                         editTask.mutate({ description: descriptionDraft.trim() || null })
@@ -979,7 +1061,7 @@ export default function TaskDetailPage() {
                     </button>
                     <button
                       type="button"
-                      className="btn-ghost text-xs"
+                      className="btn btn-outline text-xs gap-2 px-2.5 py-1 rounded-lg"
                       onClick={() => setEditingDescription(false)}
                     >
                       Cancel
@@ -1000,68 +1082,201 @@ export default function TaskDetailPage() {
             title="Checklist"
             subtitle="Progress is computed from these, never hand-entered"
             icon={<Icon name="check-circle" className="h-4 w-4" />}
-          >
-            {row.steps.length === 0 ? (
-              <EmptyState message="This task has no steps." />
-            ) : (
-              <ul className="divide-y divide-slate-100">
-                {row.steps.map((step) => (
-                  <li
-                    key={step.id}
-                    className="flex flex-wrap items-start justify-between gap-3 px-4 py-3"
+            className="relative overflow-hidden border-t-2 border-t-emerald-200 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg"
+            action={
+              <div className="flex items-center gap-2">
+                {templates.data && templates.data.items.length > 0 && (
+                  <button
+                    type="button"
+                    className="btn btn-primary text-xs gap-2 px-2.5 py-1 rounded-lg"
+                    disabled={loadingTemplate}
+                    onClick={() => setLoadingTemplate(true)}
                   >
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="tabular text-xs text-slate-400">{step.sequence}.</span>
-                        <span
-                          className={cn(
-                            "text-sm",
-                            step.status === "completed"
-                              ? "text-slate-500 line-through"
-                              : "text-slate-900",
-                          )}
-                        >
-                          {step.name}
-                        </span>
-                        {step.is_mandatory && <Badge tone="info">Mandatory</Badge>}
-                      </div>
-                      <div className="mt-1 flex flex-wrap gap-1.5">
-                        {step.requires_review && (
-                          <Badge tone="warning">Needs review</Badge>
-                        )}
-                        {step.requires_approval && (
-                          <Badge tone="warning">Needs approval</Badge>
-                        )}
-                        {step.requires_filing && (
-                          <Badge tone="info">Needs filing</Badge>
-                        )}
-                        {step.requires_document && (
-                          <Badge tone="neutral">Needs document</Badge>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex shrink-0 items-center gap-2">
-                      <Badge tone={stepStatusTone(step.status)}>{humanise(step.status)}</Badge>
-                      <select
-                        className="input w-auto py-1 text-xs"
-                        aria-label={`Status of ${step.name}`}
-                        disabled={updateStep.isPending}
-                        onChange={(event) =>
-                          updateStep.mutate({ stepId: step.id, status: event.target.value })
-                        }
-                        value={step.status}
+                    <Icon name="copy" className="h-3.5 w-3.5" />
+                    {loadingTemplate ? "Loading…" : "Load template"}
+                  </button>
+                )}
+              {row.steps.length > 0 && (
+                <button
+                  type="button"
+                  className="btn btn-outline text-xs gap-2 px-2.5 py-1 rounded-lg"
+                  disabled={saveAsTemplate.isPending}
+                  onClick={() => saveAsTemplate.mutate()}
+                >
+                  <Icon name="download" className="h-3.5 w-3.5" />
+                  {saveAsTemplate.isPending ? "Saving…" : "Save as template"}
+                </button>
+              )}
+              </div>
+            }
+          >
+            <div className="p-4">
+              {templates.data && templates.data.items.length > 0 && loadingTemplate && (
+                <div className="mb-3 space-y-2">
+                  <p className="text-xs text-slate-500">Select a template to copy its steps into this task:</p>
+                  <div className="space-y-1">
+                    {templates.data.items.map((tmpl) => (
+                      <button
+                        key={tmpl.id}
+                        type="button"
+                        className="w-full flex items-center justify-between gap-2 px-3 py-2 text-xs text-left border border-slate-200 rounded bg-slate-50 hover:bg-sky-50 hover:border-sky-200 transition-colors"
+                        onClick={() => {
+                          setLoadingTemplate(false);
+                          loadTemplate.mutate(tmpl.id);
+                        }}
                       >
-                        {STEP_STATUSES.map((status) => (
-                          <option key={status} value={status}>
-                            {humanise(status)}
-                          </option>
-                        ))}
-                      </select>
+                        <span className="text-slate-900">{tmpl.name}</span>
+                        <span className="text-slate-400">{tmpl.steps.length} step{tmpl.steps.length === 1 ? "" : "s"}</span>
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      className="w-full flex items-center justify-center gap-1 px-3 py-2 text-xs text-sky-700 hover:bg-sky-50 border rounded"
+                      onClick={() => setLoadingTemplate(false)}
+                    >
+                      <Icon name="x" className="h-3 w-3" />
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+              {row.steps.length === 0 ? (
+                <EmptyState message="This task has no steps." />
+              ) : (
+                <div className="space-y-1">
+                  {row.steps.map((step) => (
+                    <div
+                      key={step.id}
+                      className="flex flex-wrap items-start justify-between gap-3 px-3 py-2.5 rounded-lg border border-slate-100"
+                    >
+                      <div className="min-w-0 flex-1">
+                        {editingStepId === step.id ? (
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="tabular text-xs text-slate-400">{step.sequence}.</span>
+                            <input
+                              className="input text-sm"
+                              value={stepNameDraft}
+                              onChange={(e) => setStepNameDraft(e.target.value)}
+                              autoFocus
+                              onBlur={() => {
+                                if (stepNameDraft.trim()) {
+                                  updateStepName.mutate({ stepId: step.id, name: stepNameDraft.trim() });
+                                }
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" && stepNameDraft.trim()) {
+                                  updateStepName.mutate({ stepId: step.id, name: stepNameDraft.trim() });
+                                }
+                                if (e.key === "Escape") {
+                                  setEditingStepId(null);
+                                }
+                              }}
+                            />
+                            <button
+                              type="button"
+                              className="btn btn-outline gap-2 px-2.5 py-0.5 rounded"
+                              onClick={() => {
+                                updateStepName.mutate({ stepId: step.id, name: stepNameDraft.trim(), is_mandatory: !step.is_mandatory });
+                              }}
+                            >
+                              {step.is_mandatory ? "Not mandatory" : "Mandatory"}
+                            </button>
+                          </div>
+                        ) : (
+                           <div className="flex flex-wrap items-center gap-2">
+                             <span className="tabular text-xs text-slate-400">{step.sequence}.</span>
+                             <span
+                               className={cn(
+                                 step.status === "completed"
+                                   ? "text-slate-500 line-through"
+                                   : "text-slate-900",
+                               )}
+                             >
+                               {step.name}
+                             </span>
+                                {canEdit && (
+                                  <>
+                                  <button
+                                    type="button"
+                                    className="p-1 cursor-pointer text-slate-400 hover:text-[#b45309]"
+                                    disabled={updateStep.isPending}
+                                    onClick={() => {
+                                      updateStepName.mutate({ stepId: step.id, name: step.name, is_mandatory: !step.is_mandatory });
+                                    }}
+                                    aria-label={step.is_mandatory ? "Mark as not mandatory" : "Mark as mandatory"}
+                                  >
+                                    <Icon name="bookmark" className={`h-3.5 w-3.5 ${step.is_mandatory ? "text-[#b45309]" : "text-slate-400"}`} />
+                                  </button>
+                                  </>
+                                )}
+                              {step.is_mandatory && <Badge tone="info" className="text-[10px]">Mandatory</Badge>}
+                           </div>
+                        )}
+                        <div className="mt-1 flex flex-wrap gap-1.5">
+                          {step.requires_review && <Badge tone="warning" className="text-[10px]">Needs review</Badge>}
+                          {step.requires_approval && <Badge tone="warning" className="text-[10px]">Needs approval</Badge>}
+                          {step.requires_filing && <Badge tone="info" className="text-[10px]">Needs filing</Badge>}
+                          {step.requires_document && <Badge tone="neutral" className="text-[10px]">Needs document</Badge>}
+                        </div>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-2">
+                        <Badge tone={stepStatusTone(step.status)}>{humanise(step.status)}</Badge>
+                        <select
+                          className="input w-auto py-1 text-xs"
+                          aria-label={`Status of ${step.name}`}
+                          disabled={updateStep.isPending}
+                          onChange={(event) =>
+                            updateStep.mutate({ stepId: step.id, status: event.target.value })
+                          }
+                          value={step.status}
+                        >
+                          {STEP_STATUSES.map((status) => (
+                            <option key={status} value={status}>
+                              {humanise(status)}
+                            </option>
+                          ))}
+                        </select>
+                        {canEdit && (
+                          <button
+                            type="button"
+                            className="p-1 cursor-pointer text-slate-400 hover:text-rose-600"
+                            onClick={() => {
+                              deleteStep.mutate(step.id);
+                            }}
+                            aria-label="Delete step"
+                          >
+                            <Icon name="trash" className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </div>
                     </div>
-                  </li>
-                ))}
-              </ul>
-            )}
+                  ))}
+                  <div className="mt-3 pt-3 border-t border-slate-100">
+                    <div className="flex items-center gap-2">
+                      <input
+                        className="input flex-1 text-sm"
+                        value={newStepName}
+                        placeholder="New step name…"
+                        onChange={(e) => setNewStepName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && newStepName.trim()) {
+                            addStep.mutate(newStepName.trim());
+                          }
+                        }}
+                      />
+                      <button
+                        type="button"
+                        className="btn btn-primary text-xs gap-2 px-2.5 py-1 rounded-lg"
+                        disabled={!newStepName.trim() || addStep.isPending}
+                        onClick={() => addStep.mutate(newStepName.trim())}
+                      >
+                        {addStep.isPending ? "Adding…" : "Add step"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           </Card>
 
           <div id="attachments" className="scroll-mt-4">
@@ -1093,6 +1308,38 @@ export default function TaskDetailPage() {
                       {formatPercent(child.progress_percent)}
                     </span>
                     <Badge tone={priorityTone(child.priority)}>{humanise(child.priority)}</Badge>
+                    {canEdit && (
+                      <button
+                        type="button"
+                        className="text-xs flex items-center gap-1 text-slate-500 hover:text-rose-600 font-medium ml-auto"
+                        disabled={removingSubtaskId === child.id}
+                        onClick={() => setRemovingSubtaskId(child.id)}
+                        aria-label="Remove subtask from parent"
+                      >
+                        <Icon name="trash" className="h-3 w-3" />
+                        Remove
+                      </button>
+                    )}
+                    {removingSubtaskId === child.id && (
+                      <div className="flex items-center gap-1 ml-auto">
+                        <button
+                          type="button"
+                          className="text-xs text-rose-600"
+                          onClick={() => {
+                            removeSubtask.mutate(child.id);
+                          }}
+                        >
+                          Confirm
+                        </button>
+                        <button
+                          type="button"
+                          className="text-xs text-slate-500"
+                          onClick={() => setRemovingSubtaskId(null)}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -1159,7 +1406,7 @@ export default function TaskDetailPage() {
                     </label>
                     <button
                       type="button"
-                      className="btn-primary text-xs"
+                      className="btn btn-primary text-xs gap-2 px-2.5 py-1 rounded-lg"
                       disabled={addComment.isPending || comment.trim().length === 0}
                       onClick={() =>
                         addComment.mutate({ body: comment.trim(), visibility: commentVisibility })
@@ -1223,10 +1470,10 @@ export default function TaskDetailPage() {
         <div className="space-y-5">
           {editingTaskDetails ? (
             <>
-              <TaskEditPanel task={row} onSaved={() => { invalidate(); setEditingTaskDetails(false); }} />
+              <TaskEditPanel task={row} onSaved={() => { invalidate(); setEditingTaskDetails(false); }} onCancel={() => setEditingTaskDetails(false)} />
               <button
                 type="button"
-                className="btn-ghost text-xs"
+                className="btn btn-outline text-xs gap-2 px-2.5 py-1 rounded-lg"
                 onClick={() => setEditingTaskDetails(false)}
               >
                 ← Back to summary
@@ -1238,13 +1485,14 @@ export default function TaskDetailPage() {
               title="Client"
               subtitle={row.service_name ?? undefined}
               icon={<Icon name="building" className="h-4 w-4" />}
+              className="relative overflow-hidden border-t-2 border-t-violet-200 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg"
               action={
                 <button
                   type="button"
-                  className="btn-ghost text-xs"
+                  className="p-1 cursor-pointer text-slate-400 hover:text-[#b45309]"
                   onClick={() => setEditingTaskDetails(true)}
                 >
-                  Edit
+                  <Icon name="pencil" className="h-5 w-5 text-[#b45309]" />
                 </button>
               }
             >
@@ -1263,7 +1511,7 @@ export default function TaskDetailPage() {
               </div>
             </Card>
 
-            <Card title="Task details" icon={<Icon name="file-text" className="h-4 w-4" />}>
+            <Card title="Task details" icon={<Icon name="file-text" className="h-4 w-4" />} className="relative overflow-hidden border-t-2 border-t-amber-200 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg">
               <div className="p-4 space-y-2">
                 <LabelValue label="Priority" value={humanise(row.priority)} />
                 <LabelValue label="Internal due" value={row.internal_due_date ? formatDate(row.internal_due_date) : "—"} />
@@ -1278,7 +1526,7 @@ export default function TaskDetailPage() {
               </div>
             </Card>
 
-             <Card title="Tags" icon={<Icon name="tag" className="h-4 w-4" />}>
+              <Card title="Tags" icon={<Icon name="tag" className="h-4 w-4" />} className="relative overflow-hidden border-t-2 border-t-slate-200 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg">
                <div className="p-4">
                  {(row.tags ?? []).length > 0 ? (
                    <div className="flex flex-wrap gap-1.5">
@@ -1297,20 +1545,21 @@ export default function TaskDetailPage() {
                </div>
              </Card>
 
-             <Card
-               title="Assignees"
-               icon={<Icon name="user-round" className="h-4 w-4" />}
-               action={
-                 canAssign ? (
-                   <button
-                     type="button"
-                     className="btn-ghost text-xs"
-                     onClick={() => setEditingAssignments(true)}
-                   >
-                     Edit
-                   </button>
-                 ) : null
-               }
+              <Card
+                title="Assignees"
+                icon={<Icon name="user-round" className="h-4 w-4" />}
+                className="relative overflow-hidden border-t-2 border-t-sky-200 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg"
+                action={
+                  canAssign ? (
+                  <button
+                    type="button"
+                    className="p-1 cursor-pointer text-slate-400 hover:text-[#b45309]"
+                    onClick={() => setEditingAssignments(true)}
+                  >
+                    <Icon name="pencil" className="h-5 w-5 text-[#b45309]" />
+                  </button>
+                  ) : null
+                }
              >
                <div className="p-4 space-y-3">
                  {ASSIGNMENT_ROLES.map((role) => {
@@ -1332,18 +1581,18 @@ export default function TaskDetailPage() {
                </div>
              </Card>
 
-             {editingAssignments ? (
-               <>
-                 <AssignPanel task={row} onChanged={() => setEditingAssignments(false)} />
-                 <button
-                   type="button"
-                   className="btn btn-ghost text-xs"
-                   onClick={() => setEditingAssignments(false)}
-                 >
-                   ← Back to summary
-                 </button>
-               </>
-             ) : null}
+              {editingAssignments ? (
+                <>
+                  <AssignPanel task={row} onChanged={() => setEditingAssignments(false)} />
+                  <button
+                    type="button"
+                    className="btn btn-outline text-xs gap-2 px-2.5 py-1 rounded-lg"
+                    onClick={() => setEditingAssignments(false)}
+                  >
+                    ← Back to summary
+                  </button>
+                </>
+              ) : null}
             </>
           )}
 

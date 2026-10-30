@@ -194,9 +194,9 @@ export function ServiceCombobox({
     );
   }, [clientServices, query]);
 
-  // Global fallback: only triggered when client services don't match
-  // or when the user clicks "Browse all services".
-  const needsGlobal = query.trim().length > 0 && (clientFiltered.length === 0 || globalSearch);
+  // Global fallback: only triggered when the client has NO services assigned at all
+  // (not merely when a search term matches nothing in their assigned services).
+  const needsGlobal = query.trim().length > 0 && clientServices.length === 0 && (clientFiltered.length === 0 || globalSearch);
 
   const { data: globalResults, isFetching: isGlobalFetching } = useQuery({
     queryKey: ["services", "search", query],
@@ -479,8 +479,8 @@ export function ServiceCombobox({
                 </>
               )}
 
-              {/* "Browse all services" — switches to global API search */}
-              {query.trim() && clientFiltered.length === 0 && !globalSearch && (
+              {/* "Browse all services" — only when the client has no services assigned */}
+              {query.trim() && clientServices.length === 0 && clientFiltered.length === 0 && !globalSearch && (
                 <button
                   type="button"
                   className={cn(

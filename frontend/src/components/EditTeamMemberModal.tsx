@@ -196,14 +196,14 @@ export function EditTeamMemberModal({
           <button
             type="button"
             onClick={onClose}
-            className="btn-ghost"
+            className="btn btn-ghost px-5 py-2.5"
             disabled={update.isPending}
           >
             Cancel
           </button>
           <button
             type="submit"
-            className="btn-primary"
+            className="btn btn-primary px-5 py-2.5"
             disabled={update.isPending}
           >
             {update.isPending ? "Saving…" : "Save Changes"}

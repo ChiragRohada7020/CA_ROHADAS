@@ -6,6 +6,7 @@ import { useState } from "react";
 
 import {
   Badge,
+  Button,
   Card,
   EmptyState,
   ErrorState,
@@ -132,56 +133,79 @@ export default function CalendarPage() {
                   <th className="th">Internal date</th>
                   <th className="th">Status</th>
                   <th className="th">Priority</th>
+                  <th className="th">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
-                {data.entries.map((entry, index) => (
-                  <tr
-                    key={entry.task_id ?? entry.deadline_id ?? `${entry.client_id}-${index}`}
-                    className="hover:bg-slate-50"
-                  >
-                    <td className="td tabular text-xs">{formatDate(entry.statutory_due_date)}</td>
-                    <td className="td">
-                      <Badge tone={daysRemainingTone(entry.days_remaining)}>
-                        {daysRemainingLabel(entry.days_remaining)}
-                      </Badge>
-                    </td>
-                    <td className="td">
-                      <span className="font-medium text-slate-900">{entry.client_name}</span>
-                    </td>
-                    <td className="td text-xs">
-                      <div className="flex flex-col gap-1">
-                        <span>{entry.rule_name ?? entry.filing_type ?? "—"}</span>
-                        {entry.authority && (
-                          <span className="text-slate-400">{entry.authority}</span>
-                        )}
-                        {!entry.verified && <Badge tone="warning">Date unconfirmed</Badge>}
-                      </div>
-                    </td>
-                    <td className="td tabular text-xs">{entry.period_key ?? "—"}</td>
-                    <td className="td tabular text-xs">
-                      {entry.internal_due_date ? formatDate(entry.internal_due_date) : "—"}
-                    </td>
-                    <td className="td">
-                      <div className="flex flex-col gap-1">
-                        <Badge tone={entry.is_filed ? "success" : "progress"}>
-                          {entry.is_filed ? "Filed" : humanise(entry.status)}
+              <tbody className="divide-y divide-slate-200">
+                {data.entries.map((entry, index) => {
+                  const isOverdue = entry.is_overdue;
+                  return (
+                    <tr
+                      key={entry.task_id ?? entry.deadline_id ?? `${entry.client_id}-${index}`}
+                      className={`hover:bg-slate-50 ${isOverdue ? "bg-rose-50" : ""}`}
+                    >
+                      <td className="td tabular text-xs font-medium text-slate-900">
+                        {formatDate(entry.statutory_due_date)}
+                      </td>
+                      <td className="td">
+                        <Badge tone={daysRemainingTone(entry.days_remaining)}>
+                          {daysRemainingLabel(entry.days_remaining)}
                         </Badge>
-                        {entry.task_id && (
-                          <Link
-                            href={`/tasks/${entry.task_id}`}
-                            className="text-xs text-slate-500 underline-offset-2 hover:underline"
-                          >
-                            Open task
-                          </Link>
-                        )}
-                      </div>
-                    </td>
-                    <td className="td">
-                      <Badge tone={priorityTone(entry.priority)}>{entry.priority}</Badge>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className="td">
+                        <span className="font-medium text-slate-900">{entry.client_name}</span>
+                      </td>
+                      <td className="td text-xs">
+                        <div className="flex flex-col gap-1">
+                          <span className="text-slate-900">{entry.rule_name ?? entry.filing_type ?? "—"}</span>
+                          {entry.authority && (
+                            <span className="text-slate-400 text-[10px]">{entry.authority}</span>
+                          )}
+                          {!entry.verified && <Badge tone="warning" className="text-[10px]">Date unconfirmed</Badge>}
+                        </div>
+                      </td>
+                      <td className="td tabular text-xs">{entry.period_key ?? "—"}</td>
+                      <td className="td tabular text-xs">
+                        {entry.internal_due_date ? formatDate(entry.internal_due_date) : "—"}
+                      </td>
+                      <td className="td">
+                        <div className="flex flex-col gap-1">
+                          <Badge tone={entry.is_filed ? "success" : "progress"}>
+                            {entry.is_filed ? "Filed" : humanise(entry.status)}
+                          </Badge>
+                          {entry.task_id && (
+                            <Link
+                              href={`/tasks/${entry.task_id}`}
+                              className="text-xs text-slate-500 underline-offset-2 hover:underline"
+                            >
+                              Open task
+                            </Link>
+                          )}
+                          {!entry.task_id && (
+                            <Button
+                              asChild
+                              size="sm"
+                              variant="outline"
+                              className="text-xs"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                const url = `/tasks/new?client_id=${entry.client_id}&title=${encodeURIComponent(
+                                  `Compliance: ${entry.rule_name ?? entry.filing_type ?? ""} — ${entry.client_name}`
+                                )}&period_key=${encodeURIComponent(entry.period_key ?? "")}&statutory_due_date=${entry.statutory_due_date}`;
+                                window.location.href = url;
+                              }}
+                            >
+                              Create task
+                            </Button>
+                          )}
+                        </div>
+                      </td>
+                      <td className="td">
+                        <Badge tone={priorityTone(entry.priority)}>{entry.priority}</Badge>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

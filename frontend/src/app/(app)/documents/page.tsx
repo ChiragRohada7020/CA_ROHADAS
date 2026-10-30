@@ -204,13 +204,13 @@ export default function DocumentsPage() {
               ) : null}
             </button>
             {canUpload && (
-              <button type="button" className="btn-primary" onClick={() => setUploadOpen(true)}>
+              <button type="button" className="btn btn-primary px-5 py-2.5" onClick={() => setUploadOpen(true)}>
                 <Icon name="upload" className="h-4 w-4" />
                 Upload document
               </button>
             )}
             {canRequest && (
-              <button type="button" className="btn-ghost" onClick={() => setRequestOpen(true)}>
+              <button type="button" className="btn btn-ghost px-5 py-2.5" onClick={() => setRequestOpen(true)}>
                 <Icon name="file-text" className="h-4 w-4" />
                 Request from client
               </button>
@@ -292,7 +292,7 @@ export default function DocumentsPage() {
                     </div>
                     <div className="table-wrap">
                       <table className="w-full min-w-[52rem]">
-                        <thead className="bg-slate-50">
+                        <thead className="bg-[#f7f6f3]">
                           <tr>
                             <th className="th">Document</th>
                             <th className="th">Client</th>
@@ -304,7 +304,7 @@ export default function DocumentsPage() {
                           {(clientDocs.data?.items ?? []).map((doc) => (
                             <tr
                               key={doc.id}
-                              className="cursor-pointer hover:bg-slate-50"
+                              className="cursor-pointer hover:bg-[#f7f6f3]"
                               onClick={() => {
                                 setShowPending(false);
                                 setOpenDocumentId(doc.id);
@@ -342,7 +342,7 @@ export default function DocumentsPage() {
                     </div>
                     <div className="table-wrap">
                       <table className="w-full min-w-[52rem]">
-                        <thead className="bg-slate-50">
+                        <thead className="bg-[#f7f6f3]">
                           <tr>
                             <th className="th">Requested</th>
                             <th className="th">Client</th>
@@ -353,7 +353,7 @@ export default function DocumentsPage() {
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                           {pending.data.map((request) => (
-                            <tr key={request.id} className="hover:bg-slate-50">
+                            <tr key={request.id} className="hover:bg-[#f7f6f3]">
                               <td className="td text-xs font-medium text-slate-800">{request.title}</td>
                               <td className="td text-xs text-slate-600">
                                 {clientNames.get(request.client_id) ?? "—"}
@@ -471,7 +471,7 @@ export default function DocumentsPage() {
           {(clientId || docType || search || confidentialOnly) && (
             <button
               type="button"
-              className="btn-ghost"
+              className="btn btn-ghost px-5 py-2.5"
               onClick={() => {
                 setClientId("");
                 setDocType("");
@@ -512,7 +512,7 @@ export default function DocumentsPage() {
               <>
                 <div className="table-wrap">
                   <table className="w-full min-w-[62rem]">
-                    <thead className="bg-slate-50">
+                    <thead className="bg-[#f7f6f3]">
                       <tr>
                         <th className="th">Name</th>
                         <th className="th">Client</th>
@@ -529,7 +529,7 @@ export default function DocumentsPage() {
                       {documents.data.items.map((document) => (
                         <tr
                           key={document.id}
-                          className="cursor-pointer hover:bg-slate-50"
+                          className="cursor-pointer hover:bg-[#f7f6f3]"
                           onClick={() => setOpenDocumentId(document.id)}
                         >
                           <td className="td">
@@ -675,7 +675,7 @@ function ClientRail({
           onClick={() => onSelect("")}
           className={cn(
             "flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm",
-            clientId === "" ? "bg-sky-50 font-medium text-sky-800" : "text-slate-700 hover:bg-slate-50",
+            clientId === "" ? "bg-sky-50 font-medium text-sky-800" : "text-slate-700 hover:bg-[#f7f6f3]",
           )}
         >
           <Icon name="folder-open" className="h-4 w-4 shrink-0 text-slate-400" />
@@ -699,7 +699,7 @@ function ClientRail({
                 "flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm",
                 isActive
                   ? "bg-sky-50 font-medium text-sky-800"
-                  : "text-slate-700 hover:bg-slate-50",
+                  : "text-slate-700 hover:bg-[#f7f6f3]",
               )}
             >
               <Icon

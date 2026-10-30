@@ -11,8 +11,18 @@ from app.core.errors import NotFoundError
 from app.core.security import get_current_user
 from app.models import Invoice, Client, BillingSettings, InvoiceLine
 from app.services.pdf_invoice_service import generate_invoice_pdf_better
+from app.services.pdf_templates import template_summary, listTemplates
 
 router = APIRouter(tags=["invoices"])
+
+
+@router.get("/invoices/templates")
+async def list_invoice_templates(
+    request: Request, db=Depends(get_db)
+) -> Any:
+    """Return metadata for all available invoice PDF templates."""
+    principal = await get_current_user(request, db)
+    return template_summary()
 
 
 @router.get("/invoices/{invoice_id}/pdf")
@@ -25,9 +35,10 @@ async def download_invoice_pdf(request: Request, invoice_id: str, db=Depends(get
     client = db.get(Client, invoice.client_id) if invoice.client_id else None
     firm = db.query(BillingSettings).filter(BillingSettings.tenant_id == principal.tenant_id).first()
     lines = db.query(InvoiceLine).filter(InvoiceLine.invoice_id == invoice.id).order_by(InvoiceLine.sequence).all()
+    template_name = request.query_params.get("template") or getattr(firm, 'invoice_template', 'modern') or 'modern'
 
     try:
-        pdf_bytes = generate_invoice_pdf_better(invoice, lines, client, firm)
+        pdf_bytes = generate_invoice_pdf_better(invoice, lines, client, firm, template_override=template_name)
     except Exception as e:
         # Fallback to old method
         from app.services.whatsapp_service import generate_invoice_pdf

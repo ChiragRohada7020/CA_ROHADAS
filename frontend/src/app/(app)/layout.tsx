@@ -10,7 +10,6 @@ import { Avatar } from "@/components/charts";
 import { NotificationBell } from "@/components/NotificationBell";
 import { ApiError, api } from "@/lib/api";
 import { cn } from "@/lib/format";
-import { ThemeToggle } from "@/lib/theme";
 import { useSession, useSignOut } from "@/lib/session";
 import type { FinancialYearRow, FirmBillingSettings } from "@/lib/types";
 
@@ -88,6 +87,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { data: session, error, isPending } = useSession();
   const signOut = useSignOut();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     // A 401 here means there is no usable session, so send them to sign in. Any
@@ -96,6 +96,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       router.replace("/login");
     }
   }, [error, router]);
+
+  // Close mobile menu on route change
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [pathname]);
 
   if (isPending) {
     return (
@@ -118,7 +123,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const current = activeNav(pathname);
 
   return (
-    <div className="flex min-h-screen bg-slate-50 dark:bg-slate-950">
+    <div className="flex min-h-screen bg-[#f7f6f3]">
+      {/* Desktop sidebar — hidden on mobile */}
       <Sidebar
         pathname={pathname}
         permissions={session.permissions ?? []}
@@ -131,9 +137,21 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           title={current?.label ?? "Dashboard"}
           fullName={session.user.full_name}
           designation={session.user.designation}
+          onMobileMenu={() => setMobileMenuOpen((open) => !open)}
         />
-        <main className="flex-1 bg-slate-50 px-5 py-8 lg:px-8 lg:py-10 dark:bg-slate-950">{children}</main>
+        <main className="flex-1 bg-[#f7f6f3] px-6 py-8 lg:px-10 lg:py-12 rounded-tl-[24px] overflow-hidden">{children}</main>
       </div>
+
+      {/* Mobile sidebar drawer */}
+      {mobileMenuOpen && (
+        <MobileSidebar
+          pathname={pathname}
+          permissions={session.permissions ?? []}
+          signingOut={signOut.isPending}
+          onSignOut={() => signOut.mutate(undefined, { onSettled: () => router.replace("/login") })}
+          onClose={() => setMobileMenuOpen(false)}
+        />
+      )}
     </div>
   );
 }
@@ -163,16 +181,18 @@ function Sidebar({
 
   const activeYear = years.data?.find((row) => row.is_active);
 
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+
   return (
-    <aside className="hidden w-64 shrink-0 flex-col border-r border-slate-200 bg-white dark:border-slate-700 lg:flex lg:sticky lg:top-0 lg:h-screen lg:z-10">
+    <aside className="hidden w-64 shrink-0 flex-col border-r border-slate-200 bg-white lg:flex lg:sticky lg:top-0 lg:h-screen lg:z-10">
       {/* Fixed header - logo & firm name */}
-      <div className="flex-shrink-0 flex items-center gap-3 border-b border-slate-200 px-4 py-4 bg-white dark:border-slate-700">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-sky-500 to-indigo-600 text-sm font-bold text-white">
+      <div className="flex-shrink-0 flex items-center gap-3 border-b border-slate-200 px-4 py-4 bg-white">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#b85c38] to-[#9a4a2d] text-sm font-bold text-white">
           CA
         </span>
         <div className="min-w-0">
-        <p className="text-sm font-semibold tracking-tight text-slate-900 dark:text-slate-200">Rohadas CA</p>
-        <p className="truncate text-[11px] text-slate-500 dark:text-slate-400">CA Practice Management</p>
+        <p className="text-sm font-semibold tracking-tight text-slate-900">Rohadas CA</p>
+        <p className="truncate text-[11px] text-slate-500">CA Practice Management</p>
         </div>
       </div>
 
@@ -189,44 +209,56 @@ function Sidebar({
         }).map((item) => {
           if (item.children) {
             const isGroupActive = item.children.some((c) => c.href && (pathname === c.href || pathname.startsWith(`${c.href}/`)));
+            const isExpanded = expandedGroups.has(item.label) || isGroupActive;
             return (
               <div key={item.label} className="space-y-1">
-                <div className={cn("flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium", isGroupActive ? "text-sky-700 dark:text-sky-300" : "text-slate-700 dark:text-slate-300")}>
-                  <Icon name={item.icon} className={cn("h-[18px] w-[18px]", isGroupActive ? "text-sky-600" : "text-slate-400")} />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = new Set(expandedGroups);
+                    if (next.has(item.label)) next.delete(item.label);
+                    else next.add(item.label);
+                    setExpandedGroups(next);
+                  }}
+                  className={cn("flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors", isGroupActive ? "text-[#b85c38]" : "text-slate-700 hover:text-slate-900")}
+                >
+                  <Icon name={item.icon} className={cn("h-[18px] w-[18px] transition-transform duration-200", isExpanded ? "rotate-90" : "", isGroupActive ? "text-sky-600" : "text-slate-400")} />
                   {item.label}
-                </div>
-                <div className="ml-6 space-y-1">
-                  {item.children.filter((c) => {
-                    if (c.permission && !permissions.includes(c.permission)) return false;
-                    if (!c.ready) return true;
-                    return true;
-                  }).map((child) => {
-                    if (!child.ready || !child.href) {
+                </button>
+                {isExpanded && (
+                  <div className="ml-6 space-y-1">
+                    {item.children.filter((c) => {
+                      if (c.permission && !permissions.includes(c.permission)) return false;
+                      if (!c.ready) return true;
+                      return true;
+                    }).map((child) => {
+                      if (!child.ready || !child.href) {
+                        return (
+                          <span key={child.label} aria-disabled="true" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-400">
+                            <Icon name={child.icon} className="h-[18px] w-[18px]" />
+                            {child.label}
+                          </span>
+                        );
+                      }
+                      const isChildActive = pathname === child.href || pathname.startsWith(`${child.href}/`);
                       return (
-                        <span key={child.label} aria-disabled="true" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-400 dark:text-slate-500">
-                          <Icon name={child.icon} className="h-[18px] w-[18px]" />
+                        <Link
+                          key={child.href}
+                          href={child.href}
+                          className={cn(
+                            "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition",
+                            isChildActive
+                              ? "bg-[#f7ede8] text-[#b85c38] ring-1 ring-inset ring-[#e6d3cc]"
+                              : "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
+                          )}
+                        >
+                          <Icon name={child.icon} className={cn("h-[18px] w-[18px]", isChildActive ? "text-sky-600" : "text-slate-400")} />
                           {child.label}
-                        </span>
+                        </Link>
                       );
-                    }
-                    const isChildActive = pathname === child.href || pathname.startsWith(`${child.href}/`);
-                    return (
-                      <Link
-                        key={child.href}
-                        href={child.href}
-                        className={cn(
-                          "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition",
-                          isChildActive
-                            ? "bg-sky-50 text-sky-700 ring-1 ring-inset ring-sky-100 dark:bg-sky-900/20 dark:text-sky-300 dark:ring-sky-800"
-                            : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200",
-                        )}
-                      >
-                        <Icon name={child.icon} className={cn("h-[18px] w-[18px]", isChildActive ? "text-sky-600" : "text-slate-400")} />
-                        {child.label}
-                      </Link>
-                    );
-                  })}
-                </div>
+                    })}
+                  </div>
+                )}
               </div>
             );
           }
@@ -238,11 +270,11 @@ function Sidebar({
                 key={item.label}
                 aria-disabled="true"
                 title="Coming next"
-                 className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-400 dark:text-slate-500 dark:bg-slate-800/30"
+                 className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-400"
               >
                 <Icon name={item.icon} className="h-[18px] w-[18px]" />
                 {item.label}
-                <span className="ml-auto rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-slate-500 dark:bg-slate-700 dark:text-slate-400">
+                <span className="ml-auto rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-slate-500">
                   next
                 </span>
               </span>
@@ -256,7 +288,7 @@ function Sidebar({
               className={cn(
                 "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition",
                 isActive
-                  ? "bg-sky-50 text-sky-700 ring-1 ring-inset ring-sky-100"
+                  ? "bg-[#f7ede8] text-[#b85c38] ring-1 ring-inset ring-[#e6d3cc]"
                   : "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
               )}
             >
@@ -271,35 +303,35 @@ function Sidebar({
       </nav>
 
       {/* Footer - financial year, firm info, sign out */}
-      <div className="flex-shrink-0 border-t border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
+      <div className="flex-shrink-0 border-t border-slate-200 bg-white">
         <div className="space-y-2 p-2">
-          <div className="rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-800">
-            <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+          <div className="rounded-lg bg-[#f7f6f3] px-3 py-2">
+            <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500">
               Financial year
             </p>
-            {years.isPending && <p className="mt-0.5 text-xs text-slate-400 dark:text-slate-500">Loading…</p>}
+            {years.isPending && <p className="mt-0.5 text-xs text-slate-400">Loading…</p>}
             {years.isSuccess && activeYear && (
               <>
-                <p className="mt-0.5 text-sm font-semibold text-slate-800 dark:text-slate-200">{activeYear.label}</p>
+                <p className="mt-0.5 text-sm font-semibold text-slate-800">{activeYear.label}</p>
                 {activeYear.assessment_year && (
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  <p className="text-[11px] text-slate-500">
                     Assessment year {activeYear.assessment_year}
                   </p>
                 )}
               </>
             )}
             {years.isSuccess && !activeYear && (
-              <p className="mt-0.5 text-xs text-slate-400 dark:text-slate-500">None set up yet</p>
+              <p className="mt-0.5 text-xs text-slate-400">None set up yet</p>
             )}
           </div>
 
           <div className="flex items-start gap-2 px-3 py-1">
-            <Icon name="building" className="mt-0.5 h-4 w-4 shrink-0 text-slate-400 dark:text-slate-500" />
+            <Icon name="building" className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
             <div className="min-w-0">
-              <p className="truncate text-xs font-medium text-slate-800 dark:text-slate-200">
+              <p className="truncate text-xs font-medium text-slate-800">
                 {firm.data?.legal_name || firm.data?.name || "Your firm"}
               </p>
-              <p className="truncate text-[11px] text-slate-500 dark:text-slate-400">
+              <p className="truncate text-[11px] text-slate-500">
                 {firm.data
                   ? [firm.data.city, firm.data.state].filter(Boolean).join(", ") || "No address set"
                   : "…"}
@@ -307,7 +339,7 @@ function Sidebar({
             </div>
           </div>
 
-          <button type="button" className="btn-ghost w-full" disabled={signingOut} onClick={onSignOut}>
+          <button type="button" className="btn btn-danger w-full justify-center py-2 gap-2" disabled={signingOut} onClick={onSignOut}>
             <Icon name="logout" className="h-4 w-4" />
             {signingOut ? "Signing out…" : "Sign out"}
           </button>
@@ -329,10 +361,12 @@ function TopBar({
   title,
   fullName,
   designation,
+  onMobileMenu,
 }: {
   title: string;
   fullName: string;
   designation: string | null;
+  onMobileMenu: () => void;
 }) {
   const router = useRouter();
   const [addOpen, setAddOpen] = useState(false);
@@ -349,9 +383,22 @@ function TopBar({
   }, [addOpen]);
 
   return (
-    <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur dark:border-slate-700 dark:bg-slate-900/95">
+    <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-slate-200 bg-white px-4 py-3">
+      <button
+        type="button"
+        onClick={onMobileMenu}
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 md:hidden"
+        aria-label="Open navigation menu"
+      >
+        <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <line x1="3" y1="6" x2="21" y2="6" />
+          <line x1="3" y1="12" x2="21" y2="12" />
+          <line x1="3" y1="18" x2="21" y2="18" />
+        </svg>
+      </button>
+
       <div className="min-w-0 flex-1">
-        <h1 className="truncate text-base font-semibold tracking-tight text-slate-900 dark:text-slate-200">{title}</h1>
+        <h1 className="truncate text-base font-semibold tracking-tight text-slate-900">{title}</h1>
       </div>
 
       {/*
@@ -361,12 +408,12 @@ function TopBar({
         worse than one that says so.
       */}
       <div
-         className="hidden max-w-md flex-1 items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-400 md:flex dark:border-slate-700 dark:bg-slate-800"
+         className="hidden max-w-md flex-1 items-center gap-2 rounded-lg border border-slate-200 bg-[#f7f6f3] px-3 py-2 text-sm text-slate-400 md:flex"
          title="Global search is not built yet"
        >
         <Icon name="search" className="h-4 w-4" />
         <span className="truncate">Search clients, tasks, documents…</span>
-        <span className="ml-auto rounded bg-white px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-slate-500 ring-1 ring-inset ring-slate-200 dark:bg-slate-700 dark:text-slate-400 dark:ring-slate-600">
+        <span className="ml-auto rounded bg-white px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-slate-500 ring-1 ring-inset ring-slate-200">
           next
         </span>
       </div>
@@ -374,7 +421,7 @@ function TopBar({
       <div className="relative">
         <button
           type="button"
-          className="btn-primary"
+          className="btn btn-primary px-5 py-2.5"
           aria-expanded={addOpen}
           aria-haspopup="menu"
           onClick={() => setAddOpen((open) => !open)}
@@ -396,14 +443,14 @@ function TopBar({
             />
             <div
               role="menu"
-             className="absolute right-0 z-20 mt-1 w-64 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-700 dark:bg-slate-800"
+             className="absolute right-0 z-20 mt-1 w-64 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg"
              >
               {QUICK_ADD.map((item) => (
                 <button
                   key={item.href}
                   type="button"
                   role="menuitem"
-                  className="flex w-full items-center gap-3 px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-700"
+                  className="flex w-full items-center gap-3 px-3 py-2 text-left text-sm text-slate-700 hover:bg-[#f7f6f3]"
                   onClick={() => {
                     setAddOpen(false);
                     router.push(item.href);
@@ -420,13 +467,12 @@ function TopBar({
 
       <NotificationBell />
 
-      <ThemeToggle />
-
-      <div className="flex items-center gap-2 border-l border-slate-200 pl-3 dark:border-slate-700">
+      
+      <div className="flex items-center gap-2 border-l border-slate-200 pl-3">
         <Avatar name={fullName} />
         <div className="hidden min-w-0 sm:block">
-          <p className="truncate text-xs font-semibold text-slate-900 dark:text-slate-200">{fullName}</p>
-          <p className="truncate text-[11px] text-slate-500 dark:text-slate-400">{designation ?? "Staff"}</p>
+          <p className="truncate text-xs font-semibold text-slate-900">{fullName}</p>
+          <p className="truncate text-[11px] text-slate-500">{designation ?? "Staff"}</p>
         </div>
       </div>
     </header>

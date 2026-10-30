@@ -90,7 +90,7 @@ export default function DashboardPage() {
           {[...Array(5)].map((_, i) => (
             <Card key={i} className="relative p-5">
               <div className="flex items-start justify-between">
-                <Skeleton className="h-11 w-11 rounded-xl" />
+                <Skeleton className="h-11 w-11 rounded-lg" />
                 <Skeleton className="h-5 w-12" />
               </div>
               <Skeleton className="mt-4 h-8 w-16" />
@@ -276,7 +276,7 @@ function HeadlineCard({
     success: "bg-emerald-50 text-emerald-600",
     violet: "bg-violet-50 text-violet-600",
     progress: "bg-indigo-50 text-indigo-600",
-    neutral: "bg-slate-50 text-slate-600",
+    neutral: "bg-[#f7f6f3] text-slate-600",
   };
 
   return (
@@ -378,7 +378,7 @@ function ComplianceSummary({
         </Button>
       }
     >
-      <div className="px-4 pb-3">
+      <div className="px-4 pt-4 pb-3">
         <div className="flex flex-wrap gap-2">
           {rows.map((row) => {
             const isActive = row.category === current.category;
@@ -391,7 +391,7 @@ function ComplianceSummary({
                   "rounded-full px-3.5 py-1.5 text-sm font-medium transition",
                   isActive
                     ? "bg-sky-100 text-sky-700 ring-2 ring-sky-200"
-                    : "text-slate-500 hover:bg-slate-50 hover:text-slate-800",
+                    : "text-slate-500 hover:bg-[#f7f6f3] hover:text-slate-800",
                 )}
               >
                 {row.label}
@@ -402,32 +402,35 @@ function ComplianceSummary({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 p-5 lg:grid-cols-5 lg:items-start">
-        <div className="lg:col-span-3 flex justify-center">
-          <DonutChart
-            segments={segments}
-            total={current.total}
-            totalLabel={`Total ${current.label} tasks`}
-            size={200}
-          />
-        </div>
-
-        <div className="lg:col-span-2 flex flex-col justify-center gap-4">
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between text-xs text-slate-500">
-              <span>Completion</span>
-              <span>
-                {formatPercent(
-                  current.total > 0 ? (current.completed / current.total) * 100 : 0,
-                )}
-              </span>
-            </div>
-            <MiniBar
-              percent={current.total > 0 ? (current.completed / current.total) * 100 : 0}
-              className="h-2"
-              trackClassName="bg-slate-100"
+        <div className="grid grid-cols-1 gap-6 p-5 lg:grid-cols-5 lg:items-start">
+          <div className="lg:col-span-3 flex justify-center">
+            <DonutChart
+              segments={segments}
+              total={current.total}
+              totalLabel={`Total ${current.label} tasks`}
+              size={200}
             />
           </div>
+
+          <div className="lg:col-span-2 flex flex-col gap-4">
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-xs text-slate-500">
+                <span>Completion</span>
+                <span>
+                  {formatPercent(
+                    current.total > 0 ? (current.completed / current.total) * 100 : 0,
+                  )}
+                  <span className="ml-1 text-slate-400">
+                    ({current.completed} of {current.total})
+                  </span>
+                </span>
+              </div>
+              <MiniBar
+                percent={current.total > 0 ? (current.completed / current.total) * 100 : 0}
+                className="h-2 bg-emerald-500"
+                trackClassName="bg-slate-100"
+              />
+            </div>
 
           <div className="grid grid-cols-2 gap-2 text-center">
             <div>
@@ -487,7 +490,7 @@ function UpcomingDeadlines({ rows }: { rows: FirmDashboard["upcoming_deadlines"]
                         ? "bg-rose-50 text-rose-700 ring-rose-100"
                         : urgent
                           ? "bg-amber-50 text-amber-700 ring-amber-100"
-                          : "bg-slate-50 text-slate-600 ring-slate-200",
+                          : "bg-[#f7f6f3] text-slate-600 ring-slate-200",
                     )}
                   >
                     <span className="tabular text-sm font-semibold leading-none">
@@ -562,14 +565,14 @@ function WorkPipeline({ stages }: { stages: FirmDashboard["pipeline"] }) {
       <div className="flex flex-wrap items-stretch gap-2 p-4">
         {safeStages.map((stage, index) => (
           <div key={stage.key} className="flex flex-1 items-center gap-2">
-            <Link
-              href="/tasks"
-              title={stage.statuses.map(humanise).join(", ")}
-              className={cn(
-                "pipeline-stage min-w-[8rem] flex-1",
-                PIPELINE_COLOURS[index % PIPELINE_COLOURS.length],
-              )}
-            >
+              <Link
+                href="/tasks"
+                title={stage.statuses.map(humanise).join(", ")}
+                className={cn(
+                  "pipeline-stage min-w-[8rem] flex-1 rounded-lg p-3 border border-slate-200",
+                  PIPELINE_COLOURS[index % PIPELINE_COLOURS.length],
+                )}
+              >
               <p className="tabular text-2xl font-semibold leading-none">{stage.count}</p>
               <p className="mt-1.5 text-xs font-medium leading-tight">{stage.label}</p>
             </Link>
@@ -625,7 +628,7 @@ function ClientPortfolio({ portfolio }: { portfolio: FirmDashboard["portfolio"] 
     >
       <div className="grid grid-cols-2 gap-3 p-4 lg:grid-cols-4">
         {items.map((item) => (
-          <div key={item.label} className="rounded-lg bg-slate-50 p-3 ring-1 ring-inset ring-slate-100 transition-colors hover:bg-slate-100/60">
+          <div key={item.label} className="rounded-xl bg-[#f7f6f3] p-5  transition-colors hover:bg-[#f0ede8]">
              <IconChip tone={item.tone} size="sm">
                <Icon name={item.icon} className="h-3.5 w-3.5" />
              </IconChip>
@@ -746,7 +749,7 @@ function ClientsNeedingAttention({ rows }: { rows: FirmDashboard["at_risk_client
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full min-w-[24rem]">
-            <thead className="bg-slate-50">
+            <thead className="bg-[#f7f6f3]">
               <tr>
                 <th className="th">Client</th>
                 <th className="th">Issue</th>
@@ -873,7 +876,7 @@ function RecentActivity({ rows }: { rows: FirmDashboard["recent_activity"] }) {
         <ul className="divide-y divide-slate-100">
           {top.map((row) => (
               <li key={row.id} className="dashboard-row flex items-start gap-3 px-4 py-2.5">
-               <span className="activity-dot bg-slate-50 text-slate-600 ring-slate-200">
+               <span className="activity-dot bg-[#f7f6f3] text-slate-600 ring-slate-200">
                  <Icon name={activityIcon(row.entity_type)} className="h-3.5 w-3.5" />
                </span>
               <div className="min-w-0 flex-1">

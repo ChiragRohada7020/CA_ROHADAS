@@ -103,20 +103,20 @@ export function RecordPaymentDrawer({
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "tween", duration: 0.3 }}
-            className="fixed right-0 top-0 h-full w-full max-w-md bg-white dark:bg-slate-900 z-50 shadow-2xl flex flex-col"
+            className="fixed right-0 top-0 h-full w-full max-w-md bg-white z-50 shadow-2xl flex flex-col"
           >
-            <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700">
+            <div className="flex items-center justify-between p-4 border-b border-slate-200">
               <div>
-                <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+                <h2 className="text-lg font-semibold text-slate-900">
                   Record Payment
                 </h2>
-                <p className="text-sm text-slate-500 dark:text-slate-400">
+                <p className="text-sm text-slate-500">
                   Receive payment against an invoice
                 </p>
               </div>
               <button
                 onClick={onClose}
-                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
+                className="p-2 hover:bg-slate-100 rounded-lg"
               >
                 <Icon name="x" className="w-5 h-5" />
               </button>
@@ -124,7 +124,7 @@ export function RecordPaymentDrawer({
 
             <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 space-y-4">
               {error && (
-                <div className="p-3 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 text-sm rounded-lg">
+                <div className="p-3 bg-red-50 text-red-700 text-sm rounded-lg">
                   {error}
                 </div>
               )}
@@ -136,7 +136,7 @@ export function RecordPaymentDrawer({
                 <select
                   value={selectedInvoiceId}
                   onChange={(e) => setSelectedInvoiceId(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white"
                   required
                 >
                   <option value="">Select invoice</option>
@@ -147,7 +147,7 @@ export function RecordPaymentDrawer({
                   ))}
                 </select>
                 {selectedInvoice && (
-                  <div className="mt-2 p-2 bg-slate-50 dark:bg-slate-800 rounded text-xs space-y-1">
+                  <div className="mt-2 p-2 bg-slate-50 rounded text-xs space-y-1">
                     <div className="flex justify-between">
                       <span>Outstanding</span>
                       <span className="font-medium">{formatMoney(selectedInvoice.outstanding)}</span>
@@ -168,7 +168,7 @@ export function RecordPaymentDrawer({
                     type="number"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
-                    className="w-full pl-7 pr-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800"
+                    className="w-full pl-7 pr-3 py-2 border border-slate-300 rounded-lg bg-white"
                     placeholder="0.00"
                     required
                   />
@@ -183,7 +183,7 @@ export function RecordPaymentDrawer({
                   type="date"
                   value={paidOn}
                   onChange={(e) => setPaidOn(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white"
                   required
                 />
               </div>
@@ -195,7 +195,7 @@ export function RecordPaymentDrawer({
                 <select
                   value={method}
                   onChange={(e) => setMethod(e.target.value as PaymentMethod)}
-                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white"
                 >
                   {PAYMENT_METHODS.map((m) => (
                     <option key={m.value} value={m.value}>
@@ -213,7 +213,7 @@ export function RecordPaymentDrawer({
                   type="text"
                   value={reference}
                   onChange={(e) => setReference(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white"
                   placeholder="e.g., UTR, Cheque No."
                 />
               </div>
@@ -223,17 +223,17 @@ export function RecordPaymentDrawer({
                 <textarea
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white"
                   rows={3}
                   placeholder="Add notes (optional)"
                 />
               </div>
             </form>
 
-            <div className="p-4 border-t border-slate-200 dark:border-slate-700 flex gap-2">
+            <div className="p-4 border-t border-slate-200 flex gap-2">
               <button
                 onClick={onClose}
-                className="flex-1 px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800"
+                className="flex-1 px-4 py-2 border border-slate-300 rounded-lg hover:bg-slate-50"
               >
                 Cancel
               </button>

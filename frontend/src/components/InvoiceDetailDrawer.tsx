@@ -147,37 +147,37 @@ export function InvoiceDetailDrawer({
                   transition={{ duration: 0.3, ease: "easeOut", delay: 0.2 }}
                 >
                   <motion.div
-                    className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-700 dark:bg-slate-800/60"
+                    className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2"
                     whileHover={{ scale: 1.03, boxShadow: "0 4px 12px rgba(0,0,0,0.06)" }}
                     transition={{ type: "spring", stiffness: 400, damping: 25 }}
                   >
-                    <p className="text-[10px] uppercase tracking-wide text-slate-400 dark:text-slate-500">Total</p>
-                    <p className="tabular text-sm font-semibold text-slate-900 dark:text-slate-100">
+                    <p className="text-[10px] uppercase tracking-wide text-slate-400">Total</p>
+                    <p className="tabular text-sm font-semibold text-slate-900">
                       {formatMoney(row.total)}
                     </p>
                   </motion.div>
                   <motion.div
-                    className="rounded-xl border border-slate-200 bg-emerald-50 px-3 py-2 dark:border-slate-700 dark:bg-emerald-900/30"
+                    className="rounded-xl border border-slate-200 bg-emerald-50 px-3 py-2"
                     whileHover={{ scale: 1.03, boxShadow: "0 4px 12px rgba(0,0,0,0.06)" }}
                     transition={{ type: "spring", stiffness: 400, damping: 25 }}
                   >
-                    <p className="text-[10px] uppercase tracking-wide text-slate-400 dark:text-slate-500">Received</p>
-                    <p className="tabular text-sm font-semibold text-emerald-700 dark:text-emerald-300">
+                    <p className="text-[10px] uppercase tracking-wide text-slate-400">Received</p>
+                    <p className="tabular text-sm font-semibold text-emerald-700">
                       {formatMoney(row.amount_paid)}
                     </p>
                   </motion.div>
                   <motion.div
-                    className="rounded-xl border border-slate-200 bg-amber-50 px-3 py-2 dark:border-slate-700 dark:bg-amber-900/30"
+                    className="rounded-xl border border-slate-200 bg-amber-50 px-3 py-2"
                     whileHover={{ scale: 1.03, boxShadow: "0 4px 12px rgba(0,0,0,0.06)" }}
                     transition={{ type: "spring", stiffness: 400, damping: 25 }}
                   >
-                    <p className="text-[10px] uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                    <p className="text-[10px] uppercase tracking-wide text-slate-400">
                       Outstanding
                     </p>
                     <p
                       className={cn(
                         "tabular text-sm font-semibold",
-                        row.outstanding > 0 ? "text-amber-700 dark:text-amber-300" : "text-emerald-700 dark:text-emerald-300",
+                        row.outstanding > 0 ? "text-amber-700" : "text-emerald-700",
                       )}
                     >
                       {formatMoney(row.outstanding)}
@@ -272,16 +272,16 @@ export function InvoiceDetailDrawer({
                   ) : tab === "credit_notes" ? (
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
-                        <p className="text-sm font-medium text-slate-900 dark:text-slate-200">Credit Notes</p>
+                        <p className="text-sm font-medium text-slate-900">Credit Notes</p>
                         {(row.status === 'issued' || row.status === 'partially_paid' || row.status === 'paid') && (
-                          <Link href={`/invoices/${invoiceId}/credit-notes/new`} className="btn-primary">Raise Credit Note</Link>
+                          <Link href={`/invoices/${invoiceId}/credit-notes/new`} className="btn btn-primary px-5 py-2.5">Raise Credit Note</Link>
                         )}
                       </div>
                       <CreditNoteList />
                     </div>
                   ) : tab === "history" ? (
                     <div className="space-y-3">
-                      <p className="text-sm font-medium text-slate-900 dark:text-slate-200">History</p>
+                      <p className="text-sm font-medium text-slate-900">History</p>
                       <p className="text-sm text-slate-500">Audit history will appear here.</p>
                     </div>
                   ) : (
@@ -325,9 +325,9 @@ function LinesTab({
 
   return (
     <div className="space-y-4">
-      <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
+      <div className="overflow-x-auto rounded-lg border border-slate-200">
         <table className="w-full min-w-[34rem]">
-          <thead className="bg-slate-50 dark:bg-slate-800/60">
+          <thead className="bg-slate-50">
             <tr>
               <th className="th">Description</th>
               <th className="th">SAC</th>
@@ -336,7 +336,7 @@ function LinesTab({
               <th className="th text-right">Amount</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100 dark:divide-slate-700/60">
+          <tbody className="divide-y divide-slate-100">
             {row.lines.map((line, i) => (
               <motion.tr
                 key={line.id}
@@ -344,22 +344,22 @@ function LinesTab({
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.25, ease: "easeOut", delay: 0.05 * i }}
               >
-                <td className="td text-slate-700 dark:text-slate-300">
+                <td className="td text-slate-700">
                   {line.description}
                   {!line.is_taxable && (
-                    <span className="ml-2 text-xs italic text-slate-500 dark:text-slate-500">(not taxable)</span>
+                    <span className="ml-2 text-xs italic text-slate-500">(not taxable)</span>
                   )}
                 </td>
-                <td className="td font-mono text-xs text-slate-500 dark:text-slate-500">
+                <td className="td font-mono text-xs text-slate-500">
                   {line.sac_code ?? "—"}
                 </td>
-                <td className="td tabular text-right text-slate-600 dark:text-slate-400">
+                <td className="td tabular text-right text-slate-600">
                   {line.quantity}
                 </td>
-                <td className="td tabular text-right text-slate-600 dark:text-slate-400">
+                <td className="td tabular text-right text-slate-600">
                   {formatMoney(line.unit_price)}
                 </td>
-                <td className="td tabular text-right font-medium text-slate-800 dark:text-slate-200">
+                <td className="td tabular text-right font-medium text-slate-800">
                   {formatMoney(line.amount)}
                 </td>
               </motion.tr>
@@ -368,13 +368,13 @@ function LinesTab({
         </table>
       </div>
 
-      <div className="ml-auto max-w-xs rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/60">
+      <div className="ml-auto max-w-xs rounded-lg border border-slate-200 bg-slate-50 p-3">
         <dl className="space-y-1 text-sm">
           {items.map((item) => (
             <div key={item.label} className="flex justify-between">
               <dt
                 className={cn(
-                  "text-slate-500 dark:text-slate-400",
+                  "text-slate-500",
                   item.sub && "text-xs",
                 )}
               >
@@ -382,7 +382,7 @@ function LinesTab({
               </dt>
               <dd
                 className={cn(
-                  "tabular text-slate-800 dark:text-slate-200",
+                  "tabular text-slate-800",
                   item.sub && "text-xs",
                 )}
               >
@@ -391,26 +391,26 @@ function LinesTab({
               </dd>
             </div>
           ))}
-          <div className="border-t border-slate-200 pt-1 font-semibold dark:border-slate-700">
-            <dt className="text-slate-700 dark:text-slate-200">Total</dt>
-            <dd className="tabular text-slate-900 dark:text-slate-100">{formatMoney(total)}</dd>
+          <div className="border-t border-slate-200 pt-1 font-semibold">
+            <dt className="text-slate-700">Total</dt>
+            <dd className="tabular text-slate-900">{formatMoney(total)}</dd>
           </div>
         </dl>
       </div>
 
-      <p className="rounded-md bg-slate-50 px-3 py-2 text-xs text-slate-500 dark:bg-slate-800/60 dark:text-slate-400">
+      <p className="rounded-md bg-slate-50 px-3 py-2 text-xs text-slate-500">
         {row.tax_note}
       </p>
 
       {row.notes && (
         <motion.div
-          className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/60"
+          className="rounded-lg border border-slate-200 bg-slate-50 p-3"
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, ease: "easeOut", delay: 0.2 }}
         >
-          <p className="text-[10px] uppercase tracking-wide text-slate-400 dark:text-slate-500">Notes</p>
-          <p className="whitespace-pre-wrap text-sm text-slate-700 dark:text-slate-300">{row.notes}</p>
+          <p className="text-[10px] uppercase tracking-wide text-slate-400">Notes</p>
+          <p className="whitespace-pre-wrap text-sm text-slate-700">{row.notes}</p>
         </motion.div>
       )}
     </div>
@@ -428,7 +428,7 @@ function PaymentsTab({ row }: { row: InvoiceDetail }) {
               <circle cx="12" cy="14" r="2" />
             </svg>
           </div>
-          <p className="text-sm font-medium text-slate-900 dark:text-slate-100">No payments recorded yet</p>
+          <p className="text-sm font-medium text-slate-900">No payments recorded yet</p>
           <p className="mt-1 text-xs text-slate-500">
             Record the first payment received from the client to update invoice balance and generate a receipt.
           </p>
@@ -436,7 +436,7 @@ function PaymentsTab({ row }: { row: InvoiceDetail }) {
       )}
       <PaymentForm invoice={row} />
       {row.receipts.length > 0 && (
-        <div className="rounded-lg border border-slate-200 dark:border-slate-700">
+        <div className="rounded-lg border border-slate-200">
           <div className="bg-slate-50 px-4 py-2 text-xs font-semibold uppercase text-slate-500">
             Receipts issued
           </div>
@@ -444,13 +444,13 @@ function PaymentsTab({ row }: { row: InvoiceDetail }) {
             <tbody>
               {row.receipts.map((receipt) => (
                 <tr key={receipt.id} className="group hover:bg-slate-50">
-                  <td className="td text-xs text-slate-600 dark:text-slate-400">
+                  <td className="td text-xs text-slate-600">
                     {formatDate(receipt.issued_at)}
                   </td>
-                  <td className="td text-xs font-medium text-slate-900 dark:text-slate-100">
+                  <td className="td text-xs font-medium text-slate-900">
                     {receipt.receipt_number}
                   </td>
-                  <td className="td text-xs text-slate-500 dark:text-slate-400">
+                  <td className="td text-xs text-slate-500">
                     Linked to payment
                   </td>
                   <td className="td text-right">
@@ -498,27 +498,27 @@ function ActionsTab({ row }: { row: InvoiceDetail }) {
     <div className="space-y-4">
       <InvoiceActions invoice={row} />
       <div className="flex flex-wrap gap-2">
-        <Link href={`/invoices/${row.id}`} className="btn-ghost">
+        <Link href={`/invoices/${row.id}`} className="btn btn-ghost px-5 py-2.5">
           Open full page
         </Link>
-        <a href={`/api/invoices/${row.id}/pdf`} target="_blank" rel="noreferrer" className="btn-ghost">
+        <a href={`/api/invoices/${row.id}/pdf`} target="_blank" rel="noreferrer" className="btn btn-ghost px-5 py-2.5">
           Download PDF
         </a>
-        <Link href={`/print/invoices/${row.id}`} className="btn-ghost">
+        <Link href={`/print/invoices/${row.id}`} className="btn btn-ghost px-5 py-2.5">
           Print / Share
         </Link>
         {(row.status === 'issued' || row.status === 'partially_paid' || row.status === 'paid') && (
-          <Link href={`/invoices/${row.id}/credit-notes/new`} className="btn-ghost">
+          <Link href={`/invoices/${row.id}/credit-notes/new`} className="btn btn-ghost px-5 py-2.5">
             Raise Credit Note
           </Link>
         )}
         {(row.status === 'issued' || row.status === 'partially_paid') && (
-          <button type="button" className="btn-ghost" disabled={reminder.isPending} onClick={() => reminder.mutate()}>
+          <button type="button" className="btn btn-ghost px-5 py-2.5" disabled={reminder.isPending} onClick={() => reminder.mutate()}>
             {reminder.isPending ? "Sending…" : "Send Reminder"}
           </button>
         )}
         {row.status === 'paid' && (
-          <button type="button" className="btn-ghost" disabled={receipt.isPending} onClick={() => receipt.mutate()}>
+          <button type="button" className="btn btn-ghost px-5 py-2.5" disabled={receipt.isPending} onClick={() => receipt.mutate()}>
             {receipt.isPending ? "Issuing…" : "Issue Receipt"}
           </button>
         )}

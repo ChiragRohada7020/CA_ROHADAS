@@ -1277,12 +1277,12 @@ export function CreateTaskModal({
           </p>
 
           <div className="flex items-center gap-2">
-            <button type="button" className="btn-ghost" onClick={onClose}>
+            <button type="button" className="btn btn-ghost px-5 py-2.5" onClick={onClose}>
               Cancel
             </button>
             <button
               type="submit"
-              className="btn-primary"
+              className="btn btn-primary px-5 py-2.5"
               disabled={!canSubmit || create.isPending}
             >
               {create.isPending ? "Creating…" : "Create Task"}

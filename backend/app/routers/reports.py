@@ -10,9 +10,12 @@ Endpoints:
   GET /reports/productivity           — ProductivityReport
   GET /reports/bottlenecks            — BottleneckReport
   GET /reports/client-services        — ClientServiceStatusReport
+  GET /reports/monthly-trends         — Last 6 months invoiced/collected/tasks
 """
 from __future__ import annotations
 
+from calendar import monthrange
+from datetime import date
 from typing import Any
 
 from fastapi import APIRouter, Depends, Request
@@ -557,6 +560,172 @@ async def get_bottlenecks(
         "recurrence_delay": [],
         "notes": [],
     }
+
+
+@router.get("/reports/monthly-trends")
+async def get_monthly_trends(
+    request: Request,
+    from_date: str | None = None,
+    to_date: str | None = None,
+    db: Session = Depends(get_db),
+) -> Any:
+    """Monthly invoiced, collected, and task volumes — for charts.
+
+    When ``from_date`` / ``to_date`` are omitted, the last 6 calendar months are
+    returned.  Both bounds are inclusive.
+    """
+    principal = await get_current_user(request, db)
+    tenant_id = principal.tenant_id
+    from datetime import timedelta
+    from calendar import monthrange
+
+    today = today_local()
+
+    if from_date:
+        from datetime import date as _date
+        start = _date.fromisoformat(from_date)
+    else:
+        start = date(today.year, today.month, 1) - timedelta(days=180)
+
+    if to_date:
+        from datetime import date as _date
+        end = _date.fromisoformat(to_date)
+    else:
+        end = today
+
+    # Walk month by month between start and end.
+    rows = []
+    cursor = date(start.year, start.month, 1)
+    while cursor <= end:
+        last_day = monthrange(cursor.year, cursor.month)[1]
+        month_end = date(cursor.year, cursor.month, last_day)
+
+        invoiced = db.execute(
+            select(func.coalesce(func.sum(Invoice.total), 0)).where(
+                Invoice.tenant_id == tenant_id,
+                Invoice.invoice_date >= cursor,
+                Invoice.invoice_date <= month_end,
+            )
+        ).scalar() or 0
+
+        collected = db.execute(
+            select(func.coalesce(func.sum(Payment.amount), 0))
+            .select_from(Payment)
+            .join(Invoice, Invoice.id == Payment.invoice_id)
+            .where(
+                Invoice.tenant_id == tenant_id,
+                Payment.paid_on >= cursor,
+                Payment.paid_on <= month_end,
+            )
+        ).scalar() or 0
+
+        tasks_created = db.execute(
+            select(func.count()).select_from(Task).where(
+                Task.tenant_id == tenant_id,
+                Task.created_at >= cursor,
+                Task.created_at <= month_end,
+            )
+        ).scalar() or 0
+
+        tasks_completed = db.execute(
+            select(func.count()).select_from(Task).where(
+                Task.tenant_id == tenant_id,
+                Task.status == "completed",
+                Task.updated_at >= cursor,
+                Task.updated_at <= month_end,
+            )
+        ).scalar() or 0
+
+        rows.append({
+            "month": cursor.strftime("%b %Y"),
+            "month_key": cursor.isoformat()[:7],
+            "invoiced": float(invoiced),
+            "collected": float(collected),
+            "tasks_created": int(tasks_created),
+            "tasks_completed": int(tasks_completed),
+        })
+
+        # Advance to first day of next month.
+        if cursor.month == 12:
+            cursor = date(cursor.year + 1, 1, 1)
+        else:
+            cursor = date(cursor.year, cursor.month + 1, 1)
+
+    return rows
+
+
+@router.get("/reports/gst-summary")
+async def get_gst_summary(
+    request: Request,
+    from_date: str | None = None,
+    to_date: str | None = None,
+    db: Session = Depends(get_db),
+) -> Any:
+    """Monthly GST breakdown (CGST / SGST / IGST) — for charts.
+
+    Returns one row per month within the range, or the last 6 months when no
+    bounds are given.  Totals are also returned for headline figures.
+    """
+    principal = await get_current_user(request, db)
+    tenant_id = principal.tenant_id
+    from datetime import date as _date
+    from calendar import monthrange
+    from datetime import timedelta
+
+    today = today_local()
+
+    if from_date:
+        start = _date.fromisoformat(from_date)
+    else:
+        start = date(today.year, today.month, 1) - timedelta(days=180)
+
+    if to_date:
+        end = _date.fromisoformat(to_date)
+    else:
+        end = today
+
+    rows = []
+    cursor = date(start.year, start.month, 1)
+    while cursor <= end:
+        last_day = monthrange(cursor.year, cursor.month)[1]
+        month_end = date(cursor.year, cursor.month, last_day)
+
+        month_rows = db.execute(
+            select(Invoice.cgst_amount, Invoice.sgst_amount, Invoice.igst_amount)
+            .where(
+                Invoice.tenant_id == tenant_id,
+                Invoice.invoice_date >= cursor,
+                Invoice.invoice_date <= month_end,
+                Invoice.status.in_(["issued", "partially_paid", "paid"]),
+            )
+        ).all()
+
+        cgst = sum(float(r[0] or 0) for r in month_rows)
+        sgst = sum(float(r[1] or 0) for r in month_rows)
+        igst = sum(float(r[2] or 0) for r in month_rows)
+
+        rows.append({
+            "month": cursor.strftime("%b %Y"),
+            "month_key": cursor.isoformat()[:7],
+            "cgst": round(cgst, 2),
+            "sgst": round(sgst, 2),
+            "igst": round(igst, 2),
+            "total_tax": round(cgst + sgst + igst, 2),
+        })
+
+        if cursor.month == 12:
+            cursor = date(cursor.year + 1, 1, 1)
+        else:
+            cursor = date(cursor.year, cursor.month + 1, 1)
+
+    totals = {
+        "cgst": round(sum(r["cgst"] for r in rows), 2),
+        "sgst": round(sum(r["sgst"] for r in rows), 2),
+        "igst": round(sum(r["igst"] for r in rows), 2),
+    }
+    totals["total_tax"] = round(totals["cgst"] + totals["sgst"] + totals["igst"], 2)
+
+    return {"months": rows, "totals": totals}
 
 
 @router.get("/reports/client-services")

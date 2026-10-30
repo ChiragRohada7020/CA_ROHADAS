@@ -7,6 +7,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { InvoiceActions, PaymentForm } from "@/components/BillingForms";
+import { InvoiceTemplateSelector } from "@/components/InvoiceTemplateSelector";
 import { ServiceCombobox, type ServiceOption } from "@/components/ServiceCombobox";
 import { TextField, SelectField } from "@/components/form";
 import { Badge, Card, EmptyState, ErrorState, LoadingState, PageHeader, StatCard } from "@/components/ui";
@@ -15,7 +16,7 @@ import { Icon } from "@/components/Icon";
 import { api } from "@/lib/api";
 import { formatDate, formatDateTime, formatMoney } from "@/lib/format";
 import { ageingTone, invoiceStatusLabel, invoiceStatusTone } from "@/lib/status";
-import type { InvoiceDetail } from "@/lib/types";
+import type { InvoiceDetail, InvoiceTemplate } from "@/lib/types";
 
 /**
  * One invoice: what was billed, what has been received, and what can be done to it.
@@ -51,7 +52,14 @@ export default function InvoiceDetailPage() {
   const [recurringService, setRecurringService] = useState<ServiceOption | null>(null);
   const [recurringFee, setRecurringFee] = useState(0);
   const [recurringFrequency, setRecurringFrequency] = useState("month");
+  const [selectedPdfTemplate, setSelectedPdfTemplate] = useState<InvoiceTemplate | null>(null);
   const serviceOptions: ServiceOption[] = [];
+
+  const firmSettings = useQuery({
+    queryKey: ["billing", "settings"],
+    queryFn: () => api.get<{ invoice_template: InvoiceTemplate }>("/billing/settings"),
+    staleTime: 5 * 60 * 1000,
+  });
 
   if (invoice.isPending)
     return (
@@ -90,13 +98,56 @@ export default function InvoiceDetailPage() {
         subtitle={`${row.client_name ?? "Unknown client"} · raised ${formatDate(row.invoice_date)}`}
         action={
           <div className="flex items-center gap-2">
-            <Link href="/invoices" className="btn-ghost">
+            <Link href="/invoices" className="btn btn-ghost px-5 py-2.5">
               Back to invoices
             </Link>
+            <div className="relative">
+              <button
+                type="button"
+                className="btn btn-primary px-5 py-2.5"
+                onClick={() => setSelectedPdfTemplate(selectedPdfTemplate ?? firmSettings.data?.invoice_template ?? "modern")}
+              >
+                <Icon name="download" className="h-4 w-4" />
+                Download PDF
+              </button>
+              {selectedPdfTemplate && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setSelectedPdfTemplate(null)}>
+                  <div className="w-full max-w-4xl rounded-xl bg-white p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+                    <h3 className="mb-4 text-lg font-semibold text-slate-900">Choose PDF template</h3>
+                    <div className="mb-4 max-h-[500px] overflow-y-auto">
+                      <InvoiceTemplateSelector
+                        value={selectedPdfTemplate}
+                        onChange={(t) => setSelectedPdfTemplate(t)}
+                        scrollX
+                        invoice={row}
+                      />
+                    </div>
+                    <div className="flex justify-end gap-2 border-t border-slate-200 pt-4">
+                      <button
+                        type="button"
+                        className="btn btn-ghost px-4 py-2"
+                        onClick={() => setSelectedPdfTemplate(null)}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-primary px-4 py-2"
+                        onClick={() => {
+                          window.open(`/api/invoices/${row.id}/pdf?template=${selectedPdfTemplate}`, "_blank");
+                          setSelectedPdfTemplate(null);
+                        }}
+                      >
+                        Download as {selectedPdfTemplate}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
             <Link
               href={`/print/invoices/${row.id}`}
-              className="btn-primary"
-              data-animate
+              className="btn btn-ghost px-5 py-2.5"
             >
               Print
             </Link>
@@ -159,7 +210,7 @@ export default function InvoiceDetailPage() {
           <PermissionGate code="invoice.read.financial">
             <div className="overflow-x-auto">
               <table className="w-full min-w-[48rem]">
-                <thead className="bg-slate-50 dark:bg-slate-800/60">
+                <thead className="bg-[#f7f6f3]">
                   <tr>
                     <th className="th">Description</th>
                     <th className="th">SAC</th>
@@ -169,30 +220,30 @@ export default function InvoiceDetailPage() {
                     <th className="th">Amount</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-700/60">
+                <tbody className="divide-y divide-slate-100">
                   {row.lines.map((line) => (
                     <motion.tr
                       key={line.id}
                       whileHover={{ backgroundColor: "rgba(241, 245, 249, 0.6)" }}
                       transition={{ type: "spring", stiffness: 400, damping: 30 }}
                     >
-                      <td className="td text-slate-900 dark:text-slate-200">
+                      <td className="td text-slate-900">
                         {line.description}
                         {!line.is_taxable && (
-                          <span className="ml-2 text-xs italic text-slate-500 dark:text-slate-500">not taxable</span>
+                          <span className="ml-2 text-xs italic text-slate-500">not taxable</span>
                         )}
                       </td>
-                      <td className="td font-mono text-xs text-slate-500 dark:text-slate-400">{line.sac_code ?? "—"}</td>
-                      <td className="td tabular text-xs text-slate-600 dark:text-slate-400">{line.quantity}</td>
-                      <td className="td tabular text-xs text-slate-600 dark:text-slate-400">{formatMoney(line.unit_price)}</td>
-                      <td className="td tabular text-xs text-slate-600 dark:text-slate-400">
+                      <td className="td font-mono text-xs text-slate-500">{line.sac_code ?? "—"}</td>
+                      <td className="td tabular text-xs text-slate-600">{line.quantity}</td>
+                      <td className="td tabular text-xs text-slate-600">{formatMoney(line.unit_price)}</td>
+                      <td className="td tabular text-xs text-slate-600">
                         {line.discount > 0 ? formatMoney(line.discount) : "—"}
                       </td>
-                      <td className="td tabular text-xs text-slate-900 dark:text-slate-200">{formatMoney(line.amount)}</td>
+                      <td className="td tabular text-xs text-slate-900">{formatMoney(line.amount)}</td>
                     </motion.tr>
                   ))}
                 </tbody>
-                <tfoot className="bg-slate-50 dark:bg-slate-800/60">
+                <tfoot className="bg-[#f7f6f3]">
                   <tr>
                     <td className="td text-xs" colSpan={5}>
                       Subtotal
@@ -249,7 +300,7 @@ export default function InvoiceDetailPage() {
                 </tfoot>
               </table>
             </div>
-            <p className="border-t border-slate-200 dark:border-slate-700 px-4 py-3 text-xs text-slate-500 dark:text-slate-400">
+            <p className="border-t border-slate-200 px-4 py-3 text-xs text-slate-500">
               {row.tax_note}
             </p>
           </PermissionGate>
@@ -372,10 +423,10 @@ export default function InvoiceDetailPage() {
               {row.receipts.map((receipt) => (
                 <div
                   key={receipt.id}
-                  className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 p-3 dark:border-slate-700"
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 p-3"
                 >
                   <div>
-                    <div className="text-sm font-medium text-slate-900 dark:text-white">
+                    <div className="text-sm font-medium text-slate-900">
                       {receipt.receipt_number}
                     </div>
                     <div className="text-xs text-slate-500">
@@ -404,7 +455,7 @@ export default function InvoiceDetailPage() {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="text-sm text-slate-600">
                 Email the latest receipt to{' '}
-                <span className="font-mono text-xs bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">
+                <span className="font-mono text-xs bg-slate-100 px-2 py-0.5 rounded">
                   {row.client?.email ?? "No email on file"}
                 </span>
               </div>
@@ -473,7 +524,7 @@ export default function InvoiceDetailPage() {
             <div className="flex flex-wrap items-end gap-2">
               <button
                 type="button"
-                className="btn-primary"
+                className="btn btn-primary px-5 py-2.5"
                 disabled={recurringSchedule.isPending || !recurringService}
                 onClick={() => {
                   if (!recurringService) return;
@@ -490,7 +541,7 @@ export default function InvoiceDetailPage() {
               </button>
               <button
                 type="button"
-                className="btn-ghost"
+                className="btn btn-ghost px-5 py-2.5"
                 onClick={() => {
                   setRecurringService(null);
                   setRecurringFee(0);

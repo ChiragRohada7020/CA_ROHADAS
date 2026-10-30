@@ -245,6 +245,7 @@ export default function TeamPage() {
 
   const hasFilters = Object.values(filters).some(Boolean);
   const leave = s?.leave ?? null;
+  const [activeDepartment, setActiveDepartment] = useState<string | null>(null);
   const session = useSession();
   const canViewRoles = hasPermission(session.data, "role.read");
   const canManagePerms = hasPermission(session.data, "user.permission.manage");
@@ -284,7 +285,7 @@ export default function TeamPage() {
             {canAddMember ? (
               <button
                 type="button"
-                className="btn-primary"
+                className="btn btn-primary px-5 py-2.5"
                 onClick={() => setShowAddMember(true)}
               >
                 <Icon name="plus" className="h-4 w-4" />
@@ -411,7 +412,7 @@ export default function TeamPage() {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[64rem]">
-              <thead className="bg-slate-50">
+              <thead className="bg-[#f7f6f3]">
                 <tr>
                   <th className="th w-8">
                     <input type="checkbox" aria-label="Select all members on this page" />
@@ -431,7 +432,7 @@ export default function TeamPage() {
                 {rows.map((person, index) => {
                   const load = loadByUser.get(person.id);
                   return (
-                    <tr key={person.id} className="hover:bg-slate-50">
+                    <tr key={person.id} className="hover:bg-[#f7f6f3]">
                       <td className="td">
                         <input type="checkbox" aria-label={`Select ${person.full_name}`} />
                       </td>
@@ -510,7 +511,7 @@ export default function TeamPage() {
                             ⋮
                           </button>
                           {menuMemberId === person.id && (
-                            <div ref={menuRef} className="absolute right-0 z-20 mt-1 w-40 origin-top-right rounded-md border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-800">
+                            <div ref={menuRef} className="absolute right-0 z-20 mt-1 w-40 origin-top-right rounded-md border border-slate-200 bg-white shadow-lg">
                               <button
                                 type="button"
                                 className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-slate-100"
@@ -588,7 +589,7 @@ export default function TeamPage() {
             <EmptyState message="Nobody is carrying open work yet." />
           ) : (
             <table className="w-full">
-              <thead className="bg-slate-50">
+              <thead className="bg-[#f7f6f3]">
                 <tr>
                   <th className="th">Name</th>
                   <th className="th text-right">Open</th>
@@ -598,7 +599,7 @@ export default function TeamPage() {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {s?.workload.slice(0, 8).map((row) => (
-                  <tr key={row.user_id} className="hover:bg-slate-50">
+                  <tr key={row.user_id} className="hover:bg-[#f7f6f3]">
                     <td className="td">
                       <button
                         type="button"
@@ -646,17 +647,21 @@ export default function TeamPage() {
           {(s?.by_department.length ?? 0) === 0 ? (
             <EmptyState message="No open tasks are assigned to anyone with a department." />
           ) : (
-            <DonutChart
-              total={s?.total_open_tasks ?? 0}
-              totalLabel="Open Tasks"
-              size={148}
-              segments={(s?.by_department ?? []).map((row, index) => ({
-                key: row.department,
-                label: `${row.department} — ${row.open_tasks} (${Math.round(row.percent)}%)`,
-                value: row.open_tasks,
-                className: departmentStroke(row.department, index),
-              }))}
-            />
+            <div className="p-4">
+              <DonutChart
+                total={s?.total_open_tasks ?? 0}
+                totalLabel="Open Tasks"
+                size={170}
+                activeKey={activeDepartment}
+                onSegmentClick={setActiveDepartment}
+                segments={(s?.by_department ?? []).map((row, index) => ({
+                  key: row.department,
+                  label: `${row.department} — ${row.open_tasks} (${Math.round(row.percent)}%)`,
+                  value: row.open_tasks,
+                  className: departmentStroke(row.department, index),
+                }))}
+              />
+            </div>
           )}
         </Card>
 

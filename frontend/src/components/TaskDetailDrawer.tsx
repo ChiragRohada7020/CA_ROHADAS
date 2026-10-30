@@ -195,7 +195,7 @@ function TaskHeader({
             </Link>
           )}
           {task.service_code && (
-            <span className="mt-0.5 inline-block rounded bg-[#F6F8FC] px-1.5 py-0.5 font-mono text-[10px] text-[#64748B]">
+            <span className="mt-0.5 inline-block rounded bg-[#f7f6f3] px-1.5 py-0.5 font-mono text-[10px] text-[#64748B]">
               {task.service_code} {task.service_name}
             </span>
           )}
@@ -379,7 +379,7 @@ function TransitionButton({
 
   if (showReason) {
     return (
-      <div className="flex items-end gap-2 rounded-md bg-[#F6F8FC] p-2">
+      <div className="flex items-end gap-2 rounded-md bg-[#f7f6f3] p-2">
         <textarea
           className="input w-48 py-1 text-xs"
           value={reason}
@@ -394,7 +394,7 @@ function TransitionButton({
         />
         <button
           type="button"
-          className="btn-primary px-2 py-0.5 text-xs"
+          className="btn btn-primary px-4 py-2 text-xs"
           disabled={requiresReason && !reason.trim()}
           onClick={handleSubmit}
         >

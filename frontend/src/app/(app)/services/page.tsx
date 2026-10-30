@@ -239,7 +239,7 @@ function RowActionsMenu({
           <button
             type="button"
             role="menuitem"
-            className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-slate-700 hover:bg-slate-50"
+            className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-slate-700 hover:bg-[#f7f6f3]"
             onClick={(event) => {
               event.stopPropagation();
               setOpen(false);
@@ -252,7 +252,7 @@ function RowActionsMenu({
           <Link
             href={`/services/${row.id}`}
             role="menuitem"
-            className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-slate-700 hover:bg-slate-50"
+            className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-slate-700 hover:bg-[#f7f6f3]"
             onClick={() => {
               setOpen(false);
               onView(row.id);
@@ -546,7 +546,7 @@ export default function ServicesPage() {
         </div>
 
         {hasFilters && (
-          <div className="flex items-center justify-between gap-3 border-b border-slate-200 bg-slate-50 px-3 py-2">
+          <div className="flex items-center justify-between gap-3 border-b border-slate-200 bg-[#f7f6f3] px-3 py-2">
             <p className="text-xs text-slate-600">
               Showing {services.data?.meta.total ?? 0} of {s?.total_services ?? 0} services
             </p>
@@ -586,7 +586,7 @@ export default function ServicesPage() {
                       type="button"
                       role="menuitem"
                       disabled={selected.size === 0}
-                      className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-slate-700 hover:bg-[#f7f6f3] disabled:cursor-not-allowed disabled:opacity-50"
                       onClick={() => {
                         setBulkMenuOpen(false);
                         setBulkRetireOpen(true);
@@ -708,7 +708,7 @@ export default function ServicesPage() {
                   <TableRow
                     key={row.id}
                     className={cn(
-                      "hover:bg-slate-50",
+                      "hover:bg-[#f7f6f3]",
                       selected.has(row.id) && "bg-[#F0F9FF]",
                     )}
                   >
@@ -810,7 +810,7 @@ export default function ServicesPage() {
                 <li key={row.value}>
                   <button
                     type="button"
-                    className="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-slate-50"
+                    className="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-[#f7f6f3]"
                     onClick={() => updateFilter("category", row.value)}
                   >
                     <CategoryBadge category={row.value} labels={categoryLabels} />
@@ -859,7 +859,7 @@ export default function ServicesPage() {
               </TableHeader>
               <TableBody>
                 {s?.assignments.slice(0, 6).map((row) => (
-                  <TableRow key={row.service_id} className="hover:bg-slate-50">
+                  <TableRow key={row.service_id} className="hover:bg-[#f7f6f3]">
                     <TableCell>
                       <button
                         type="button"

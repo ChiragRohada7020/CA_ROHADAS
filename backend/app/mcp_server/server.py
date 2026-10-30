@@ -757,6 +757,117 @@ def _build_whatsapp_tool_definitions():
         },
     ))
 
+    # ── document list/get/update/delete ────────────────────────────────────────
+    tools.append(Tool(
+        name="list_documents",
+        description="List documents registered for clients, tasks, or compliance records.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "client_id": {"type": "string", "description": "Filter by client UUID"},
+                "task_id": {"type": "string", "description": "Filter by task UUID"},
+                "doc_type": {"type": "string", "description": "Filter by document type"},
+                "status": {"type": "string", "description": "Filter by status"},
+                "limit": {"type": "integer", "default": 25},
+                "offset": {"type": "integer", "default": 0},
+            },
+        },
+    ))
+
+    tools.append(Tool(
+        name="get_document",
+        description="Get detailed information about a document including versions and tags.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "document_id": {"type": "string", "description": "The document UUID"},
+            },
+            "required": ["document_id"],
+        },
+    ))
+
+    tools.append(Tool(
+        name="update_document",
+        description="Update a document's title, description, category, type, status, or tags.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "document_id": {"type": "string", "description": "The document UUID"},
+                "title": {"type": "string", "description": "Document title"},
+                "description": {"type": "string", "description": "Document description"},
+                "category": {"type": "string", "description": "Document category"},
+                "doc_type": {"type": "string", "description": "Document type"},
+                "status": {"type": "string", "description": "Document status"},
+                "tags": {"type": "array", "items": {"type": "string"}, "description": "Document tags"},
+            },
+            "required": ["document_id"],
+        },
+    ))
+
+    tools.append(Tool(
+        name="delete_document",
+        description="Delete a document record.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "document_id": {"type": "string", "description": "The document UUID"},
+            },
+            "required": ["document_id"],
+        },
+    ))
+
+    # ── invoice delete ─────────────────────────────────────────────────────
+    tools.append(Tool(
+        name="delete_invoice",
+        description="Delete an invoice. Only draft invoices can be deleted.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "invoice_id": {"type": "string", "description": "The invoice UUID"},
+            },
+            "required": ["invoice_id"],
+        },
+    ))
+
+    # ── service delete ─────────────────────────────────────────────────────
+    tools.append(Tool(
+        name="delete_service",
+        description="Delete a service from the firm catalogue.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "service_id": {"type": "string", "description": "The service UUID"},
+            },
+            "required": ["service_id"],
+        },
+    ))
+
+    # ── payment list/get ───────────────────────────────────────────────────
+    tools.append(Tool(
+        name="list_payments",
+        description="List payments recorded against invoices.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "invoice_id": {"type": "string", "description": "Filter by invoice UUID"},
+                "limit": {"type": "integer", "default": 25},
+                "offset": {"type": "integer", "default": 0},
+            },
+        },
+    ))
+
+    tools.append(Tool(
+        name="get_payment",
+        description="Get details of a specific payment record.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "payment_id": {"type": "string", "description": "The payment UUID"},
+            },
+            "required": ["payment_id"],
+        },
+    ))
+
     return tools
 
 
@@ -842,6 +953,14 @@ REQUIRED_PERMISSIONS: dict[str, str] = {
     "whatsapp_qr": "integration.read",
     "whatsapp_send_message": "communication.send",
     "whatsapp_send_invoice": "invoice.send",
+    "list_documents": "document.read",
+    "get_document": "document.read",
+    "update_document": "document.write",
+    "delete_document": "document.write",
+    "delete_invoice": "invoice.write",
+    "delete_service": "service.write",
+    "list_payments": "payment.read",
+    "get_payment": "payment.read",
 }
 
 
@@ -972,6 +1091,22 @@ async def _dispatch_tool(name: str, arguments: dict[str, Any]) -> str:
             return await _tool_update_task_step(db, arguments)
         elif name == "delete_task":
             return await _tool_delete_task(db, arguments)
+        elif name == "list_documents":
+            return await _tool_list_documents(db, arguments)
+        elif name == "get_document":
+            return await _tool_get_document(db, arguments)
+        elif name == "update_document":
+            return await _tool_update_document(db, arguments)
+        elif name == "delete_document":
+            return await _tool_delete_document(db, arguments)
+        elif name == "delete_invoice":
+            return await _tool_delete_invoice(db, arguments)
+        elif name == "delete_service":
+            return await _tool_delete_service(db, arguments)
+        elif name == "list_payments":
+            return await _tool_list_payments(db, arguments)
+        elif name == "get_payment":
+            return await _tool_get_payment(db, arguments)
         else:
             return f"Unknown tool: {name}"
     finally:
@@ -3209,3 +3344,241 @@ async def _tool_delete_task(db, arguments: dict[str, Any]) -> str:
     task.deleted_at = datetime.utcnow()
     db.commit()
     return json.dumps({"success": True, "task_id": str(task.id)})
+
+
+async def _tool_list_documents(db, arguments: dict[str, Any]) -> str:
+    from app.models import Document
+    import json
+
+    tenant_id = arguments.get("_tenant_id")
+    client_id = arguments.get("client_id")
+    task_id = arguments.get("task_id")
+    doc_type = arguments.get("doc_type")
+    status = arguments.get("status")
+    limit = int(arguments.get("limit") or 25)
+    offset = int(arguments.get("offset") or 0)
+
+    from sqlalchemy import func, select
+    stmt = select(Document).where(Document.tenant_id == tenant_id)
+    if client_id:
+        stmt = stmt.where(Document.client_id == client_id)
+    if task_id:
+        stmt = stmt.where(Document.task_id == task_id)
+    if doc_type:
+        stmt = stmt.where(Document.doc_type == doc_type)
+    if status:
+        stmt = stmt.where(Document.status == status)
+
+    total = db.execute(select(func.count()).select_from(stmt.subquery())).scalar() or 0
+    stmt = stmt.order_by(Document.created_at.desc()).limit(limit).offset(offset)
+    rows = db.execute(stmt).scalars().all()
+
+    items = []
+    for d in rows:
+        items.append({
+            "id": str(d.id),
+            "title": d.title,
+            "doc_type": d.doc_type,
+            "category": d.category,
+            "status": d.status,
+            "client_id": str(d.client_id) if d.client_id else None,
+            "task_id": str(d.task_id) if d.task_id else None,
+            "description": d.description,
+            "created_at": d.created_at.isoformat() if d.created_at else None,
+        })
+    return json.dumps({"items": items, "total": total, "limit": limit, "offset": offset})
+
+
+async def _tool_get_document(db, arguments: dict[str, Any]) -> str:
+    from app.models import Document
+    import json
+
+    document_id = arguments.get("document_id")
+    if not document_id:
+        return json.dumps({"error": "document_id is required"})
+
+    doc = db.get(Document, document_id)
+    if doc is None:
+        return json.dumps({"error": f"Document {document_id} not found"})
+
+    tenant_id = arguments.get("_tenant_id")
+    if tenant_id and str(doc.tenant_id) != str(tenant_id):
+        return json.dumps({"error": f"Document {document_id} not found"})
+
+    return json.dumps({
+        "id": str(doc.id),
+        "title": doc.title,
+        "doc_type": doc.doc_type,
+        "category": doc.category,
+        "status": doc.status,
+        "client_id": str(doc.client_id) if doc.client_id else None,
+        "task_id": str(doc.task_id) if doc.task_id else None,
+        "description": doc.description,
+        "is_confidential": bool(doc.is_confidential),
+        "from_client": bool(doc.from_client),
+        "created_at": doc.created_at.isoformat() if doc.created_at else None,
+        "updated_at": doc.updated_at.isoformat() if doc.updated_at else None,
+    })
+
+
+async def _tool_update_document(db, arguments: dict[str, Any]) -> str:
+    from app.models import Document
+    import json
+
+    document_id = arguments.get("document_id")
+    if not document_id:
+        return json.dumps({"error": "document_id is required"})
+
+    doc = db.get(Document, document_id)
+    if doc is None:
+        return json.dumps({"error": f"Document {document_id} not found"})
+
+    tenant_id = arguments.get("_tenant_id")
+    if tenant_id and str(doc.tenant_id) != str(tenant_id):
+        return json.dumps({"error": f"Document {document_id} not found"})
+
+    if arguments.get("title") is not None:
+        doc.title = arguments["title"]
+    if arguments.get("description") is not None:
+        doc.description = arguments["description"]
+    if arguments.get("category") is not None:
+        doc.category = arguments["category"]
+    if arguments.get("doc_type") is not None:
+        doc.doc_type = arguments["doc_type"]
+    if arguments.get("status") is not None:
+        doc.status = arguments["status"]
+    if arguments.get("tags") is not None:
+        doc.tags = ",".join(arguments["tags"])
+
+    db.commit()
+    db.refresh(doc)
+    return json.dumps({"id": str(doc.id), "title": doc.title, "status": doc.status})
+
+
+async def _tool_delete_document(db, arguments: dict[str, Any]) -> str:
+    from app.models import Document
+    import json
+    from datetime import datetime
+
+    document_id = arguments.get("document_id")
+    if not document_id:
+        return json.dumps({"error": "document_id is required"})
+
+    doc = db.get(Document, document_id)
+    if doc is None:
+        return json.dumps({"error": f"Document {document_id} not found"})
+
+    tenant_id = arguments.get("_tenant_id")
+    if tenant_id and str(doc.tenant_id) != str(tenant_id):
+        return json.dumps({"error": f"Document {document_id} not found"})
+
+    doc.deleted_at = datetime.utcnow()
+    db.commit()
+    return json.dumps({"success": True, "document_id": str(doc.id)})
+
+
+async def _tool_delete_invoice(db, arguments: dict[str, Any]) -> str:
+    from app.models import Invoice
+    import json
+
+    invoice_id = arguments.get("invoice_id")
+    if not invoice_id:
+        return json.dumps({"error": "invoice_id is required"})
+
+    invoice = db.get(Invoice, invoice_id)
+    if invoice is None:
+        return json.dumps({"error": f"Invoice {invoice_id} not found"})
+
+    tenant_id = arguments.get("_tenant_id")
+    if tenant_id and str(invoice.tenant_id) != str(tenant_id):
+        return json.dumps({"error": f"Invoice {invoice_id} not found"})
+
+    if invoice.status != "draft":
+        return json.dumps({"error": "Only draft invoices can be deleted"})
+
+    db.delete(invoice)
+    db.commit()
+    return json.dumps({"success": True, "invoice_id": str(invoice.id)})
+
+
+async def _tool_delete_service(db, arguments: dict[str, Any]) -> str:
+    from app.models import Service
+    import json
+
+    service_id = arguments.get("service_id")
+    if not service_id:
+        return json.dumps({"error": "service_id is required"})
+
+    service = db.get(Service, service_id)
+    if service is None:
+        return json.dumps({"error": f"Service {service_id} not found"})
+
+    tenant_id = arguments.get("_tenant_id")
+    if tenant_id and str(service.tenant_id) != str(tenant_id):
+        return json.dumps({"error": f"Service {service_id} not found"})
+
+    db.delete(service)
+    db.commit()
+    return json.dumps({"success": True, "service_id": str(service.id)})
+
+
+async def _tool_list_payments(db, arguments: dict[str, Any]) -> str:
+    from app.models import Payment, Invoice
+    import json
+
+    tenant_id = arguments.get("_tenant_id")
+    invoice_id = arguments.get("invoice_id")
+    limit = int(arguments.get("limit") or 25)
+    offset = int(arguments.get("offset") or 0)
+
+    from sqlalchemy import func, select
+    stmt = select(Payment).join(Invoice, Invoice.id == Payment.invoice_id).where(Invoice.tenant_id == tenant_id)
+    if invoice_id:
+        stmt = stmt.where(Payment.invoice_id == invoice_id)
+
+    total = db.execute(select(func.count()).select_from(stmt.subquery())).scalar() or 0
+    stmt = stmt.order_by(Payment.paid_on.desc()).limit(limit).offset(offset)
+    rows = db.execute(stmt).scalars().all()
+
+    items = []
+    for p in rows:
+        items.append({
+            "id": str(p.id),
+            "invoice_id": str(p.invoice_id) if p.invoice_id else None,
+            "amount": round(float(p.amount), 2) if p.amount else None,
+            "method": p.method,
+            "reference": p.reference,
+            "paid_on": p.paid_on.isoformat() if p.paid_on else None,
+            "notes": p.notes,
+        })
+    return json.dumps({"items": items, "total": total, "limit": limit, "offset": offset})
+
+
+async def _tool_get_payment(db, arguments: dict[str, Any]) -> str:
+    from app.models import Payment, Invoice
+    import json
+    from sqlalchemy import select
+
+    payment_id = arguments.get("payment_id")
+    if not payment_id:
+        return json.dumps({"error": "payment_id is required"})
+
+    payment = db.execute(
+        select(Payment).join(Invoice, Invoice.id == Payment.invoice_id).where(Payment.id == payment_id)
+    ).scalars().first()
+    if payment is None:
+        return json.dumps({"error": f"Payment {payment_id} not found"})
+
+    tenant_id = arguments.get("_tenant_id")
+    if tenant_id and str(payment.invoice.tenant_id) != str(tenant_id):
+        return json.dumps({"error": f"Payment {payment_id} not found"})
+
+    return json.dumps({
+        "id": str(payment.id),
+        "invoice_id": str(payment.invoice_id) if payment.invoice_id else None,
+        "amount": round(float(payment.amount), 2) if payment.amount else None,
+        "method": payment.method,
+        "reference": payment.reference,
+        "paid_on": payment.paid_on.isoformat() if payment.paid_on else None,
+        "notes": payment.notes,
+    })

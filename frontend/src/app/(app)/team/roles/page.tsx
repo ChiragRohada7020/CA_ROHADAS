@@ -6,7 +6,7 @@ import { Icon } from "@/components/Icon";
 import { Modal } from "@/components/ui";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/format";
-import { useSession } from "@/lib/session";
+import { useSession, hasPermission } from "@/lib/session";
 import type { PermissionDef, RoleRow, RolesResponse } from "@/lib/types";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -366,7 +366,7 @@ export default function RolesPage() {
         !query ||
         p.action.toLowerCase().includes(query) ||
         p.module.toLowerCase().includes(query) ||
-        p.description.toLowerCase().includes(query);
+        (p.description ?? "").toLowerCase().includes(query);
       if (!match) continue;
 
       const arr = grouped.get(p.module) ?? [];
@@ -425,6 +425,33 @@ export default function RolesPage() {
       setSavingRole(null);
     }
   }, [selectedRoleId, selectedGrants, loadRoles, canSaveSelectedRole]);
+
+  const deleteSelectedRole = useCallback(async () => {
+    if (!selectedRoleId || !selectedRole) return;
+    if (selectedRole.is_system) {
+      setToast({ text: "System roles cannot be deleted.", kind: "error" });
+      return;
+    }
+    setSavingRole(selectedRoleId);
+    setToast(null);
+    try {
+      await api.delete(`/roles/${selectedRoleId}`);
+      setToast({ text: "Role deleted.", kind: "success" });
+      await loadRoles();
+      // Reset selection to first available role
+      const firstMatch = ROLE_ORDER.find((k) =>
+        roles.some((r) => configKeyFor(r) === k),
+      );
+      if (firstMatch) setSelectedKey(firstMatch);
+    } catch (err) {
+      setToast({
+        text: err instanceof Error ? err.message : "Could not delete role.",
+        kind: "error",
+      });
+    } finally {
+      setSavingRole(null);
+    }
+  }, [selectedRoleId, selectedRole, roles, loadRoles]);
 
   const toggleModule = useCallback((module: string) => {
     setCollapsedModules((prev) => {
@@ -497,10 +524,10 @@ export default function RolesPage() {
   }
 
   const canManageRoles = session.data
-    ? session.data.permissions.includes("role.write")
+    ? hasPermission(session.data, "role.write")
     : false;
   const canViewRoles = session.data
-    ? session.data.permissions.includes("role.read")
+    ? hasPermission(session.data, "role.read")
     : false;
 
   return (
@@ -538,62 +565,64 @@ export default function RolesPage() {
           </nav>
 
           {/* ── Heading + Create Role ── */}
-          <div
-            className="flex flex-wrap items-end justify-between gap-3"
-            style={{ marginBottom: 20 }}
-          >
-            <div className="min-w-0">
-              <h1
-                className="text-[28px] font-bold leading-[34px] tracking-tight"
+          <div className="bg-white border border-slate-200 rounded-xl p-5 mb-6 shadow-sm">
+            <div
+              className="flex flex-wrap items-end justify-between gap-3"
+              style={{ marginBottom: 0 }}
+            >
+              <div className="min-w-0">
+                <h1
+                  className="text-[28px] font-bold leading-[34px] tracking-tight"
+                  style={{
+                    color: INK,
+                    letterSpacing: "-0.01em",
+                    margin: 0,
+                  }}
+                >
+                  Roles &amp; Permissions
+                </h1>
+                <p
+                  className="text-[14px] leading-[20px] text-slate-500 mt-1"
+                  style={{ margin: 0 }}
+                >
+                  Manage user roles and control access to features, clients, and data.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="relative inline-flex items-center justify-center gap-2"
+                onClick={() => setCreateOpen(true)}
+                disabled={!canManageRoles}
                 style={{
-                  color: INK,
-                  letterSpacing: "-0.01em",
-                  margin: 0,
+                  width: 138,
+                  height: 42,
+                  background: canManageRoles ? PRIMARY : "var(--role-page-disabled)",
+                  color: "#fff",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  border: "none",
+                  borderRadius: 7,
+                  cursor: canManageRoles ? "pointer" : "default",
+                  opacity: canManageRoles ? 1 : 0.6,
                 }}
               >
-                Roles &amp; Permissions
-              </h1>
-              <p
-                className="text-[14px] leading-[20px] text-slate-500 mt-1"
-                style={{ margin: 0 }}
-              >
-                Manage user roles and control access to features, clients, and data.
-              </p>
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <line x1="12" y1="5" x2="12" y2="19" />
+                  <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+                <span style={{ fontWeight: 600 }}>Create Role</span>
+              </button>
             </div>
-            <button
-              type="button"
-              className="relative inline-flex items-center justify-center gap-2"
-              onClick={() => setCreateOpen(true)}
-              disabled={!canManageRoles}
-              style={{
-                width: 138,
-                height: 42,
-                background: canManageRoles ? PRIMARY : "var(--role-page-disabled)",
-                color: "#fff",
-                fontSize: 14,
-                fontWeight: 600,
-                border: "none",
-                borderRadius: 7,
-                cursor: canManageRoles ? "pointer" : "default",
-                opacity: canManageRoles ? 1 : 0.6,
-              }}
-            >
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-              >
-                <line x1="12" y1="5" x2="12" y2="19" />
-                <line x1="5" y1="12" x2="19" y2="12" />
-              </svg>
-              <span style={{ fontWeight: 600 }}>+ Create Role</span>
-            </button>
           </div>
 
           {/* ── Role selection cards ── */}
@@ -874,7 +903,7 @@ export default function RolesPage() {
                       style={{ borderSpacing: 0 }}
                     >
                       <thead>
-                          <tr className="sticky top-0 z-10 bg-white dark:bg-slate-800">
+                          <tr className="sticky top-0 z-10 bg-white">
                             <th
                               className="text-left"
                               style={{
@@ -1226,7 +1255,7 @@ export default function RolesPage() {
                           return (
                             <span
                               key={code}
-                              className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-medium text-slate-700"
+                              className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-[#f7f6f3] px-2.5 py-1 text-[11px] font-medium text-slate-700"
                             >
                               {def?.action ?? code}
                             </span>
@@ -1234,7 +1263,7 @@ export default function RolesPage() {
                         })}
                       {selectedGrants.size > 6 && (
                         <span
-                          className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-medium text-slate-500"
+                          className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-[#f7f6f3] px-2.5 py-1 text-[11px] font-medium text-slate-500"
                         >
                           +{selectedGrants.size - 6} more
                         </span>
@@ -1258,23 +1287,16 @@ export default function RolesPage() {
                     disabled={
                       !canManageRoles ||
                       isRoleReadOnly ||
-                      selectedRole?.is_system ||
-                      !hasUnsavedChanges
+                      selectedRole?.is_system
                     }
-                    onClick={() => {
-                      setToast({
-                        text:
-                          "Delete is disabled for protected system roles.",
-                        kind: "error",
-                      });
-                    }}
+                    onClick={deleteSelectedRole}
                   >
                     <Icon name="trash" className="h-4 w-4" />
                     Delete Role
                   </button>
                   <button
                     type="button"
-                    className="btn-primary px-4 py-2 text-sm font-medium disabled:opacity-60"
+                    className="btn btn-primary text-xs gap-2 px-3 py-1.5 rounded-lg disabled:opacity-60"
                     disabled={
                       !canManageRoles ||
                       isRoleReadOnly ||
@@ -1408,7 +1430,7 @@ export default function RolesPage() {
                               "inline-flex items-center justify-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs text-left",
                               active
                                 ? `border-${PRIMARY} bg-[#E2EEFF] text-[#0759C7]`
-                                : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50",
+                                : "border-slate-200 bg-white text-slate-600 hover:bg-[#f7f6f3]",
                             )}
                           >
                             <input

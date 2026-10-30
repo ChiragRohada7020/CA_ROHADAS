@@ -345,7 +345,7 @@ export default function NewTaskPage() {
                   {subtasks.map((name, index) => (
                     <li
                       key={`${name}-${index}`}
-                      className="flex items-center gap-2 rounded-md bg-slate-50 px-2 py-1.5"
+                      className="flex items-center gap-2 rounded-md bg-[#f7f6f3] px-2 py-1.5"
                     >
                       <span className="tabular text-xs text-slate-400">{index + 1}.</span>
                       <span className="min-w-0 flex-1 truncate text-sm text-slate-800">{name}</span>
@@ -380,7 +380,7 @@ export default function NewTaskPage() {
                     }
                   }}
                 />
-                <button type="button" className="btn-ghost" onClick={addSubtask}>
+                <button type="button" className="btn btn-ghost px-5 py-2.5" onClick={addSubtask}>
                   Add
                 </button>
               </div>
@@ -618,7 +618,7 @@ export default function NewTaskPage() {
                 </button>
                 <button
                   type="button"
-                  className="btn-ghost"
+                  className="btn btn-ghost px-5 py-2.5"
                   disabled={create.isPending}
                   onClick={() => router.push("/tasks")}
                 >

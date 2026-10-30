@@ -190,12 +190,12 @@ export function DocumentUploadModal({
         )}
 
         <div className="flex justify-end gap-2">
-          <button type="button" className="btn-ghost" onClick={onClose}>
+          <button type="button" className="btn btn-ghost px-5 py-2.5" onClick={onClose}>
             Cancel
           </button>
           <button
             type="submit"
-            className="btn-primary"
+            className="btn btn-primary px-5 py-2.5"
             disabled={upload.isPending || files.length === 0}
           >
             {upload.isPending ? "Uploading…" : "Upload"}

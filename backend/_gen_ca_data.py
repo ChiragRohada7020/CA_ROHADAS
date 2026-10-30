@@ -1,14 +1,15 @@
 """Generate realistic, interconnected synthetic CA-practice data via the registered
 MCP tools only (no direct SQL writes for business data).
 
+Simpler, cleaner dataset: realistic Indian client names, every task gets a
+preparer AND a reviewer (separation of duty) plus a checklist of task steps.
+
 Idempotent: a manifest file (data_manifest.json) maps business keys -> server IDs,
-so re-running the script reuses existing records instead of duplicating them.
+so re-running reuses existing records instead of duplicating.
 
-Targets (per the audit brief):
-  Clients 100 | Client-service assignments 200 | Tasks 300 | Compliance records 300
-  Invoices 150 | Payments 200 | Documents 100 | Activity logs 100
-
-Verification results are written to data_report.json.
+Targets (simpler scale):
+  Clients 40 | Client-service assignments 80 | Tasks 100 | Deadlines 100
+  Invoices 60 | Payments 80 | Documents 40 | Activity logs 60
 """
 from __future__ import annotations
 
@@ -23,7 +24,8 @@ from datetime import date, datetime, timedelta
 random.seed(42)
 
 BASE = "http://127.0.0.1:8000/mcp/"
-TID = "9eb9d951-975e-4f6f-9689-b49d363075e9"   # Rohada & Associates (dev tenant)
+TID = "9eb9d951-975e-4f6f-9689-b49d363075e9"   # Rohadas CA (dev tenant)
+PARTNER_USER = "86c77a10-5bd4-48dd-8765-909cd2a2dabc"
 
 MANIFEST_PATH = os.path.join(os.path.dirname(__file__), "data_manifest.json")
 REPORT_PATH = os.path.join(os.path.dirname(__file__), "data_report.json")
@@ -36,8 +38,7 @@ def token() -> str:
     if _TOK is None:
         from app.core.security import create_access_token
         _TOK = create_access_token(
-            subject="86c77a10-5bd4-48dd-8765-909cd2a2dabc",  # partner user
-            tenant_id=TID, roles=["partner"], permissions=["*"],
+            subject=PARTNER_USER, tenant_id=TID, roles=["partner"], permissions=["*"],
         )
     return _TOK
 
@@ -48,9 +49,7 @@ def call(name: str, args: dict | None = None) -> dict:
     h = {"Accept": "application/json, text/event-stream",
          "Content-Type": "application/json",
          "Authorization": f"Bearer {token()}"}
-    # The MCP endpoint is rate-limited (default 60 req/min per tenant+user).
-    # Retry on HTTP 429 with exponential backoff so bulk steps don't abort.
-    max_retries = 5
+    max_retries = 6
     backoff = 1.0
     for attempt in range(1, max_retries + 1):
         try:
@@ -95,14 +94,10 @@ SERVICES = [
     ("GST1", "GSTR-1 Return", "gst", "9983", "monthly"),
     ("ITR1", "Income Tax Return ITR-1", "income_tax", "9991", "annual"),
     ("ITR3", "Income Tax Return ITR-3", "income_tax", "9991", "annual"),
-    ("ITR4", "Income Tax Return ITR-4", "income_tax", "9991", "annual"),
     ("TDS26", "TDS Return 26Q", "tds", "9992", "quarterly"),
-    ("TDS27", "TDS Return 27Q", "tds", "9992", "quarterly"),
     ("AUDIT", "Statutory Audit", "audit", "9993", "annual"),
     ("BOOK", "Bookkeeping", "accounting", "9983", "monthly"),
-    ("ACCT", "Accounting Compilation", "accounting", "9983", "annual"),
     ("ROC", "ROC Annual Filing", "roc", "9994", "annual"),
-    ("PAY", "Payroll", "payroll", "9995", "monthly"),
 ]
 
 RULES = [
@@ -111,16 +106,12 @@ RULES = [
     ("GST3B-R", "GSTR-3B", "gst", "GSTN", "return", "monthly", 15),
     ("GST1-R", "GSTR-1", "gst", "GSTN", "return", "monthly", 15),
     ("TDS26-R", "TDS 26Q", "tds", "ITD", "return", "quarterly", 15),
-    ("TDS27-R", "TDS 27Q", "tds", "ITD", "return", "quarterly", 15),
     ("AUDIT-R", "Statutory Audit", "audit", "ICAI", "audit_report", "annual", 60),
     ("ROC-R", "ROC Annual Return", "roc", "MCA", "return", "annual", 60),
-    ("ADV-TAX", "Advance Tax", "income_tax", "ITD", "payment", "quarterly", 15),
     ("BOOK-R", "Monthly Bookkeeping", "accounting", "Internal", "service", "monthly", 5),
-    ("ACCT-R", "Year-end Accounts", "accounting", "ICAI", "audit_report", "annual", 60),
 ]
 
 FYS = [
-    ("FY2324", "FY 2023-24", "2023-04-01", "2024-03-31", "AY 2024-25"),
     ("FY2425", "FY 2024-25", "2024-04-01", "2025-03-31", "AY 2025-26"),
     ("FY2526", "FY 2025-26", "2025-04-01", "2026-03-31", "AY 2026-27"),
     ("FY2627", "FY 2026-27", "2026-04-01", "2027-03-31", "AY 2027-28"),
@@ -132,16 +123,51 @@ STATES = [("Maharashtra", "MH"), ("Karnataka", "KA"), ("Tamil Nadu", "TN"),
 CITIES = {"MH": ["Mumbai", "Pune"], "KA": ["Bengaluru", "Mysuru"], "TN": ["Chennai", "Coimbatore"],
           "DL": ["Delhi"], "GJ": ["Ahmedabad", "Surat"], "WB": ["Kolkata"], "UP": ["Lucknow"],
           "TS": ["Hyderabad"]}
-FIRST = ["Rohit", "Sneha", "Arjun", "Priya", "Karan", "Meera", "Vikram", "Ananya", "Rohan", "Tina"]
-LAST = ["& Co", "Associates", "Partners", "LLP", "Holdings", "Group", "Enterprises", "& Sons", "Consultants", "Trading"]
-BUSINESS = ["Pharma", "Textiles", "IT Services", "Cotton Ginners", "Restaurant", "Construction",
-            "Jewellery", "Auto Parts", "Media", "Logistics"]
-TYPES = ["legal_entity", "proprietorship", "partnership", "llp", "company", "individual"]
+TYPES = ["proprietorship", "partnership", "llp", "company", "individual"]
+
+# Realistic Indian client names (city, state, state_code)
+CLIENTS = [
+    ("Sharma & Sons", "Mumbai", "Maharashtra", "MH", "proprietorship"),
+    ("Gupta Enterprises", "Delhi", "Delhi", "DL", "partnership"),
+    ("Singh Traders", "Bengaluru", "Karnataka", "KA", "company"),
+    ("Agarwal & Co", "Ahmedabad", "Gujarat", "GJ", "llp"),
+    ("Jain Textiles", "Surat", "Gujarat", "GJ", "proprietorship"),
+    ("Verma IT Solutions", "Hyderabad", "Telangana", "TS", "company"),
+    ("Reddy Constructions", "Hyderabad", "Telangana", "TS", "company"),
+    ("Iyer Pharma", "Chennai", "Tamil Nadu", "TN", "company"),
+    ("Patel Auto Parts", "Ahmedabad", "Gujarat", "GJ", "proprietorship"),
+    ("Malik Logistics", "Mumbai", "Maharashtra", "MH", "proprietorship"),
+    ("Joshi Restaurants", "Pune", "Maharashtra", "MH", "partnership"),
+    ("Naidu Cotton", "Chennai", "Tamil Nadu", "TN", "partnership"),
+    ("Desai Jewellery", "Mumbai", "Maharashtra", "MH", "company"),
+    ("Chopra Media", "Delhi", "Delhi", "DL", "llp"),
+    ("Prasad Auto Parts", "Bengaluru", "Karnataka", "KA", "proprietorship"),
+    ("Yadav Textiles", "Coimbatore", "Tamil Nadu", "TN", "proprietorship"),
+    ("Rao IT Services", "Bengaluru", "Karnataka", "KA", "llp"),
+    ("Kumari Consultants", "Lucknow", "Uttar Pradesh", "UP", "proprietorship"),
+    ("Bose Group", "Kolkata", "West Bengal", "WB", "company"),
+    ("Mukherjee Trading", "Kolkata", "West Bengal", "WB", "partnership"),
+    ("Nair Services", "Kochi", "Kerala", "KL", "proprietorship"),
+    ("Menon & Co", "Kochi", "Kerala", "KL", "llp"),
+    ("Khan Enterprises", "Lucknow", "Uttar Pradesh", "UP", "company"),
+    ("Saxena Traders", "Lucknow", "Uttar Pradesh", "UP", "proprietorship"),
+    ("Rastogi & Sons", "Kanpur", "Uttar Pradesh", "UP", "partnership"),
+    ("Mehrotra Jewellery", "Kanpur", "Uttar Pradesh", "UP", "company"),
+    ("Tandon Media", "Noida", "Uttar Pradesh", "UP", "llp"),
+    ("Arora Logistics", "Gurugram", "Haryana", "HR", "proprietorship"),
+    ("Dhingra IT", "Gurugram", "Haryana", "HR", "company"),
+    ("Khanna Pharma", "Chandigarh", "Punjab", "PB", "company"),
+    ("Sondhi Textiles", "Ludhiana", "Punjab", "PB", "partnership"),
+    ("Bajaj Auto Parts", "Pune", "Maharashtra", "MH", "company"),
+    ("Kirloskar Group", "Pune", "Maharashtra", "MH", "company"),
+    ("Wadia & Sons", "Mumbai", "Maharashtra", "MH", "proprietorship"),
+    ("Godrej Trading", "Mumbai", "Maharashtra", "MH", "partnership"),
+    ("Tata Consultants", "Mumbai", "Maharashtra", "MH", "company"),
+    ("Birla Enterprises", "Kolkata", "West Bengal", "WB", "company"),
+    ("Mahajan & Co", "Amritsar", "Punjab", "PB", "llp"),
+    ("Sethi Jewellery", "Jaipur", "Rajasthan", "RJ", "proprietorship"),
+]
 RULE_FREQ = {r[0]: r[5] for r in RULES}
-
-
-def client_name(i):
-    return f"{FIRST[i % len(FIRST)]} {LAST[i % len(LAST)]} ({BUSINESS[i % len(BUSINESS)]}) - {i+1:03d}"
 
 
 def pan(i):
@@ -154,12 +180,11 @@ def fy_of(code):
 
 # ── Reference data setup ─────────────────────────────────────────────────
 def setup_reference(m):
-    print("[1/12] Billing settings + services + compliance rules + financial years ...", flush=True)
-    call("create_billing_settings", {"state_code": "MH", "legal_name": "Rohada & Associates",
+    print("[1/9] Billing settings + services + compliance rules + financial years ...", flush=True)
+    call("create_billing_settings", {"state_code": "MH", "legal_name": "Rohadas CA",
                                      "gstin": "27AAAC1234C1Z1", "tax_rate": 18.0,
                                      "payment_terms_days": 15, "sac_code": "9983"})
 
-    # Services
     svc_res = is_list(call("list_services"))
     for code, name, cat, sac, freq in SERVICES:
         if code in m.setdefault("services", {}):
@@ -175,7 +200,6 @@ def setup_reference(m):
         else:
             print("  service error:", code, r)
 
-    # Compliance rules
     rules_res = is_list(call("list_compliance_rules"))
     for code, name, cat, auth, ftype, freq, lead in RULES:
         if code in m.setdefault("rules", {}):
@@ -193,7 +217,6 @@ def setup_reference(m):
         else:
             print("  rule error:", code, r)
 
-    # Financial years
     fys_res = is_list(call("list_financial_years"))
     for code, label, start, end, ay in FYS:
         if m["fys"].get(code):
@@ -203,40 +226,37 @@ def setup_reference(m):
                                             "end_date": end,
                                             "assessment_year": ay, "is_active": False, "is_closed": True})
         m["fys"][code] = r.get("id") or (next((f.get("id") for f in
-                      is_list(call("list_financial_years", {"include_closed": True}))
-                      if f.get("code") == code), None))
+                  is_list(call("list_financial_years", {"include_closed": True}))
+                  if f.get("code") == code), None))
         if not m["fys"][code]:
             print("  fy error:", code, r)
-    # mark current FY active
     m["fys_active"] = m["fys"].get("FY2526")
     save_manifest(m)
 
 
-def gen_clients(m, n=100):
-    print("[2/12] Clients (100) ...", flush=True)
+def gen_clients(m, n=40):
+    print(f"[2/9] Clients ({n}) ...", flush=True)
     existing = {c["legal_name"]: c["id"] for c in is_list(call("list_clients", {"limit": 500}))}
-    for i in range(1, n + 1):
-        cname = client_name(i)
+    for i in range(n):
+        name, city, state, state_code, ctype = CLIENTS[i % len(CLIENTS)]
+        cname = name
         if cname in m.setdefault("clients", {}):
             continue
         if cname in existing:
             m["clients"][cname] = existing[cname]; continue
-        st = STATES[i % len(STATES)]
-        ct = CITIES[st[1]]
-        r = call("create_client", {"legal_name": cname, "client_type": TYPES[i % len(TYPES)],
-                                    "city": ct[i % len(ct)], "state": st[0], "state_code": st[1],
+        r = call("create_client", {"legal_name": cname, "client_type": ctype,
+                                    "city": city, "state": state, "state_code": state_code,
                                     "pan": pan(i), "country": "India"})
         if r.get("id"):
             m["clients"][cname] = r["id"]
-            # issue to active for a realistic dashboard
             call("update_client", {"client_id": r["id"], "status": "active", "kyc_status": "completed"})
         else:
             print("  client error:", i, r)
     save_manifest(m)
 
 
-def setup_client_services(m, target=200):
-    print("[3/12] Client-service assignments (200) ...", flush=True)
+def setup_client_services(m, target=80):
+    print(f"[3/9] Client-service assignments ({target}) ...", flush=True)
     names = list(m.setdefault("clients", {}).keys())
     svc_codes = [s[0] for s in SERVICES]
     created = len(m.setdefault("client_services", {}))
@@ -260,16 +280,27 @@ def setup_client_services(m, target=200):
     save_manifest(m)
 
 
-def gen_tasks(m, n=300):
-    print("[4/12] Tasks (300) ...", flush=True)
+def gen_tasks(m, n=100):
+    print(f"[4/9] Tasks ({n}) with preparer + reviewer + checklist ...", flush=True)
     names = list(m["clients"].keys())
     svc_codes = [s[0] for s in SERVICES]
     rule_codes = [r[0] for r in RULES]
     users = is_list(call("list_users", {"limit": 50}))
     staff = [u["id"] for u in users if u.get("id")]
+    if len(staff) < 2:
+        print("  need at least 2 staff users for preparer/reviewer; aborting tasks"); return
     fy_codes = [f[0] for f in FYS]
     created = len(m.setdefault("tasks", {}))
     today = date.today()
+    step_templates = [
+        ("Gather documents", "Collect source documents and records from client"),
+        ("Verify data", "Cross-check figures against bank statements and ledgers"),
+        ("Prepare return/draft", "Prepare the return, audit report or filing draft"),
+        ("Internal review", "Senior review for accuracy and compliance"),
+        ("Client approval", "Share draft with client for sign-off"),
+        ("File with authority", "Submit the filing to the statutory authority"),
+        ("Acknowledgement", "Download and archive the acknowledgement receipt"),
+    ]
     while created < n:
         idx = created + 1
         cname = names[idx % len(names)]
@@ -277,39 +308,50 @@ def gen_tasks(m, n=300):
         scode = svc_codes[idx % len(svc_codes)]
         sid = m["services"].get(scode)
         rule_code = rule_codes[idx % len(rule_codes)]
+        rule_name = next(r[1] for r in RULES if r[0] == rule_code)
         fy_code = fy_codes[idx % len(fy_codes)]
         fy_id = m["fys"].get(fy_code)
-        # Mix of overdue and upcoming due dates so the dashboard shows variety
-        spread = 20 + idx
+        spread = 15 + idx
         if idx % 3 == 0:
-            spread = -spread  # past due → overdue tasks
+            spread = -spread
         due = (today + timedelta(days=spread)).isoformat()
-        r = call("create_task", {"title": f"SYN Task {idx:04d} - {rule_code}", "name": f"{rule_code} task",
+        r = call("create_task", {"title": f"{rule_name} - {cname}", "name": rule_code,
                                  "client_id": cid, "service_id": sid, "financial_year": fy_id,
                                  "category": "compliance", "priority": ["normal", "high", "medium"][idx % 3],
                                  "statutory_due_date": due + "T23:59:59", "tags": [scode, rule_code]})
-        if r.get("id"):
-            key = f"{cname}|{idx:04d}"
-            m["tasks"][key] = {"id": r["id"], "service_code": scode, "rule_code": rule_code, "client_name": cname}
-            if staff:
-                call("assign_task", {"task_id": r["id"], "role": "preparer", "user_id": staff[idx % len(staff)]})
-            created += 1
-        else:
-            print("  task error:", idx, r)
-        if created % 50 == 0:
+        if not r.get("id"):
+            print("  task error:", idx, r); created += 1; continue
+        tid = r["id"]
+        key = f"{cname}|{idx:04d}"
+        m["tasks"][key] = {"id": tid, "service_code": scode, "rule_code": rule_code, "client_name": cname}
+        # Assign preparer AND reviewer (separation of duty enforced by MCP)
+        p = staff[idx % len(staff)]
+        rv = staff[(idx + 1) % len(staff)]
+        if rv == p:
+            rv = staff[(idx + 2) % len(staff)]
+        call("assign_task", {"task_id": tid, "role": "preparer", "user_id": p})
+        call("assign_task", {"task_id": tid, "role": "reviewer", "user_id": rv})
+        # Add checklist steps (3-5 per task)
+        nsteps = 3 + (idx % 3)
+        for s in range(nsteps):
+            step_name, step_desc = step_templates[s]
+            call("add_task_step", {"task_id": tid, "sequence": s + 1,
+                                   "name": step_name, "description": step_desc,
+                                   "is_mandatory": s < 2})
+        created += 1
+        if created % 25 == 0:
             save_manifest(m)
     save_manifest(m)
 
 
-def gen_deadlines(m, n=300):
-    print("[5/12] Compliance records / deadlines (300) ...", flush=True)
+def gen_deadlines(m, n=100):
+    print(f"[5/9] Compliance records / deadlines ({n}) ...", flush=True)
     names = list(m["clients"].keys())
     rule_codes = [r[0] for r in RULES]
     fy_codes = [f[0] for f in FYS]
     today = date.today()
     created = len(m.setdefault("deadlines", {}))
     start = created + 1
-    # Bounded attempts so a unique-constraint collision can't spin forever.
     for idx in range(start, start + n * 3):
         if created >= n:
             break
@@ -321,27 +363,27 @@ def gen_deadlines(m, n=300):
         fy_id = m["fys"].get(fy_code)
         if not cid or not rule_id or not fy_id:
             continue
-        # Mix of overdue and upcoming due dates
         spread = 5 + idx
         if idx % 3 == 0:
-            spread = -spread  # past due → overdue deadlines
-        due = (today + timedelta(days=spread)).isoformat()
+            spread = -spread
+        due_dt = today + timedelta(days=spread)
+        due = due_dt.isoformat() + "T23:59:00"
         r = call("create_compliance_record", {"client_id": cid, "rule_id": rule_id,
                                                "financial_year_id": fy_id,
                                                "period_key": f"{fy_code}-Q{(idx % 4)+1}-{idx:04d}",
-                                                "statutory_due_date": due + "T23:59:00",
-                                                "internal_due_date": (due - timedelta(days=7)).isoformat() + "T23:59:00"})
+                                                "statutory_due_date": due,
+                                                "internal_due_date": (due_dt - timedelta(days=7)).isoformat() + "T23:59:00"})
         if r.get("id"):
             m["deadlines"][f"{cname}|{rule_code}|{fy_code}|{idx:04d}"] = r["id"]; created += 1
         else:
             print("  deadline error:", idx, r)
-        if created % 50 == 0:
+        if created % 25 == 0:
             save_manifest(m)
     save_manifest(m)
 
 
-def gen_invoices(m, n=150):
-    print("[6/12] Invoices (150) ...", flush=True)
+def gen_invoices(m, n=60):
+    print(f"[6/9] Invoices ({n}) ...", flush=True)
     names = list(m["clients"].keys())
     svc_ids = m["services"]
     today = date.today()
@@ -356,15 +398,11 @@ def gen_invoices(m, n=150):
         sid = svc_ids.get(s[0])
         rate = 5000.0 + (idx % 7) * 2500
         units = 1 + (idx % 3)
-        items = [{"description": f"{s[1]} — labour", "quantity": units, "unit_price": rate,
+        items = [{"description": f"{s[1]}", "quantity": units, "unit_price": rate,
                   "service_id": sid, "sac_code": s[3], "is_taxable": True}]
-        if idx % 2 == 0:
-            s2 = SERVICES[(idx + 3) % len(SERVICES)]
-            items.append({"description": f"{s2[1]} — disbursement", "quantity": 1, "unit_price": 2500.0,
-                          "service_id": svc_ids.get(s2[0]), "sac_code": s2[3], "is_taxable": True})
         r = call("create_invoice", {"client_id": cid, "items": items,
                                     "invoice_date": (today - timedelta(days=5 + idx)).isoformat(),
-                                    "due_days": 15, "notes": f"Generated invoice {idx}", "terms": "Net 15"})
+                                    "due_days": 15, "notes": f"Invoice {idx}", "terms": "Net 15"})
         if r.get("id"):
             m["invoices"][f"{cname}|{idx:04d}"] = {"id": r["id"],
                                                    "invoice_number": r.get("invoice_number"),
@@ -374,23 +412,16 @@ def gen_invoices(m, n=150):
             created += 1
         else:
             print("  invoice error:", idx, r)
-        if created % 50 == 0:
+        if created % 25 == 0:
             save_manifest(m)
     save_manifest(m)
 
 
-def gen_payments(m, n=200):
-    print("[7/12] Payments (200) ...", flush=True)
+def gen_payments(m, n=80):
+    print(f"[7/9] Payments ({n}) ...", flush=True)
     invs = list(m.setdefault("invoices", {}).values())
     if len(m.setdefault("payments", {})) >= n:
-        save_manifest(m)
-        return
-    # deterministic distribution over the 150 invoices:
-    #  idx%4==0 -> fully paid (1 payment = total)
-    #  idx%4 in (1,2) -> partial (2 x 45%)
-    #  idx%4==3 -> partial (3 x 30%)
-    #  => payments = 150*(1/4) + 150*(2/4)*2 + 150*(1/4)*3 = 37 + 150 + 112 = 299 .. too many.
-    # Build a bounded plan instead.
+        save_manifest(m); return
     plan = []
     pay_no = 0
     for j in range(len(invs)):
@@ -403,7 +434,6 @@ def gen_payments(m, n=200):
             plan += [(info["id"], round(total * 0.45, 2)), (info["id"], round(total * 0.45, 2))]; pay_no += 2
         elif b == 3 and pay_no + 3 <= n:
             plan += [(info["id"], round(total * 0.30, 2)) for _ in range(3)]; pay_no += 3
-    # fill to exactly n with small partial payments on invoices that still have headroom
     j = 0
     while pay_no < n and j < len(invs) * 3:
         info = invs[j % len(invs)]
@@ -427,16 +457,15 @@ def gen_payments(m, n=200):
                                      "reference": f"SYNCP{seq:05d}"})
         if r.get("payment_id") or r.get("id"):
             m["payments"][key] = r.get("payment_id") or r.get("id")
-            # issue invoice status (draft -> issued/partially_paid/paid handled by payment)
         else:
             print("  payment error:", seq, inv_id, r)
-        if seq % 50 == 0:
+        if seq % 25 == 0:
             save_manifest(m)
     save_manifest(m)
 
 
-def gen_documents(m, n=100):
-    print("[8/12] Documents (100) ...", flush=True)
+def gen_documents(m, n=40):
+    print(f"[8/9] Documents ({n}) ...", flush=True)
     names = list(m["clients"].keys())
     task_ids = [t["id"] for t in m.setdefault("tasks", {}).values()]
     created = len(m.setdefault("documents", {}))
@@ -450,7 +479,7 @@ def gen_documents(m, n=100):
         tid = task_ids[idx % len(task_ids)] if task_ids else None
         if not cid:
             created += 1; continue
-        r = call("create_document", {"title": f"SYN Document {idx:04d}", "client_id": cid, "task_id": tid,
+        r = call("create_document", {"title": f"Document {idx:04d} - {names[idx % len(names)]}", "client_id": cid, "task_id": tid,
                                      "doc_type": ["form", "return", "receipt", "audit_report", "letter"][idx % 5],
                                      "category": ["compliance", "billing", "audit", "corporate"][idx % 4],
                                      "mime_type": "application/pdf", "size_bytes": 1024 * ((idx % 99) + 1),
@@ -459,13 +488,13 @@ def gen_documents(m, n=100):
             m["documents"][key] = r["id"]; created += 1
         else:
             print("  doc error:", idx, r)
-        if created % 50 == 0:
+        if created % 25 == 0:
             save_manifest(m)
     save_manifest(m)
 
 
-def gen_activity_logs(m, n=100):
-    print("[9/12] Activity logs (100) ...", flush=True)
+def gen_activity_logs(m, n=60):
+    print(f"[9/9] Activity logs ({n}) ...", flush=True)
     names = list(m["clients"].keys())
     task_ids = [t["id"] for t in m.get("tasks", {}).values()]
     invs = list(m.get("invoices", {}).values())
@@ -486,19 +515,18 @@ def gen_activity_logs(m, n=100):
             idx += 1; continue
         r = call("create_activity_log", {"entity_type": et, "entity_id": eid,
                                          "action": ["created", "updated", "status_changed", "assigned"][idx % 4],
-                                         "summary": f"SYN activity event {idx} on {et}"})
+                                         "summary": f"Activity event {idx} on {et}"})
         if r.get("id"):
             m["activity"][str(idx)] = r["id"]; created += 1
         else:
             print("  activity error:", idx, r)
-        if created % 50 == 0:
+        if created % 25 == 0:
             save_manifest(m)
     save_manifest(m)
 
 
 def issue_invoices(m):
-    """Mark created invoices issued/partially_paid/paid so receivables reconcile."""
-    print("[10/12] Invoice status transitions ...", flush=True)
+    print("[10/10] Invoice status transitions ...", flush=True)
     for key, info in m["invoices"].items():
         inv = call("get_invoice", {"invoice_id": info["id"]})
         if not isinstance(inv, dict) or "status" not in inv:
@@ -514,8 +542,8 @@ def issue_invoices(m):
     save_manifest(m)
 
 
-def task_history(m, n=180):
-    print("[11/12] Task status transitions (180) ...", flush=True)
+def task_history(m, n=60):
+    print("[11/11] Task status transitions ...", flush=True)
     tasks = list(m.setdefault("tasks", {}).values())
     cnt = 0
     for info in tasks:
@@ -523,26 +551,19 @@ def task_history(m, n=180):
             break
         phase = cnt % 5
         if phase in (0, 1):
-            # 40% → completed
             call("update_task_status", {"task_id": info["id"], "status": "in_progress"})
             call("update_task_status", {"task_id": info["id"], "status": "completed"})
         elif phase == 2:
-            # 20% → leave in_progress
             call("update_task_status", {"task_id": info["id"], "status": "in_progress"})
         elif phase == 3:
-            # 20% → assigned (preparer was set during creation)
             call("update_task_status", {"task_id": info["id"], "status": "assigned"})
-        else:
-            # 20% → stay not_started (leave as-is)
-            pass
         cnt += 1
     print(f"  transitioned {cnt} tasks", flush=True)
 
 
 def verify(m):
-    print("[12/12] Verifying counts & reconciliation ...", flush=True)
-    report = {"tenant_id": TID, "counts": {}, "reconciliation": {}, "dashboard": None}
-
+    print("[verify] Counts & reconciliation ...", flush=True)
+    report = {"tenant_id": TID, "counts": {}, "reconciliation": {}}
     list_map = {
         "clients": ("list_clients", 500),
         "services": ("list_services", None),
@@ -561,29 +582,21 @@ def verify(m):
         report["counts"][k] = len(res)
         exp_key = "fys" if k == "financial_years" else k
         report["counts"][k + "_expected"] = len(m.get(exp_key, {})) if exp_key != "users" else None
-    # tools without a list_* MCP helper -> count from manifest
     for k in ("client_services", "payments", "documents"):
         report["counts"][k] = len(m.get(k, {}))
         report["counts"][k + "_expected"] = len(m.get(k, {}))
-
     rec = report["reconciliation"]
     invs = is_list(call("list_invoices", {"limit": 1000}))
-    issued = [i for i in invs if i.get("status") in ("issued", "partially_paid")]
-    rec["invoices_issued_or_partial"] = len(issued)
     rec["invoices_total"] = len(invs)
-
+    rec["invoices_issued_or_partial"] = len([i for i in invs if i.get("status") in ("issued", "partially_paid")])
     try:
-        recv = call("get_receivables", {})
-        rec["receivables"] = recv
+        rec["receivables"] = call("get_receivables", {})
     except Exception as e:
         rec["receivables_error"] = str(e)
-
     try:
-        dash = call("get_dashboard", {})
-        report["dashboard"] = dash
+        report["dashboard"] = call("get_dashboard", {})
     except Exception as e:
         report["dashboard_error"] = str(e)
-
     report["manifest_summary"] = {
         "clients": len(m.get("clients", {})),
         "client_services": len(m.get("client_services", {})),
@@ -596,7 +609,6 @@ def verify(m):
     }
     with open(REPORT_PATH, "w") as f:
         json.dump(report, f, indent=2, default=str)
-    print(f"  report written -> {REPORT_PATH}", flush=True)
     print(json.dumps(report["counts"], indent=0))
     print(json.dumps(report["reconciliation"], indent=0))
 
@@ -606,16 +618,16 @@ def main():
     setup_reference(m)
     if not m.get("services") or not m.get("rules") or not m.get("fys"):
         print("Reference data unavailable; aborting."); return
-    gen_clients(m, 100)
-    setup_client_services(m, 200)
-    gen_tasks(m, 300)
-    gen_deadlines(m, 300)
-    gen_invoices(m, 150)
-    gen_payments(m, 200)
-    gen_documents(m, 100)
-    gen_activity_logs(m, 100)
+    gen_clients(m, 40)
+    setup_client_services(m, 80)
+    gen_tasks(m, 100)
+    gen_deadlines(m, 100)
+    gen_invoices(m, 60)
+    gen_payments(m, 80)
+    gen_documents(m, 40)
+    gen_activity_logs(m, 60)
     issue_invoices(m)
-    task_history(m, 180)
+    task_history(m, 60)
     save_manifest(m)
     verify(m)
     print("DONE.", flush=True)

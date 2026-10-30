@@ -80,21 +80,21 @@ export function StatCard({
   icon?: React.ReactNode;
 }) {
   const accent: Record<Tone, string> = {
-    neutral: "text-slate-900 dark:text-slate-100",
-    info: "text-sky-700 dark:text-sky-300",
-    progress: "text-indigo-700 dark:text-indigo-300",
-    warning: "text-amber-700 dark:text-amber-300",
-    danger: "text-rose-700 dark:text-rose-300",
-    success: "text-emerald-700 dark:text-emerald-300",
+    neutral: "text-slate-900",
+    info: "text-sky-700",
+    progress: "text-indigo-700",
+    warning: "text-amber-700",
+    danger: "text-rose-700",
+    success: "text-emerald-700",
   };
 
   const chip: Record<Tone, string> = {
-    neutral: "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400",
-    info: "bg-sky-50 text-sky-600 dark:bg-sky-900/25 dark:text-sky-300",
-    progress: "bg-indigo-50 text-indigo-600 dark:bg-indigo-900/25 dark:text-indigo-300",
-    warning: "bg-amber-50 text-amber-600 dark:bg-amber-900/25 dark:text-amber-300",
-    danger: "bg-rose-50 text-rose-600 dark:bg-rose-900/25 dark:text-rose-300",
-    success: "bg-emerald-50 text-emerald-600 dark:bg-emerald-900/25 dark:text-emerald-300",
+    neutral: "bg-slate-100 text-slate-600",
+    info: "bg-sky-50 text-sky-600",
+    progress: "bg-indigo-50 text-indigo-600",
+    warning: "bg-amber-50 text-amber-600",
+    danger: "bg-rose-50 text-rose-600",
+    success: "bg-emerald-50 text-emerald-600",
   };
 
   if (icon) {
@@ -110,11 +110,11 @@ export function StatCard({
           {icon}
         </span>
         <div className="min-w-0">
-          <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{label}</p>
-          <p className={cn("tabular mt-0.5 text-2xl font-semibold leading-tight", accent[tone])}>
+          <p className="text-[10px] font-medium text-slate-500">{label}</p>
+          <p className={cn("tabular mt-0.5 text-xl font-semibold leading-tight", accent[tone])}>
             {value}
           </p>
-          {hint && <p className="mt-0.5 text-[11px] text-slate-400 dark:text-slate-500">{hint}</p>}
+          {hint && <p className="mt-0.5 text-[11px] text-slate-400">{hint}</p>}
         </div>
       </div>
     );
@@ -124,7 +124,7 @@ export function StatCard({
     <div className="card p-4">
       <p className="section-title">{label}</p>
       <p className={cn("tabular mt-1 text-2xl font-semibold", accent[tone])}>{value}</p>
-      {hint && <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{hint}</p>}
+      {hint && <p className="mt-1 text-xs text-slate-500">{hint}</p>}
       {emphasis && value !== 0 && (
         <span className="mt-2 inline-block h-1 w-8 rounded-full bg-current opacity-40" />
       )}
@@ -133,7 +133,7 @@ export function StatCard({
 }
 
 export function LoadingState({ label = "Loading…" }: { label?: string }) {
-  return <p className="px-4 py-8 text-center text-sm text-slate-500 dark:text-slate-400">{label}</p>;
+  return <p className="px-4 py-8 text-center text-sm text-slate-500">{label}</p>;
 }
 
 export function ErrorState({
@@ -173,15 +173,15 @@ export function EmptyState({
   if (title) {
     return (
       <div className="px-4 py-10 text-center">
-        <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{title}</p>
-        <p className="mx-auto mt-1 max-w-md text-sm text-slate-500 dark:text-slate-400">{message}</p>
+        <p className="text-sm font-semibold text-slate-700">{title}</p>
+        <p className="mx-auto mt-1 max-w-md text-sm text-slate-500">{message}</p>
         {action && <div className="mt-4 flex justify-center">{action}</div>}
       </div>
     );
   }
   return (
     <div className="px-4 py-8 text-center">
-      <p className="text-sm text-slate-500 dark:text-slate-400">{message}</p>
+      <p className="text-sm text-slate-500">{message}</p>
       {action && <div className="mt-3 flex justify-center">{action}</div>}
     </div>
   );
@@ -198,7 +198,7 @@ export function ProgressBar({
 }) {
   const clamped = Math.min(100, Math.max(0, percent));
   return (
-    <div className={cn("h-1.5 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700", className)}>
+    <div className={cn("h-1.5 w-full overflow-hidden rounded-full bg-slate-200", className)}>
       <div
         className={cn("h-full rounded-full", barClass(tone))}
         style={{ width: `${clamped}%` }}
@@ -265,7 +265,7 @@ export function SearchInput({
       <span className={hideLabel ? "sr-only" : "label mb-1"}>Search</span>
       <span className="relative block">
         <span
-          className="pointer-events-none absolute inset-y-0 left-2.5 flex items-center text-slate-400 dark:text-slate-500"
+          className="pointer-events-none absolute inset-y-0 left-2.5 flex items-center text-slate-400"
           aria-hidden
         >
           <svg viewBox="0 0 20 20" className="size-4" fill="none" stroke="currentColor" strokeWidth="1.6">
@@ -313,8 +313,8 @@ export function Pagination({
   const last = Math.min(offset + limit, total);
 
   return (
-    <div className="flex items-center justify-between gap-3 border-t border-slate-200 dark:border-slate-700 px-4 py-3">
-      <p className="tabular text-xs text-slate-500 dark:text-slate-400">
+    <div className="flex items-center justify-between gap-3 border-t border-[#e6e3dc] px-4 py-3">
+      <p className="tabular text-xs text-slate-500">
         Showing {first}–{last} of {total}
       </p>
       <div className="flex items-center gap-2">
@@ -326,7 +326,7 @@ export function Pagination({
         >
           Previous
         </button>
-        <span className="text-xs text-slate-500 dark:text-slate-400">Page {page}</span>
+        <span className="text-xs text-slate-500">Page {page}</span>
         <button
           type="button"
           className="btn-ghost px-2 py-1 text-xs"
@@ -410,7 +410,7 @@ export function Modal({
   const width = { md: "max-w-lg", lg: "max-w-3xl", xl: "max-w-5xl" }[size];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 sm:p-8 dark:bg-slate-950/60">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 sm:p-8">
       <button
         type="button"
         aria-label="Close"
@@ -422,13 +422,13 @@ export function Modal({
         aria-modal="true"
         aria-label={title}
         className={cn(
-          "relative z-10 w-full max-w-2xl rounded-[10px] border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900 flex flex-col max-h-[calc(100vh-4rem)]",
+          "relative z-10 w-full max-w-2xl rounded-lg border border-[#e6e3dc] bg-white shadow-2xl flex flex-col max-h-[calc(100vh-4rem)]",
           width,
         )}
       >
-        <div className="flex-shrink-0 border-b border-slate-200 dark:border-slate-700 px-5 py-3">
+        <div className="flex-shrink-0 border-b border-[#e6e3dc] px-5 py-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">{title}</h2>
+            <h2 className="text-base font-semibold text-slate-900">{title}</h2>
             <button type="button" onClick={onClose} className="btn-icon" aria-label="Close">
               ✕
             </button>
@@ -464,10 +464,10 @@ export function Section({
   return (
     <section
       id={id}
-      className={cn("scroll-mt-2 rounded-lg border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900", className)}
+      className={cn("scroll-mt-2 rounded-lg border border-[#e6e3dc] bg-white", className)}
     >
-      <h3 className="flex items-center gap-2 border-b border-slate-100 dark:border-slate-700 px-4 py-2.5 text-sm font-semibold text-slate-800 dark:text-slate-200">
-        {number !== undefined && <span className="tabular text-slate-400 dark:text-slate-500">{number}.</span>}
+      <h3 className="flex items-center gap-2 border-b border-slate-100 px-4 py-2.5 text-sm font-semibold text-slate-800">
+        {number !== undefined && <span className="tabular text-slate-400">{number}.</span>}
         {title}
       </h3>
       {children}
@@ -597,25 +597,25 @@ export function Table({ children, className }: { children: React.ReactNode; clas
   return <table className={cn("w-full text-sm", className)}>{children}</table>;
 }
 export function TableHeader({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <thead className={cn("border-b border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/60", className)}>{children}</thead>;
+  return <thead className={cn("border-b border-[#e6e3dc] bg-slate-50", className)}>{children}</thead>;
 }
 export function TableBody({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <tbody className={cn("divide-y divide-slate-100 dark:divide-slate-700/60", className)}>{children}</tbody>;
+  return <tbody className={cn("divide-y divide-slate-100", className)}>{children}</tbody>;
 }
 export function TableRow({ children, className, clickable, ...props }: { children: React.ReactNode; className?: string; clickable?: boolean } & React.HTMLAttributes<HTMLTableRowElement>) {
   return <tr className={cn("dashboard-row", clickable && "cursor-pointer", className)} {...props}>{children}</tr>;
 }
 export function TableHead({ children, className, ...props }: { children?: React.ReactNode; className?: string } & React.ThHTMLAttributes<HTMLTableCellElement>) {
-  return <th className={cn("px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400", className)} {...props}>{children}</th>;
+  return <th className={cn("px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500", className)} {...props}>{children}</th>;
 }
 export function TableCell({ children, className, ...props }: { children?: React.ReactNode; className?: string } & React.TdHTMLAttributes<HTMLTableCellElement>) {
-  return <td className={cn("px-4 py-3 text-slate-700 dark:text-slate-300", className)} {...props}>{children}</td>;
+  return <td className={cn("px-4 py-3 text-slate-700", className)} {...props}>{children}</td>;
 }
 
 /* ── Skeleton ────────────────────────────────────────────────────────────── */
 
 export function Skeleton({ className, variant = "rectangular" }: { className?: string; variant?: "text" | "circular" | "rectangular" }) {
-  const base = "animate-pulse bg-slate-200 dark:bg-slate-700";
+  const base = "animate-pulse bg-slate-200";
   const shape = variant === "circular" ? "rounded-full" : variant === "text" ? "rounded h-3" : "rounded-md";
   return <div className={cn(base, shape, className)} aria-hidden />;
 }
@@ -624,7 +624,7 @@ export function Skeleton({ className, variant = "rectangular" }: { className?: s
 
 export function Tabs({ tabs, value, onChange }: { tabs: Array<{ value: string; label: string }>; value: string; onChange: (v: string) => void }) {
   return (
-    <div className="flex gap-1 border-b border-slate-200 dark:border-slate-700">
+    <div className="flex gap-1 border-b border-[#e6e3dc]">
       {tabs.map((t) => (
         <button
           key={t.value}
@@ -632,7 +632,7 @@ export function Tabs({ tabs, value, onChange }: { tabs: Array<{ value: string; l
           onClick={() => onChange(t.value)}
           className={cn(
             "px-3 py-2 text-sm font-medium transition",
-            value === t.value ? "border-b-2 border-sky-600 text-sky-700 dark:border-sky-500" : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300",
+            value === t.value ? "border-b-2 border-sky-600 text-sky-700" : "text-slate-500 hover:text-slate-700",
           )}
         >
           {t.label}
@@ -667,10 +667,10 @@ export function ConfirmDialog({
 }) {
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 dark:bg-slate-950/60">
-      <div className="w-full max-w-md rounded-[10px] border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
-        <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">{title}</h3>
-        <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">{description}</p>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
+      <div className="w-full max-w-md rounded-lg border border-[#e6e3dc] bg-white p-5 shadow-2xl">
+        <h3 className="text-base font-semibold text-slate-900">{title}</h3>
+        <p className="mt-2 text-sm text-slate-600">{description}</p>
         <div className="mt-4 flex justify-end gap-2">
           <Button variant="ghost" onClick={onClose} disabled={loading}>{cancelText}</Button>
           <Button variant={variant === "danger" ? "danger" : "primary"} onClick={onConfirm} loading={loading}>{confirmText}</Button>

@@ -293,12 +293,12 @@ export function CreateTeamMemberModal({
               : "The member is created in 'invited' status. Invitation delivery is not yet built — set a temporary password above so they can sign in."}
           </p>
           <div className="flex items-center gap-2">
-            <button type="button" className="btn-ghost" onClick={onClose} disabled={create.isPending}>
+            <button type="button" className="btn btn-ghost px-5 py-2.5" onClick={onClose} disabled={create.isPending}>
               Cancel
             </button>
             <button
               type="submit"
-              className="btn-primary"
+              className="btn btn-primary px-5 py-2.5"
               disabled={!canSubmit || create.isPending}
             >
               {create.isPending ? "Adding…" : "Add Member"}

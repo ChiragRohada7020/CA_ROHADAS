@@ -235,7 +235,7 @@ export default function ClientsPage() {
         title="Clients"
         subtitle="Manage all your clients and their services."
         action={
-          <Link href="/clients/new" className="btn-primary">
+          <Link href="/clients/new" className="btn btn-primary px-5 py-2.5">
             <Icon name="plus" className="h-4 w-4" />
             Add Client
           </Link>
@@ -353,7 +353,7 @@ export default function ClientsPage() {
         </div>
 
         {hasFilters && (
-          <div className="flex items-center justify-between gap-3 border-b border-slate-200 bg-slate-50 px-3 py-2">
+          <div className="flex items-center justify-between gap-3 border-b border-slate-200 bg-[#f7f6f3] px-3 py-2">
             <p className="text-xs text-slate-600">
               Showing {clients.data?.meta.total ?? 0} of {s?.total ?? 0} clients
             </p>
@@ -407,7 +407,7 @@ export default function ClientsPage() {
           <>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[72rem]">
-                <thead className="bg-slate-50">
+                <thead className="bg-[#f7f6f3]">
                   <tr>
                     <th className="th w-8">
                       <input
@@ -435,7 +435,7 @@ export default function ClientsPage() {
                     <tr
                       key={client.id}
                       className={cn(
-                        "hover:bg-slate-50",
+                        "hover:bg-[#f7f6f3]",
                         selected.has(client.id) && "bg-sky-50/60",
                       )}
                     >

@@ -320,7 +320,7 @@ function TaskDetailCard({ data, actions, onAction }: any) {
           </div>
           <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
             <div
-              className="h-full rounded-full bg-gradient-to-r from-sky-500 to-indigo-500 transition-all"
+              className="h-full rounded-full bg-gradient-to-r from-[#b85c38] to-[#9a4a2d] transition-all"
               style={{ width: `${Math.max(0, Math.min(100, task.progress_percent ?? 0))}%` }}
             />
           </div>

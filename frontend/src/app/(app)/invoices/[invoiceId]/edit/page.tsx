@@ -58,7 +58,7 @@ export default function EditInvoicePage() {
         title="Edit invoice"
         subtitle={`Draft ${invoice.data.invoice_number ?? "(unnumbered)"}`}
         action={
-          <button type="button" className="btn-ghost" onClick={() => router.push(`/invoices/${invoiceId}`)}>
+          <button type="button" className="btn btn-ghost px-5 py-2.5" onClick={() => router.push(`/invoices/${invoiceId}`)}>
             Back to invoice
           </button>
         }

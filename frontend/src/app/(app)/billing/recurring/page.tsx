@@ -22,7 +22,7 @@ export default function RecurringBillingPage() {
         title="Recurring Billing"
         subtitle="Generate recurring monthly or annual bills for regular CA services."
         action={
-          <button type="button" className="btn-primary" disabled>
+          <button type="button" className="btn btn-primary px-5 py-2.5" disabled>
             <Icon name="plus" className="h-4 w-4" />
             New Schedule
           </button>
@@ -55,7 +55,7 @@ export default function RecurringBillingPage() {
                       <td className="td text-xs text-slate-500">{s.next_billing_date ? new Date(s.next_billing_date).toLocaleDateString() : "—"}</td>
                       <td className="td">{s.status}</td>
                       <td className="td">
-                        <button type="button" className="btn-ghost" disabled>
+                        <button type="button" className="btn btn-ghost px-5 py-2.5" disabled>
                           <Icon name="plus" className="h-4 w-4" />
                           Generate
                         </button>

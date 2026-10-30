@@ -1542,6 +1542,7 @@ export interface TaskUpdatePayload {
   client_id?: string;
   service_id?: string | null;
   period_key?: string | null;
+  parent_task_id?: string | null;
   category?: ServiceCategory | null;
   sub_category?: string | null;
   priority?: Priority;
@@ -2019,6 +2020,21 @@ export interface ShareLinkResult {
   expires_at: string | null;
 }
 
+export type InvoiceTemplate =
+  | "modern"
+  | "classic"
+  | "minimal"
+  | "corporate"
+  | "compact"
+  | "fintech"
+  | "corporate_premium"
+  | "editorial"
+  | "ca_professional"
+  | "elegant"
+  | "bold"
+  | "fresh"
+  | "heritage";
+
 export interface FirmBillingSettings {
   name: string;
   legal_name: string | null;
@@ -2037,6 +2053,7 @@ export interface FirmBillingSettings {
   invoice_prefix: string;
   next_invoice_number: number;
   default_gst_rate: number;
+  invoice_template: InvoiceTemplate;
   /** Derived from whether a GSTIN is on file, so the two cannot disagree. */
   gst_registered: boolean;
 }
@@ -2088,6 +2105,40 @@ export interface ReceivablesSummary {
   notes: string[];
 }
 
+/** One month of invoiced / collected / task volumes for trend charts. */
+export interface MonthlyTrendRow {
+  month: string;
+  month_key: string;
+  invoiced: number;
+  collected: number;
+  tasks_created: number;
+  tasks_completed: number;
+}
+
+/** One month of GST collected — CGST / SGST / IGST split. */
+export interface GstSummaryRow {
+  month: string;
+  month_key: string;
+  cgst: number;
+  sgst: number;
+  igst: number;
+  total_tax: number;
+}
+
+/** GST summary response — monthly rows plus aggregate totals. */
+export interface GstSummaryResponse {
+  months: GstSummaryRow[];
+  totals: { cgst: number; sgst: number; igst: number; total_tax: number };
+}
+
+/** One bar of the workload-by-person chart. */
+export interface WorkloadBar {
+  name: string;
+  open: number;
+  overdue: number;
+  utilisation: number;
+}
+
 /** One segment of the invoices-by-status donut. */
 export interface InvoiceStatusSlice {
   status: string;
@@ -2095,6 +2146,24 @@ export interface InvoiceStatusSlice {
   count: number;
   value: number;
   percent: number;
+}
+
+/** One segment of the tasks-by-status donut. */
+export interface StatusSlice {
+  status: string;
+  label: string;
+  count: number;
+  value: number;
+}
+
+/** The Billing screen's cards, tabs and panels. */
+export interface BillingSummary {
+  invoiced_total: number;
+  invoiced_count: number;
+  collected_total: number;
+  collected_count: number;
+  outstanding_total: number;
+  outstanding_count: number;
 }
 
 /** One bar of the receivables-ageing chart. */
@@ -2179,5 +2248,17 @@ export interface CreditNoteCreatePayload {
   }>;
   tax_rate?: number;
   note_type?: 'credit' | 'debit';
+}
+
+/** Metadata describing an invoice PDF template for the selector UI. */
+export interface InvoiceTemplateMeta {
+  id: InvoiceTemplate;
+  name: string;
+  description: string;
+  category: string;
+  accent_color: string;
+  header_style: string;
+  best_for: string;
+  features: string[];
 }
 

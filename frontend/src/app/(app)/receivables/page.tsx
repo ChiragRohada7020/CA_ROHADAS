@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 
-import { IconChip, MiniBar, type ChipTone } from "@/components/charts";
+import { IconChip, type ChipTone } from "@/components/charts";
+import { AgeingChart } from "@/components/charts-reports";
 import { Icon } from "@/components/Icon";
 import {
   Badge,
@@ -37,7 +38,6 @@ export default function ReceivablesPage() {
   if (summary.isError) return <ErrorState message="Could not load receivables." />;
 
   const data = summary.data;
-  const buckets = Object.entries(data.ageing);
 
   return (
     <div className="space-y-4">
@@ -45,7 +45,7 @@ export default function ReceivablesPage() {
         title="Receivables"
         subtitle={`Outstanding fees as at ${formatDate(data.as_of)}. Worst first.`}
         action={
-          <Link href="/invoices" className="btn-ghost">
+          <Link href="/invoices" className="btn btn-ghost px-5 py-2.5">
             Open invoices
           </Link>
         }
@@ -79,33 +79,18 @@ export default function ReceivablesPage() {
         title="Ageing"
         subtitle="Measured from each invoice's due date, not the date it was raised."
       >
-        <div className="grid grid-cols-2 gap-3 p-4 md:grid-cols-5">
-          {buckets.map(([bucket, amount]) => (
-            <div key={bucket} className="rounded-lg bg-slate-50 p-3">
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                  {bucket === "current" ? "Not yet due" : `${bucket} days`}
-                </p>
-                <Badge tone={ageingTone(bucket)}>{data.ageing_counts[bucket] ?? 0}</Badge>
-              </div>
-              <p className="tabular mt-1 text-lg font-semibold text-slate-900">
-                {formatMoney(amount)}
-              </p>
-              <MiniBar
-                percent={data.outstanding_total > 0 ? (amount / data.outstanding_total) * 100 : 0}
-                className={
-                  bucket === "current"
-                    ? "bg-slate-400"
-                    : bucket === "1-30"
-                      ? "bg-sky-500"
-                      : bucket === "31-60"
-                        ? "bg-amber-500"
-                        : "bg-rose-500"
-                }
-                trackClassName="mt-2"
-              />
-            </div>
-          ))}
+        <div className="p-4">
+          <AgeingChart
+            data={Object.entries(data.ageing).map(([bucket, amount]) => ({
+              bucket,
+              label:
+                bucket === "current"
+                  ? "Not yet due"
+                  : bucket.split("-").join("-"),
+              amount,
+              count: data.ageing_counts[bucket] ?? 0,
+            }))}
+          />
         </div>
       </Card>
 
@@ -115,7 +100,7 @@ export default function ReceivablesPage() {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[52rem]">
-              <thead className="bg-slate-50">
+              <thead className="bg-[#f7f6f3]">
                 <tr>
                   <th className="th">Client</th>
                   <th className="th">Invoices</th>
@@ -188,7 +173,7 @@ export default function ReceivablesPage() {
             <Badge tone={invoiceStatusTone(data.oldest_overdue.status)}>
               {invoiceStatusLabel(data.oldest_overdue.status)}
             </Badge>
-            <Link href={`/invoices/${data.oldest_overdue.invoice_id}`} className="btn-primary">
+            <Link href={`/invoices/${data.oldest_overdue.invoice_id}`} className="btn btn-primary px-5 py-2.5">
               Open and send
             </Link>
           </div>

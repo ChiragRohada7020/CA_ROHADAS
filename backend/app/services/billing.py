@@ -257,7 +257,7 @@ def create_invoice_record(
         ).scalar()
         if max_num:
             try:
-                num = int(max_num.split(":")[1]) + 1
+                num = int(max_num.split("-")[-1]) + 1
                 invoice_number = f"{prefix}{num:04d}"
             except (IndexError, ValueError):
                 invoice_number = f"{prefix}0001"
@@ -505,7 +505,7 @@ def _allocate_invoice_number(db, invoice, now):
     ).scalar()
     if max_num:
         try:
-            num = int(max_num.split(":")[1]) + 1
+            num = int(max_num.split("-")[-1]) + 1
             invoice.invoice_number = f"{prefix}{num:04d}"
         except (IndexError, ValueError):
             invoice.invoice_number = f"{prefix}0001"

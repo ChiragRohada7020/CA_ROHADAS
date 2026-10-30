@@ -97,7 +97,7 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
  * because each is governed by a different endpoint and different permissions.
  * This panel only edits the task's descriptive fields and tags.
  */
-export function TaskEditPanel({ task, onSaved }: { task: TaskDetail; onSaved: () => void }) {
+export function TaskEditPanel({ task, onSaved, onCancel }: { task: TaskDetail; onSaved: () => void; onCancel: () => void }) {
   const [draft, setDraft] = useState<Draft>(() => fromTask(task));
   const [tagInput, setTagInput] = useState("");
 
@@ -334,7 +334,7 @@ export function TaskEditPanel({ task, onSaved }: { task: TaskDetail; onSaved: ()
         <div className="flex items-center gap-2">
           <button
             type="button"
-            className={cn("btn-primary flex-1 inline-flex items-center justify-center gap-1.5")}
+            className="btn btn-primary text-xs gap-2 px-3 py-1.5 rounded-lg flex-1 inline-flex items-center justify-center gap-1.5"
             disabled={!dirty || save.isPending}
             onClick={() => save.mutate()}
           >
@@ -343,12 +343,13 @@ export function TaskEditPanel({ task, onSaved }: { task: TaskDetail; onSaved: ()
           </button>
           <button
             type="button"
-            className="btn-ghost"
+            className="btn btn-outline px-3 py-1.5 rounded-lg"
             disabled={save.isPending}
             onClick={() => {
               setDraft(fromTask(task));
               setTagInput("");
               save.reset();
+              onCancel();
             }}
           >
             Cancel

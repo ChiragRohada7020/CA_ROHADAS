@@ -27,7 +27,7 @@ export function Field({
 }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-xs font-medium text-slate-700 dark:text-slate-300">
+      <span className="mb-1 block text-xs font-medium text-slate-700">
         {label}
         {required && <span className="ml-1 text-rose-600">*</span>}
       </span>
@@ -35,7 +35,7 @@ export function Field({
       {error ? (
         <span className="mt-1 block text-xs text-rose-700">{error}</span>
       ) : (
-        hint && <span className="mt-1 block text-xs text-slate-500 dark:text-slate-400">{hint}</span>
+        hint && <span className="mt-1 block text-xs text-slate-500">{hint}</span>
       )}
     </label>
   );
@@ -69,7 +69,7 @@ export function TextField({
       <input
         className={cn(
           "input",
-          error && "border-rose-300 focus:border-rose-400 focus:ring-rose-100 dark:focus:ring-rose-900/50",
+          error && "border-rose-300 focus:border-rose-400 focus:ring-rose-100",
         )}
         type={type}
         value={value}
@@ -172,13 +172,13 @@ export function CheckboxField({
     <label className="flex items-start gap-2">
       <input
         type="checkbox"
-        className="mt-0.5 h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-300 dark:border-slate-600 dark:text-sky-500 dark:focus:ring-sky-800/50"
+        className="mt-0.5 h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-300"
         checked={checked}
         onChange={(event) => onChange(event.target.checked)}
       />
       <span>
-        <span className="block text-sm text-slate-800 dark:text-slate-200">{label}</span>
-        {hint && <span className="block text-xs text-slate-500 dark:text-slate-400">{hint}</span>}
+        <span className="block text-sm text-slate-800">{label}</span>
+        {hint && <span className="block text-xs text-slate-500">{hint}</span>}
       </span>
     </label>
   );
@@ -206,7 +206,7 @@ export function FormError({ error }: { error: unknown }) {
   return (
     <div
       role="alert"
-      className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700 ring-1 ring-inset ring-rose-200 dark:bg-rose-900/20 dark:ring-rose-800"
+      className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700 ring-1 ring-inset ring-rose-200"
     >
       <p className="font-medium">{message}</p>
       {fieldErrors.length > 0 && (
@@ -231,7 +231,7 @@ export function FormError({ error }: { error: unknown }) {
 export function FormSuccess({ message }: { message: string | null }) {
   if (!message) return null;
   return (
-    <div className="rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-800 ring-1 ring-inset ring-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-200">
+    <div className="rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-800 ring-1 ring-inset ring-emerald-200">
       {message}
     </div>
   );
@@ -250,11 +250,11 @@ export function FormActions({
 }) {
   return (
     <div className="flex items-center gap-2">
-      <button type="submit" className="btn-primary" disabled={busy || disabled}>
+      <button type="submit" className="btn btn-primary px-5 py-2.5" disabled={busy || disabled}>
         {busy ? "Saving…" : submitLabel}
       </button>
       {onCancel && (
-        <button type="button" className="btn-ghost" onClick={onCancel} disabled={busy}>
+        <button type="button" className="btn btn-ghost px-5 py-2.5" onClick={onCancel} disabled={busy}>
           Cancel
         </button>
       )}
@@ -284,9 +284,9 @@ export function PanelRow({
 }) {
   return (
     <div className="flex items-start justify-between gap-3 py-1.5">
-      <span className="w-28 shrink-0 pt-1.5 text-xs text-slate-500 dark:text-slate-400">
+      <span className="w-28 shrink-0 pt-1.5 text-xs text-slate-500">
         {label}
-        {hint && <span className="mt-0.5 block text-[10px] text-slate-400 dark:text-slate-500">{hint}</span>}
+        {hint && <span className="mt-0.5 block text-[10px] text-slate-400">{hint}</span>}
       </span>
       <span className="flex min-w-0 flex-1 items-center justify-end gap-1.5">{children}</span>
     </div>
@@ -296,7 +296,7 @@ export function PanelRow({
 /** A read-only value chip, for identifiers that are looked at rather than typed. */
 export function Chip({ children }: { children: React.ReactNode }) {
   return (
-    <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-1 font-mono text-[11px] text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+    <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-1 font-mono text-[11px] text-slate-700">
       {children}
     </span>
   );

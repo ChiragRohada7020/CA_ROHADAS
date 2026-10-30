@@ -8,10 +8,8 @@ from app.services.pdf_templates import generateInvoicePDF, mergeTheme
 from app.services.pdf_templates.theme import DEFAULT_THEME
 
 
-def generate_invoice_pdf_better(invoice_db, invoice_lines, client, firm, tenant_id=None):
+def generate_invoice_pdf_better(invoice_db, invoice_lines, client, firm, tenant_id=None, template_override=None):
     # Build computed invoice structure
-    from app.core.utils import decimalize
-
     currency = "INR"
     taxable_value = Decimal(str(invoice_db.subtotal or 0))
     cgst = Decimal(str(invoice_db.cgst_amount or 0))
@@ -41,14 +39,23 @@ def generate_invoice_pdf_better(invoice_db, invoice_lines, client, firm, tenant_
             "discount": float(getattr(line, 'discount', 0) or 0),
         })
 
+    # Get place of supply from the invoice or client
+    place_of_supply = getattr(invoice_db, 'place_of_supply_state_code', None) or ""
+    if not place_of_supply and client:
+        place_of_supply = getattr(client, 'state_code', None) or ""
+
+    # Get tax rate for display
+    tax_rate = float(invoice_db.tax_rate or 0)
+
     invoice_data = {
         "id": str(invoice_db.id),
         "meta": {
             "invoiceNumber": invoice_db.invoice_number or f"INV-{invoice_db.id}",
             "invoiceDate": invoice_db.invoice_date.strftime('%d-%m-%Y') if invoice_db.invoice_date else datetime.now().strftime('%d-%m-%Y'),
             "dueDate": invoice_db.due_date.strftime('%d-%m-%Y') if invoice_db.due_date else None,
-            "placeOfSupply": "",
+            "placeOfSupply": place_of_supply,
             "reverseCharge": False,
+            "taxRate": tax_rate,
         },
         "seller": {
             "name": getattr(firm, 'legal_name', None) or getattr(firm, 'trade_name', None) or "CA Firm",
@@ -83,13 +90,16 @@ def generate_invoice_pdf_better(invoice_db, invoice_lines, client, firm, tenant_
             "cess": 0.0,
             "roundOff": 0.0,
             "grandTotal": float(grand_total),
+            "taxRate": tax_rate,
         },
         "currency": currency,
         "notes": invoice_db.notes or "",
         "termsAndConditions": invoice_db.terms or "",
         "bankDetails": invoice_db.bank_details or None,
         "isInterState": is_inter_state,
+        "placeOfSupply": place_of_supply,
     }
 
-    pdf_bytes = generateInvoicePDF(invoice_data, {"template": "modern"})
+    template_name = template_override or getattr(firm, 'invoice_template', 'modern') or 'modern'
+    pdf_bytes = generateInvoicePDF(invoice_data, {"template": template_name})
     return pdf_bytes

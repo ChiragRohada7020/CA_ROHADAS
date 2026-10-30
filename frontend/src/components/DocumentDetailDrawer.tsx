@@ -343,7 +343,7 @@ export function DocumentDetailDrawer({
               // cookie-authenticated, so the browser handles it — and every read is
               // written to the access log.
               href={`/api/documents/versions/${row.current_version_id}/content`}
-              className="btn-ghost"
+              className="btn btn-ghost px-5 py-2.5"
             >
               <Icon name="download" className="h-3.5 w-3.5" />
               Download
@@ -352,7 +352,7 @@ export function DocumentDetailDrawer({
           {hasPermission(session.data, "document.share_external") && (
             <button
               type="button"
-              className="btn-ghost"
+              className="btn btn-ghost px-5 py-2.5"
               disabled={share.isPending}
               onClick={() => share.mutate()}
             >
@@ -361,7 +361,7 @@ export function DocumentDetailDrawer({
             </button>
           )}
           {hasPermission(session.data, "document.upload") && !renaming && (
-            <button type="button" className="btn-ghost" onClick={startRename}>
+            <button type="button" className="btn btn-ghost px-5 py-2.5" onClick={startRename}>
               <Icon name="pencil" className="h-3.5 w-3.5" />
               Rename / move
             </button>
@@ -371,7 +371,7 @@ export function DocumentDetailDrawer({
               <div className="relative inline-block" ref={statusDropdownRef}>
                 <button
                   type="button"
-                  className="btn-ghost"
+                  className="btn btn-ghost px-5 py-2.5"
                   onClick={() => setStatusOpen(!statusOpen)}
                 >
                   <Icon name={statusIcon(row?.status ?? "requested")} className="h-3.5 w-3.5" />
@@ -610,10 +610,10 @@ function DetailsPanel({
         </div>
 
         <div className="flex items-center gap-2">
-          <button type="submit" className="btn-primary" disabled={saving}>
+          <button type="submit" className="btn btn-primary px-5 py-2.5" disabled={saving}>
             {saving ? "Saving…" : "Save changes"}
           </button>
-          <button type="button" className="btn-ghost" onClick={onCancelRename}>
+          <button type="button" className="btn btn-ghost px-5 py-2.5" onClick={onCancelRename}>
             Cancel
           </button>
         </div>

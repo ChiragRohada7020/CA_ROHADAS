@@ -564,7 +564,7 @@ function AssistantTurn({
           type="button"
           onClick={() => onRetry(message)}
           disabled={running}
-          className="rounded-full border border-slate-300 bg-white px-3 py-1 text-xs font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-50"
+          className="rounded-full border border-slate-300 bg-white px-3 py-1 text-xs font-medium text-slate-700 shadow-sm transition hover:bg-[#f7f6f3] disabled:opacity-50"
         >
           Retry
         </button>

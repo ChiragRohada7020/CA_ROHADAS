@@ -16,14 +16,14 @@ export default function SettingsPage() {
     <div className="mx-auto max-w-3xl space-y-6">
       <PageHeader title="Settings" subtitle="Firm-wide configuration and integrations." />
 
-      <section className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 shadow-sm">
-        <div className="flex items-center gap-3 border-b border-slate-200 dark:border-slate-700 px-5 py-4">
-          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-sky-50 text-sky-600 ring-1 ring-inset ring-sky-100 dark:bg-sky-900/25 dark:text-sky-300 dark:ring-sky-800">
+      <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="flex items-center gap-3 border-b border-slate-200 px-5 py-4">
+          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-sky-50 text-sky-600 ring-1 ring-inset ring-sky-100">
             <Icon name="settings" className="h-5 w-5" />
           </span>
           <div>
-            <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Appearance</h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
+            <h2 className="text-sm font-semibold text-slate-900">Appearance</h2>
+            <p className="text-xs text-slate-500">
               Choose how Rohadas CA looks in this browser.
             </p>
           </div>
@@ -112,7 +112,7 @@ function ThemeOption({
 }) {
   const selected = current === value;
   return (
-    <label className="flex items-start gap-3 rounded-lg border border-slate-200 px-3 py-2 dark:border-slate-700 has-[:checked]:border-sky-600 has-[:checked]:ring-2 has-[:checked]:ring-sky-200/50 dark:has-[:checked]:ring-sky-800/50">
+    <label className="flex items-start gap-3 rounded-lg border border-slate-200 px-3 py-2 has-[:checked]:border-sky-600 has-[:checked]:ring-2 has-[:checked]:ring-sky-200/50">
       <input
         type="radio"
         name="theme"
@@ -122,8 +122,8 @@ function ThemeOption({
         className="mt-1 h-4 w-4 shrink-0 cursor-pointer accent-sky-600"
       />
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium text-slate-900 dark:text-slate-100">{label}</p>
-        <p className="text-xs text-slate-500 dark:text-slate-400">{description}</p>
+        <p className="text-sm font-medium text-slate-900">{label}</p>
+        <p className="text-xs text-slate-500">{description}</p>
       </div>
     </label>
   );
@@ -139,7 +139,7 @@ function FieldSet({
 }) {
   return (
     <fieldset className="space-y-2">
-      <legend className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+      <legend className="text-xs font-medium uppercase tracking-wide text-slate-500">
         {legend}
       </legend>
       {children}
@@ -203,7 +203,7 @@ function WhatsAppConnection() {
         </div>
         <button
           type="button"
-          className="btn-ghost"
+          className="btn btn-ghost px-5 py-2.5"
           onClick={fetchQr}
           disabled={loading}
         >
@@ -215,7 +215,7 @@ function WhatsAppConnection() {
           {qrData.qr_code ? (
             <img src={qrData.qr_code} alt="WhatsApp QR Code" className="w-48 h-48 border border-slate-200 rounded" />
           ) : (
-            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+            <div className="rounded-lg border border-slate-200 bg-[#f7f6f3] p-3 text-sm text-slate-700">
               {qrData.instructions}
             </div>
           )}
@@ -223,7 +223,7 @@ function WhatsAppConnection() {
             <p><strong>Instructions:</strong> {qrData.instructions}</p>
             <details className="mt-2">
               <summary className="cursor-pointer text-slate-700">Connection Details</summary>
-              <pre className="mt-2 p-2 bg-slate-50 rounded text-[10px] overflow-auto">
+              <pre className="mt-2 p-2 bg-[#f7f6f3] rounded text-[10px] overflow-auto">
                 {JSON.stringify(qrData.connection_info, null, 2)}
               </pre>
             </details>

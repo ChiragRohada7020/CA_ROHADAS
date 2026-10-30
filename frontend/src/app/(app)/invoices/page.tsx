@@ -163,13 +163,13 @@ export default function BillingPage() {
         subtitle="Create invoices, manage payments and track outstanding receivables."
         action={
           <div className="flex flex-wrap items-center gap-2">
-            <Link href="/invoices/settings" className="btn-ghost">
+            <Link href="/invoices/settings" className="btn btn-ghost px-5 py-2.5">
               <Icon name="settings" className="h-4 w-4" />
               Invoice Template
             </Link>
             <button
               type="button"
-              className="btn-ghost"
+              className="btn btn-ghost px-5 py-2.5"
               onClick={() => setGenerating(!generating)}
             >
               Bulk Actions
@@ -177,7 +177,7 @@ export default function BillingPage() {
             <Link href="/invoices?new=1">
               <button
                 type="button"
-                className="btn-primary"
+                className="btn btn-primary px-5 py-2.5"
                 onClick={() => setAdding(true)}
               >
                 <Icon name="plus" className="h-4 w-4" />
@@ -314,7 +314,7 @@ export default function BillingPage() {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[72rem]">
-              <thead className="bg-slate-50">
+              <thead className="bg-[#f7f6f3]">
                 <tr>
                   <th className="th w-10">#</th>
                   <th className="th">Invoice</th>
@@ -358,8 +358,8 @@ export default function BillingPage() {
                         <span className="text-slate-300">—</span>
                       ) : (
                         <div className="flex flex-wrap gap-1">
-                          {invoice.services.slice(0, 2).map((svc) => (
-                            <span key={svc} className="inline-flex items-center rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600">
+                          {invoice.services.slice(0, 2).map((svc, sidx) => (
+                            <span key={sidx} className="inline-flex items-center rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600">
                               {svc}
                             </span>
                           ))}
@@ -490,7 +490,7 @@ export default function BillingPage() {
             <EmptyState message="No receipts have been recorded yet." />
           ) : (
             <table className="w-full">
-              <thead className="bg-slate-50">
+              <thead className="bg-[#f7f6f3]">
                 <tr>
                   <th className="th">Date</th>
                   <th className="th">Client</th>

@@ -128,7 +128,7 @@ function ClientList({ clients }: { clients: ServiceDetailRow["clients"] }) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full min-w-[40rem]">
-        <thead className="bg-slate-50">
+        <thead className="bg-[#f7f6f3]">
           <tr>
             <th className="th">Client</th>
             <th className="th">Status</th>

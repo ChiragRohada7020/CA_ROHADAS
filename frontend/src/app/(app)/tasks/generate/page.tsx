@@ -151,7 +151,7 @@ export default function GenerateWorkPage() {
         <div className="flex flex-wrap items-center gap-2 border-t border-slate-200 p-4">
           <button
             type="button"
-            className="btn-primary"
+            className="btn btn-primary px-5 py-2.5"
             disabled={generate.isPending}
             onClick={() => run(true)}
           >
@@ -159,7 +159,7 @@ export default function GenerateWorkPage() {
           </button>
           <button
             type="button"
-            className="btn-ghost"
+            className="btn btn-ghost px-5 py-2.5"
             disabled={generate.isPending}
             onClick={() => run(false)}
           >

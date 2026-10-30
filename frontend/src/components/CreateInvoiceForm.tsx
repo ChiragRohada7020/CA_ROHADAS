@@ -11,6 +11,7 @@ import { Icon } from "@/components/Icon";
 import { ServiceCombobox, flattenClientServices, type ServiceOption } from "@/components/ServiceCombobox";
 import { FormError, FormSuccess, SelectField, TextAreaField, TextField } from "@/components/form";
 import { api, buildQuery } from "@/lib/api";
+import { InvoiceTemplateSelector } from "@/components/InvoiceTemplateSelector";
 import { addDays, formatMoney, todayInIST } from "@/lib/format";
 import { computeTotals, resolveTax } from "@/lib/billing";
 import type {
@@ -19,6 +20,7 @@ import type {
   FirmBillingSettings,
   InvoiceDetail,
   InvoiceLineInput,
+  InvoiceTemplate,
   Page,
   PartyDetails,
 } from "@/lib/types";
@@ -161,6 +163,16 @@ export function CreateInvoiceForm({ initial, onDone, onClose }: CreateInvoiceFor
     staleTime: 10 * 60 * 1000,
   });
 
+  const [template, setTemplate] = useState<InvoiceTemplate>(
+    firm.data?.invoice_template ?? "modern"
+  );
+  // Update template when firm settings load
+  useEffect(() => {
+    if (firm.data?.invoice_template && !initial) {
+      setTemplate(firm.data.invoice_template);
+    }
+  }, [firm.data?.invoice_template, initial]);
+
   // ── Auto-dismiss success message ─────────────────────────
   useEffect(() => {
     if (!saved) return;
@@ -257,6 +269,7 @@ export function CreateInvoiceForm({ initial, onDone, onClose }: CreateInvoiceFor
       lines,
       terms,
       notes,
+      template: firm.data?.invoice_template ?? template,
       bankDetails,
       taxNote: null,
     };
@@ -449,7 +462,7 @@ export function CreateInvoiceForm({ initial, onDone, onClose }: CreateInvoiceFor
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, ease: "easeOut", delay: 0.15 }}
         >
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
             Line Items
           </h3>
           <InvoiceLineTable
@@ -471,14 +484,14 @@ export function CreateInvoiceForm({ initial, onDone, onClose }: CreateInvoiceFor
           transition={{ duration: 0.3, ease: "easeOut", delay: 0.2 }}
         >
           <motion.div
-            className="w-64 space-y-1.5 rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900/30"
+            className="w-64 space-y-1.5 rounded-lg border border-slate-200 bg-slate-50 p-3"
             whileHover={{ scale: 1.01, boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }}
             transition={{ type: "spring", stiffness: 400, damping: 25 }}
           >
             <div className="flex justify-between text-sm">
-              <span className="text-slate-600 dark:text-slate-400">Subtotal</span>
+              <span className="text-slate-600">Subtotal</span>
               <motion.span
-                className="tabular-nums font-medium text-slate-900 dark:text-slate-200"
+                className="tabular-nums font-medium text-slate-900"
                 initial={{ opacity: 0.5 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.2 }}
@@ -488,14 +501,14 @@ export function CreateInvoiceForm({ initial, onDone, onClose }: CreateInvoiceFor
             </div>
             {totals.discountTotal > 0 && (
               <div className="flex justify-between text-sm">
-                <span className="text-slate-600 dark:text-slate-400">Discount</span>
+                <span className="text-slate-600">Discount</span>
                 <span className="tabular-nums text-emerald-600">−{formatMoney(totals.discountTotal)}</span>
               </div>
             )}
             <div className="flex justify-between text-sm">
-              <span className="text-slate-600 dark:text-slate-400">Tax</span>
+              <span className="text-slate-600">Tax</span>
               <motion.span
-                className="tabular-nums text-slate-900 dark:text-slate-200"
+                className="tabular-nums text-slate-900"
                 initial={{ opacity: 0.5 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.2 }}
@@ -503,11 +516,11 @@ export function CreateInvoiceForm({ initial, onDone, onClose }: CreateInvoiceFor
                 {formatMoney(totals.cgst + totals.sgst + totals.igst)}
               </motion.span>
             </div>
-            <div className="border-t border-slate-200 pt-1.5 dark:border-slate-700">
+            <div className="border-t border-slate-200 pt-1.5">
               <div className="flex justify-between text-base font-semibold">
-                <span className="text-slate-900 dark:text-slate-200">Total</span>
+                <span className="text-slate-900">Total</span>
                 <motion.span
-                  className="tabular-nums font-bold text-sky-700 dark:text-sky-300"
+                  className="tabular-nums font-bold text-sky-700"
                   initial={{ scale: 0.95, opacity: 0.5 }}
                   animate={{ scale: 1, opacity: 1 }}
                   transition={{ type: "spring", stiffness: 400, damping: 25 }}
@@ -549,7 +562,7 @@ export function CreateInvoiceForm({ initial, onDone, onClose }: CreateInvoiceFor
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, ease: "easeOut", delay: 0.3 }}
         >
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
             Bank / Payment details
           </h3>
           <motion.div
@@ -602,12 +615,12 @@ export function CreateInvoiceForm({ initial, onDone, onClose }: CreateInvoiceFor
 
         {/* Actions */}
         <motion.div
-          className="flex items-center justify-between gap-3 border-t border-slate-200 pt-3 dark:border-slate-700"
+          className="flex items-center justify-between gap-3 border-t border-slate-200 pt-3"
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, ease: "easeOut", delay: 0.35 }}
         >
-          <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+          <div className="flex items-center gap-2 text-xs text-slate-500">
             <span className="flex items-center gap-1">
               <span
                 className={`flex h-2 w-2 rounded-full ${
@@ -637,7 +650,7 @@ export function CreateInvoiceForm({ initial, onDone, onClose }: CreateInvoiceFor
             {onClose && (
               <motion.button
                 type="button"
-                className="btn-ghost"
+                className="btn btn-ghost px-5 py-2.5"
                 disabled={activeMutation}
                 onClick={handleClose}
                 whileHover={{ scale: 1.02 }}
@@ -649,7 +662,7 @@ export function CreateInvoiceForm({ initial, onDone, onClose }: CreateInvoiceFor
             )}
             <motion.button
               type="button"
-              className="btn-ghost"
+              className="btn btn-ghost px-5 py-2.5"
               disabled={activeMutation || !canSave}
               onClick={handleSaveDraft}
               whileHover={{ scale: 1.02 }}
@@ -661,7 +674,7 @@ export function CreateInvoiceForm({ initial, onDone, onClose }: CreateInvoiceFor
             <motion.button
               type="submit"
               disabled={activeMutation || !canSave}
-              className="btn-primary"
+              className="btn btn-primary px-5 py-2.5"
               whileHover={{ scale: 1.01 }}
               whileTap={{ scale: 0.98 }}
               transition={{ type: "spring", stiffness: 400, damping: 25 }}

@@ -138,7 +138,7 @@ export function TaskDetailsPopup({
         type="button"
         aria-label="Close task details"
         onClick={onClose}
-        className="fixed inset-0 z-40 cursor-default bg-slate-900/50 backdrop-blur-sm"
+        className="fixed inset-0 z-40 cursor-default bg-slate-900/50 backdrop-blur-none"
       />
       <aside
         role="dialog"

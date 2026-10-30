@@ -1,13 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 
 import { InvoiceSheet } from "@/components/InvoiceSheet";
 import { ErrorState, LoadingState } from "@/components/ui";
 import { api } from "@/lib/api";
-import type { InvoiceDetail } from "@/lib/types";
+import type { InvoiceDetail, InvoiceTemplate } from "@/lib/types";
 
 /**
  * The invoice, ready to print.
@@ -20,11 +20,15 @@ import type { InvoiceDetail } from "@/lib/types";
 export default function InvoicePrintPage() {
   const params = useParams<{ invoiceId: string }>();
   const invoiceId = params.invoiceId;
+  const searchParams = useSearchParams();
 
   const invoice = useQuery({
     queryKey: ["invoice", invoiceId],
     queryFn: () => api.get<InvoiceDetail>(`/invoices/${invoiceId}`),
   });
+
+  const templateParam = searchParams.get("template");
+  const template = (templateParam ?? "modern") as InvoiceTemplate;
 
   if (invoice.isPending) return <LoadingState label="Preparing the invoice…" />;
   if (invoice.isError) return <ErrorState message="Could not load this invoice." />;
@@ -37,21 +41,21 @@ export default function InvoicePrintPage() {
             {invoice.data.invoice_number ?? "Draft invoice"}
           </p>
           <p className="text-xs text-slate-500">
-            Use your browser&apos;s Print, then choose &quot;Save as PDF&quot; to keep a copy.
+            Template: {template} · Use your browser&apos;s Print, then choose &quot;Save as PDF&quot; to keep a copy.
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Link href={`/invoices/${invoiceId}`} className="btn-ghost">
+          <Link href={`/invoices/${invoiceId}`} className="btn btn-ghost px-5 py-2.5">
             Back to the invoice
           </Link>
-          <button type="button" className="btn-primary" onClick={() => window.print()}>
+          <button type="button" className="btn btn-primary px-5 py-2.5" onClick={() => window.print()}>
             Print
           </button>
         </div>
       </div>
 
       <div className="mx-auto max-w-[210mm] px-2 sm:px-6">
-        <InvoiceSheet invoice={invoice.data} />
+        <InvoiceSheet invoice={invoice.data} template={template} />
       </div>
     </div>
   );

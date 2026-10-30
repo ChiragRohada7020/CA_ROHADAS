@@ -325,7 +325,7 @@ export default function TeamPermissionsPage() {
                   className={`w-full flex items-center gap-2 p-2 rounded-lg text-left transition-colors ${
                     isSelected
                       ? "bg-sky-50 text-sky-900"
-                      : "hover:bg-slate-50 text-slate-700"
+                      : "hover:bg-[#f7f6f3] text-slate-700"
                   }`}
                 >
                   <div className="flex-1 truncate">
@@ -496,7 +496,7 @@ export default function TeamPermissionsPage() {
                                className={`text-xs px-2 py-1 rounded ${
                                  hasModuleOverride(mod, "grant")
                                    ? "bg-emerald-100 text-emerald-700"
-                                   : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                                   : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                                }`}
                              >
                                Grant all
@@ -508,7 +508,7 @@ export default function TeamPermissionsPage() {
                                className={`text-xs px-2 py-1 rounded ${
                                  hasModuleOverride(mod, "revoke")
                                    ? "bg-rose-100 text-rose-700"
-                                   : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                                   : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                                }`}
                              >
                                Revoke all
@@ -517,7 +517,7 @@ export default function TeamPermissionsPage() {
                             <button
                               type="button"
                               onClick={() => handleClearSection(mod)}
-                              className="text-xs px-2 py-1 rounded bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                              className="text-xs px-2 py-1 rounded bg-slate-100 text-slate-600 hover:bg-slate-200"
                             >
                               Clear overrides
                             </button>
@@ -540,7 +540,7 @@ export default function TeamPermissionsPage() {
                   type="button"
                   onClick={handleSave}
                   disabled={saveMutation.isPending || !hasChanges()}
-                  className="btn-primary px-4 py-2 text-sm font-medium disabled:opacity-60"
+                  className="btn btn-primary text-xs gap-2 px-3 py-1.5 rounded-lg disabled:opacity-60"
                 >
                   {saveMutation.isPending ? (
                     <>

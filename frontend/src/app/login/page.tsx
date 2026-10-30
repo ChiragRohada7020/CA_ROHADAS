@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { ApiError, api } from "@/lib/api";
-import { ThemeToggle } from "@/lib/theme";
 import { useSignIn } from "@/lib/session";
 import type { TokenResponse } from "@/lib/types";
 import { cn } from "@/lib/format";
@@ -66,20 +65,19 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="login-root relative flex min-h-screen items-center justify-center bg-slate-100 px-4 py-12 dark:bg-slate-950">
+    <main className="login-root relative flex min-h-screen items-center justify-center bg-slate-100 px-4 py-12">
       <div className="fixed top-4 right-4 z-20">
-        <ThemeToggle />
-      </div>
+              </div>
 
       <motion.div
-        className="relative w-full max-w-6xl overflow-hidden rounded-2xl bg-white shadow-xl dark:bg-slate-900"
+        className="relative w-full max-w-6xl overflow-hidden rounded-2xl bg-white shadow-xl"
         initial={{ opacity: 0, scale: 0.98 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.5, ease: "easeOut" }}
       >
         <div className="grid grid-cols-1 lg:grid-cols-2">
           <motion.div
-            className="relative flex flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-sky-100 via-indigo-50 to-purple-100 p-12 dark:from-sky-950/30 dark:via-indigo-950/30 dark:to-purple-950/30"
+            className="relative flex flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-sky-100 via-indigo-50 to-purple-100 p-12"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.6, ease: "easeOut" }}
@@ -140,7 +138,7 @@ export default function LoginPage() {
                   </svg>
                 </motion.div>
                 <motion.span
-                  className="text-3xl font-bold text-slate-900 dark:text-slate-100"
+                  className="text-3xl font-bold text-slate-900"
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ duration: 0.6, ease: "easeOut", delay: 0.4 }}
@@ -150,7 +148,7 @@ export default function LoginPage() {
               </div>
 
               <motion.p
-                className="text-center text-sm text-slate-600 dark:text-slate-400"
+                className="text-center text-sm text-slate-600"
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, ease: "easeOut", delay: 0.5 }}
@@ -180,7 +178,7 @@ export default function LoginPage() {
                     custom={0}
                   >
                     <label className="block">
-                      <span className="mb-1 block text-xs font-medium text-slate-700 dark:text-slate-300">
+                      <span className="mb-1 block text-xs font-medium text-slate-700">
                         Firm name <span className="text-rose-600">*</span>
                       </span>
                       <input
@@ -206,7 +204,7 @@ export default function LoginPage() {
                     custom={1}
                   >
                     <label className="block">
-                      <span className="mb-1 block text-xs font-medium text-slate-700 dark:text-slate-300">
+                      <span className="mb-1 block text-xs font-medium text-slate-700">
                         Firm slug <span className="text-rose-600">*</span>
                       </span>
                       <input
@@ -220,7 +218,7 @@ export default function LoginPage() {
                         minLength={2}
                         pattern="[a-z0-9][a-z0-9-]*"
                       />
-                      <span className="mt-1 block text-xs text-slate-500 dark:text-slate-400">
+                      <span className="mt-1 block text-xs text-slate-500">
                         Lowercase letters, numbers and hyphens. Used to tell firms apart.
                       </span>
                     </label>
@@ -237,7 +235,7 @@ export default function LoginPage() {
                     custom={2}
                   >
                     <label className="block">
-                      <span className="mb-1 block text-xs font-medium text-slate-700 dark:text-slate-300">
+                      <span className="mb-1 block text-xs font-medium text-slate-700">
                         Your name <span className="text-rose-600">*</span>
                       </span>
                       <input
@@ -261,7 +259,7 @@ export default function LoginPage() {
                   custom={3}
                 >
                   <label className="block">
-                    <span className="mb-1 block text-xs font-medium text-slate-700 dark:text-slate-300">
+                    <span className="mb-1 block text-xs font-medium text-slate-700">
                       Email <span className="text-rose-600">*</span>
                     </span>
                     <input
@@ -284,7 +282,7 @@ export default function LoginPage() {
                   custom={4}
                 >
                   <label className="block">
-                    <span className="mb-1 block text-xs font-medium text-slate-700 dark:text-slate-300">
+                    <span className="mb-1 block text-xs font-medium text-slate-700">
                       Password <span className="text-rose-600">*</span>
                     </span>
                     <div className="relative">
@@ -302,7 +300,7 @@ export default function LoginPage() {
                         type="button"
                         tabIndex={-1}
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute inset-y-0 right-0 flex items-center justify-center rounded-r-md px-2 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                        className="absolute inset-y-0 right-0 flex items-center justify-center rounded-r-md px-2 text-slate-500 hover:text-slate-700"
                       >
                         {showPassword ? (
                           <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2}>
@@ -317,7 +315,7 @@ export default function LoginPage() {
                       </button>
                     </div>
                     {mode === "create_firm" && (
-                      <span className="mt-1 block text-xs text-slate-500 dark:text-slate-400">
+                      <span className="mt-1 block text-xs text-slate-500">
                         At least 12 characters.
                       </span>
                     )}
@@ -334,7 +332,7 @@ export default function LoginPage() {
                   >
                     <p
                       role="alert"
-                      className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700 ring-1 ring-inset ring-rose-200 dark:bg-rose-900/20 dark:ring-rose-800"
+                      className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700 ring-1 ring-inset ring-rose-200"
                     >
                       {error}
                     </p>
@@ -344,7 +342,7 @@ export default function LoginPage() {
                 <motion.button
                   key="submit"
                   type="submit"
-                  className="btn-primary w-full"
+                  className="w-full py-3 px-4 rounded-lg bg-[#2563eb] text-white font-medium text-sm hover:bg-[#1d4ed8] transition-colors duration-150 flex items-center justify-center gap-2"
                   disabled={busy}
                   whileHover={{ scale: 1.01 }}
                   whileTap={{ scale: 0.98 }}
@@ -374,7 +372,7 @@ export default function LoginPage() {
             </form>
 
             <motion.div
-              className="mt-6 text-center text-sm text-slate-600 dark:text-slate-400"
+              className="mt-6 text-center text-sm text-slate-600"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, ease: "easeOut", delay: 0.4 }}
@@ -384,7 +382,7 @@ export default function LoginPage() {
                   First time here?{" "}
                   <motion.button
                     type="button"
-                    className="font-medium text-sky-700 underline underline-offset-2 hover:text-sky-600 dark:text-sky-400"
+                    className="font-medium text-sky-700 underline underline-offset-2 hover:text-sky-600"
                     onClick={toggleMode}
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
@@ -397,7 +395,7 @@ export default function LoginPage() {
                   Already set up?{" "}
                   <motion.button
                     type="button"
-                    className="font-medium text-sky-700 underline underline-offset-2 hover:text-sky-600 dark:text-sky-400"
+                    className="font-medium text-sky-700 underline underline-offset-2 hover:text-sky-600"
                     onClick={toggleMode}
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}

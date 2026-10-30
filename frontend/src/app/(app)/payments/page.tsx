@@ -103,13 +103,13 @@ const METHOD_ICONS: Record<string, string> = {
 };
 
 const CLIENT_COLORS = [
-  "bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300",
-  "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300",
-  "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
-  "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300",
-  "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
-  "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300",
-  "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300",
+  "bg-sky-100 text-sky-700",
+  "bg-emerald-100 text-emerald-700",
+  "bg-amber-100 text-amber-700",
+  "bg-rose-100 text-rose-700",
+  "bg-purple-100 text-purple-700",
+  "bg-orange-100 text-orange-700",
+  "bg-cyan-100 text-cyan-700",
 ];
 
 const TABS: Array<{ key: string; label: string }> = [
@@ -386,7 +386,7 @@ export default function PaymentsPage() {
       </div>
 
       {/* Tab Filter */}
-      <div className="border-b border-slate-200 dark:border-slate-700">
+      <div className="border-b border-slate-200">
         <div className="flex items-center gap-1 px-4 py-3 overflow-x-auto">
           {TABS.map((t) => (
             <button
@@ -395,8 +395,8 @@ export default function PaymentsPage() {
               onClick={() => setTab(t.key)}
               className={
                 tab === t.key
-                  ? "px-3 py-2 text-sm font-medium border-b-2 border-sky-600 text-sky-700 dark:border-sky-500"
-                  : "px-3 py-2 text-sm font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"
+                  ? "px-3 py-2 text-sm font-medium border-b-2 border-sky-600 text-sky-700"
+                  : "px-3 py-2 text-sm font-medium text-slate-500 hover:text-slate-700"
               }
             >
               {t.label} <span className="ml-1 text-xs">{tabCounts[t.key as keyof typeof tabCounts] ?? 0}</span>
@@ -482,7 +482,7 @@ export default function PaymentsPage() {
           ) : (
             <div className="min-w-[70rem]">
               <table className="w-full text-sm">
-                <thead className="bg-slate-50">
+                <thead className="bg-[#f7f6f3]">
                   <tr>
                     <th className="th text-left w-12">
                       <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-500">
@@ -501,8 +501,8 @@ export default function PaymentsPage() {
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {payments.map((p) => (
-                    <tr key={p.id} className="group hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                      <td className="td text-xs text-slate-600 dark:text-slate-400">
+                    <tr key={p.id} className="group hover:bg-[#f7f6f3]">
+                      <td className="td text-xs text-slate-600">
                         {formatDate(p.date)}
                       </td>
                       <td className="td">
@@ -523,7 +523,7 @@ export default function PaymentsPage() {
                             {(p.client.name ?? "C").split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2)}
                           </span>
                           <div>
-                            <div className="text-xs font-medium text-slate-900 dark:text-white">
+                            <div className="text-xs font-medium text-slate-900">
                               {p.client.name ?? "Unknown Client"}
                             </div>
                             {p.client.code && (
@@ -534,23 +534,23 @@ export default function PaymentsPage() {
                       </td>
                       <td className="td">
                         <div className="flex flex-col">
-                          <div className="text-xs font-medium text-slate-900 dark:text-white font-mono">
+                          <div className="text-xs font-medium text-slate-900 font-mono">
                             {p.invoice.number ?? "—"}
                           </div>
                         </div>
                       </td>
                       <td className="td">
                         <div className="flex items-center gap-2">
-                          <div className="h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-medium bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400">
+                          <div className="h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-medium bg-slate-100 text-slate-600">
                             <Icon name={METHOD_ICONS[p.method] as any} className="h-3 w-3" />
                           </div>
-                          <span className="text-xs text-slate-600 dark:text-slate-400 capitalize">
+                          <span className="text-xs text-slate-600 capitalize">
                             {p.method.replace("_", " ")}
                           </span>
                         </div>
                       </td>
                       <td className="td tabular text-right">
-                        <span className="text-xs font-medium text-slate-900 dark:text-white">
+                        <span className="text-xs font-medium text-slate-900">
                           {formatMoney(p.amount)}
                         </span>
                       </td>
@@ -559,7 +559,7 @@ export default function PaymentsPage() {
                           {STATUS_CONFIG[p.status].label}
                         </Badge>
                       </td>
-                      <td className="td tabular text-right text-xs text-slate-500 dark:text-slate-400 font-mono">
+                      <td className="td tabular text-right text-xs text-slate-500 font-mono">
                         {p.reference ?? "—"}
                       </td>
                       <td className="td text-right">
@@ -567,20 +567,20 @@ export default function PaymentsPage() {
                           <button
                             type="button"
                             onClick={() => setOpenActionId(openActionId === p.id ? null : p.id)}
-                            className="text-slate-400 hover:text-sky-600 dark:text-slate-500 dark:hover:text-sky-400"
+                            className="text-slate-400 hover:text-sky-600"
                             aria-label="More actions"
                           >
                             <Icon name="more-vertical" className="h-4 w-4" />
                           </button>
                           {openActionId === p.id && (
-                            <div className="absolute right-0 mt-2 w-48 rounded-lg border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-800 py-2 z-50">
+                            <div className="absolute right-0 mt-2 w-48 rounded-lg border border-slate-200 bg-white shadow-lg py-2 z-50">
                               <button
                                 type="button"
                                 onClick={() => {
                                   setOpenActionId(null);
                                   if (p.invoice.id) window.location.href = `/invoices/${p.invoice.id}`;
                                 }}
-                                className="flex w-full items-center gap-3 px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+                                className="flex w-full items-center gap-3 px-3 py-2 text-sm text-slate-700 hover:bg-[#f7f6f3]"
                               >
                                 <Icon name="eye" className="h-4 w-4" />
                                 View Invoice
@@ -596,7 +596,7 @@ export default function PaymentsPage() {
                                     }, 500);
                                   }
                                 }}
-                                className="flex w-full items-center gap-3 px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+                                className="flex w-full items-center gap-3 px-3 py-2 text-sm text-slate-700 hover:bg-[#f7f6f3]"
                               >
                                 <Icon name="download" className="h-4 w-4" />
                                 Download Receipt
@@ -607,7 +607,7 @@ export default function PaymentsPage() {
                                   setOpenActionId(null);
                                   if (p.invoice.id) window.location.href = `/invoices/${p.invoice.id}`;
                                 }}
-                                className="flex w-full items-center gap-3 px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+                                className="flex w-full items-center gap-3 px-3 py-2 text-sm text-slate-700 hover:bg-[#f7f6f3]"
                               >
                                 <Icon name="pencil" className="h-4 w-4" />
                                 Edit
@@ -633,7 +633,7 @@ export default function PaymentsPage() {
                       className={
                         page === currentPage
                           ? "px-2.5 py-1.5 text-xs rounded-md bg-sky-600 text-white"
-                          : "px-2.5 py-1.5 text-xs rounded-md bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700"
+                          : "px-2.5 py-1.5 text-xs rounded-md bg-slate-100 text-slate-600 hover:bg-slate-200"
                       }
                     >
                       {page}

@@ -15,12 +15,12 @@ export type Tone = "neutral" | "info" | "progress" | "warning" | "danger" | "suc
 import type { TaskStatus } from "./types";
 
 const TONE_CLASSES: Record<Tone, string> = {
-  neutral: "bg-slate-100 text-slate-700 ring-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700",
-  info: "bg-sky-50 text-sky-700 ring-sky-200 dark:bg-sky-900/25 dark:text-sky-300 dark:ring-sky-800",
-  progress: "bg-indigo-50 text-indigo-700 ring-indigo-200 dark:bg-indigo-900/25 dark:text-indigo-300 dark:ring-indigo-800",
-  warning: "bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-900/25 dark:text-amber-300 dark:ring-amber-800",
-  danger: "bg-rose-50 text-rose-700 ring-rose-200 dark:bg-rose-900/25 dark:text-rose-300 dark:ring-rose-800",
-  success: "bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-900/25 dark:text-emerald-300 dark:ring-emerald-800",
+  neutral: "bg-slate-100 text-slate-700 ring-slate-300",
+  info: "bg-sky-50 text-sky-700 ring-sky-200",
+  progress: "bg-indigo-50 text-indigo-700 ring-indigo-200",
+  warning: "bg-amber-50 text-amber-700 ring-amber-200",
+  danger: "bg-rose-50 text-rose-700 ring-rose-200",
+  success: "bg-emerald-50 text-emerald-700 ring-emerald-200",
 };
 
 /** All 14 workflow states. */
@@ -92,7 +92,7 @@ export function utilisationTone(percent: number): Tone {
 /** The solid fill colour for a progress or utilisation bar.
  * Solid fills are already visible on dark surfaces, so only `neutral` adjusts. */
 const BAR_CLASSES: Record<Tone, string> = {
-  neutral: "bg-slate-400 dark:bg-slate-500",
+  neutral: "bg-slate-400",
   info: "bg-sky-500",
   progress: "bg-indigo-500",
   warning: "bg-amber-500",
@@ -286,7 +286,7 @@ export function statusRequiresReason(toStatus: TaskStatus): boolean {
 
 /** Solid dot colour for each status, used in dropdown option lists. */
 export const STATUS_DOT_CLASSES: Record<string, string> = {
-  not_started: "bg-slate-400 dark:bg-slate-500",
+  not_started: "bg-slate-400",
   assigned: "bg-sky-500",
   in_progress: "bg-[#1677FF]",
   waiting_for_client: "bg-amber-500",
@@ -299,11 +299,11 @@ export const STATUS_DOT_CLASSES: Record<string, string> = {
   filed: "bg-emerald-600",
   delivered: "bg-emerald-500",
   completed: "bg-emerald-500",
-  cancelled: "bg-slate-400 dark:bg-slate-500",
+  cancelled: "bg-slate-400",
 };
 
 export function statusDotClass(status: string): string {
-  return STATUS_DOT_CLASSES[status] ?? "bg-slate-400 dark:bg-slate-500";
+  return STATUS_DOT_CLASSES[status] ?? "bg-slate-400";
 }
 
 export function delayReasonLabel(value: string): string {

@@ -236,6 +236,41 @@ async def update_role_permissions(
     }
 
 
+@router.delete("/roles/{role_id}")
+async def delete_role(
+    request: Request,
+    role_id: str,
+    db: Session = Depends(get_db),
+    principal: Any = Depends(require_permission("role.write")),
+) -> Any:
+    principal = await get_current_user(request, db)
+    tenant_id = principal.tenant_id
+
+    role = db.get(Role, role_id)
+    if role is None or (role.tenant_id is not None and str(role.tenant_id) != str(tenant_id)):
+        from app.core.errors import NotFoundError
+        raise NotFoundError(f"Role {role_id} not found")
+
+    if role.is_system:
+        from app.core.errors import BadRequestError
+        raise BadRequestError("System roles cannot be deleted.")
+
+    # Prevent deleting roles that are still assigned to users
+    assigned = db.execute(
+        select(User).where(User.roles.any(id=role.id))
+    ).scalars().first()
+    if assigned is not None:
+        from app.core.errors import BadRequestError
+        raise BadRequestError("Role is assigned to one or more users and cannot be deleted.")
+
+    db.execute(
+        delete(RolePermission).where(RolePermission.role_id == role.id)
+    )
+    db.delete(role)
+    db.commit()
+    return {"ok": True}
+
+
 @router.get("/users/{user_id}/permissions")
 async def get_user_permissions(
     request: Request,

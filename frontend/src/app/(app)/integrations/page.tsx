@@ -107,7 +107,7 @@ export default function IntegrationsPage() {
         {rows.length > 0 && (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[52rem]">
-              <thead className="bg-slate-50">
+              <thead className="bg-[#f7f6f3]">
                 <tr>
                   <th className="th">When</th>
                   <th className="th">Source</th>
