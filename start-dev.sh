@@ -12,14 +12,17 @@ export PATH="/tmp/node-v22.11.0-linux-arm64/bin:$PATH"
 
 BACKEND_PORT=8000
 FRONTEND_PORT=3000
+GW_PORT=3001
 BIND_HOST="${BIND_HOST:-0.0.0.0}"
 
 FRONTEND_ONLY=0
 BACKEND_ONLY=0
+GW_ONLY=0
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --frontend-only) FRONTEND_ONLY=1; shift ;;
         --backend-only)  BACKEND_ONLY=1;  shift ;;
+        --gateway-only)  GW_ONLY=1;       shift ;;
         *) echo "unknown option: $1" >&2; exit 2 ;;
     esac
 done
@@ -55,9 +58,10 @@ free_port() {
     [[ $found_any -eq 0 ]] && echo "  :$port nothing listening"
 }
 
-echo "Freeing ports $BACKEND_PORT and $FRONTEND_PORT..."
+echo "Freeing ports $BACKEND_PORT, $FRONTEND_PORT and $GW_PORT..."
 if [[ $BACKEND_ONLY -eq 0 ]]; then free_port "$FRONTEND_PORT"; fi
 if [[ $FRONTEND_ONLY -eq 0 ]]; then free_port "$BACKEND_PORT"; fi
+if [[ $GW_ONLY -eq 0 ]]; then free_port "$GW_PORT"; fi
 sleep 2
 
 # ── 2. Backend ──
@@ -98,14 +102,29 @@ if [[ $BACKEND_ONLY -eq 0 ]]; then
     echo "  frontend pid $FRONTEND_PID"
 fi
 
-# ── 4. Wait for both to answer ──
+# ── 4. WhatsApp gateway (baileys) ──
+GW_PID=""
+if [[ $BACKEND_ONLY -eq 0 && $FRONTEND_ONLY -eq 0 ]]; then
+    echo "Starting WhatsApp gateway on http://$BIND_HOST:$GW_PORT ..."
+    GW_DIR="$ROOT/baileys-gateway"
+    if [[ -d "$GW_DIR" && -f "$GW_DIR/server.js" ]]; then
+        ( cd "$GW_DIR" && PATH="/tmp/node-v22.11.0-linux-arm64/bin:$PATH" exec node server.js ) > "$LOGS/gateway.log" 2> "$LOGS/gateway.err.log" &
+        GW_PID=$!
+        echo "  gateway pid $GW_PID"
+    else
+        echo "  gateway directory not found at $GW_DIR - skipping"
+    fi
+fi
+
+# ── 5. Wait for all to answer ──
 echo ""
-echo "Waiting for both to answer..."
+echo "Waiting for all to answer..."
 deadline=$(( $(date +%s) + 90 ))
 backend_up=0
 frontend_up=0
-needed=$(( (BACKEND_ONLY==0 ? 1 : 0) + (FRONTEND_ONLY==0 ? 1 : 0) ))
-while [[ $(date +%s) -lt $deadline && $((backend_up + frontend_up)) -lt $needed ]]; do
+gw_up=0
+needed=$(( (BACKEND_ONLY==0 ? 1 : 0) + (FRONTEND_ONLY==0 ? 1 : 0) + (GW_ONLY==0 ? 1 : 0) ))
+while [[ $(date +%s) -lt $deadline && $((backend_up + frontend_up + gw_up)) -lt $needed ]]; do
     sleep 2
     if [[ $BACKEND_ONLY -eq 0 && $backend_up -eq 0 ]]; then
         if curl -s -o /dev/null -w '%{http_code}' --max-time 4 "http://127.0.0.1:$BACKEND_PORT/api/health" 2>/dev/null | grep -q '200'; then
@@ -117,6 +136,11 @@ while [[ $(date +%s) -lt $deadline && $((backend_up + frontend_up)) -lt $needed 
             frontend_up=1
         fi
     fi
+    if [[ $GW_ONLY -eq 0 && $gw_up -eq 0 ]]; then
+        if curl -s -o /dev/null -w '%{http_code}' --max-time 4 "http://127.0.0.1:$GW_PORT/status" 2>/dev/null | grep -q '200'; then
+            gw_up=1
+        fi
+    fi
 done
 
 echo ""
@@ -126,9 +150,12 @@ fi
 if [[ $FRONTEND_ONLY -eq 0 ]]; then
     if [[ $frontend_up -eq 1 ]]; then echo "  frontend  http://$BIND_HOST:$FRONTEND_PORT"; else echo "  frontend did not answer - see logs/frontend.err.log"; fi
 fi
+if [[ $GW_ONLY -eq 0 ]]; then
+    if [[ $gw_up -eq 1 ]]; then echo "  gateway   http://$BIND_HOST:$GW_PORT  (whatsapp)"; else echo "  gateway did not answer - see logs/gateway.err.log"; fi
+fi
 echo ""
 echo "Logs: $LOGS   Stop with: ./stop-dev.sh"
 
-if [[ -n "$BACKEND_PID" || -n "$FRONTEND_PID" ]]; then
+if [[ -n "$BACKEND_PID" || -n "$FRONTEND_PID" || -n "$GW_PID" ]]; then
     wait
 fi
