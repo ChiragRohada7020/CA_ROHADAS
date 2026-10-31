@@ -251,69 +251,6 @@ export default function CalendarPage() {
                               Create task
                             </Button>
                           )}
-                          <hr className="my-2 border-slate-200" />
-                          <div className="text-xs">
-                            {!entry.verified && (
-                              <button
-                                type="button"
-                                className="w-full text-left px-2 py-1 text-sky-600 hover:bg-sky-50 rounded hover:text-sky-700"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  // Verify date
-                                }}
-                              >
-                                Mark date verified
-                              </button>
-                            )}
-                            {entry.verified && (
-                              <button
-                                type="button"
-                                className="w-full text-left px-2 py-1 text-slate-600 hover:bg-slate-100 rounded hover:text-slate-900"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                }}
-                              >
-                                Mark date unverified
-                              </button>
-                            )}
-                            <button
-                              type="button"
-                              className="w-full text-left px-2 py-1 text-sky-600 hover:bg-sky-50 rounded hover:text-sky-700"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                // Edit dates
-                              }}
-                            >
-                              Edit due dates
-                            </button>
-                            {!entry.is_filed && (
-                              <button
-                                type="button"
-                                className="w-full text-left px-2 py-1 text-emerald-600 hover:bg-emerald-50 rounded hover:text-emerald-700"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  // Mark filed
-                                }}
-                              >
-                                Mark as filed
-                              </button>
-                            )}
-                            <button
-                              type="button"
-                              className="w-full text-left px-2 py-1 text-rose-600 hover:bg-rose-50 rounded hover:text-rose-700"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                // Remove deadline
-                              }}
-                            >
-                              Remove deadline
-                            </button>
-                          </div>
                         </div>
                       </td>
                       <td className="td">
