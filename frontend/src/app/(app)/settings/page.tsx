@@ -1,21 +1,146 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 
 import { Icon } from "@/components/Icon";
-import { Button, Input, PageHeader } from "@/components/ui";
+import { Badge, Button, Input, PageHeader } from "@/components/ui";
+import {
+  CheckboxField,
+  FormActions,
+  SelectField,
+  TextAreaField,
+  TextField,
+} from "@/components/form";
 import { cn } from "@/lib/format";
+import { api, ApiError } from "@/lib/api";
 import { useTheme } from "@/lib/theme";
 
 const MCP_URL = process.env.NEXT_PUBLIC_MCP_URL || "http://127.0.0.1:8000/mcp";
 
+interface ClientOption {
+  id: string;
+  name: string;
+  phone?: string;
+  whatsapp_number?: string;
+}
+
+interface WhatsAppStatus {
+  configured: boolean;
+  provider: string;
+  connected: boolean;
+  status: string;
+  connection_info: any;
+}
+
+interface WhatsAppQR {
+  qr_code: string | null;
+  pairing_code: string | null;
+  instructions: string;
+  provider: string;
+  connected: boolean;
+  connection_info: any;
+}
+
 export default function SettingsPage() {
   const [copied, setCopied] = useState(false);
   const { theme, setTheme } = useTheme();
+  const queryClient = useQueryClient();
+
+  // ── WhatsApp state ──
+  const [sendMessageError, setSendMessageError] = useState<string | null>(null);
+  const [sendInvoiceError, setSendInvoiceError] = useState<string | null>(null);
+  const [pairError, setPairError] = useState<string | null>(null);
+
+  const [sendMessagePhone, setSendMessagePhone] = useState("");
+  const [sendMessageText, setSendMessageText] = useState("");
+  const [pairPhone, setPairPhone] = useState("");
+  const [invoiceId, setInvoiceId] = useState("");
+  const [invoiceMessage, setInvoiceMessage] = useState("");
+
+  const {
+    data: status,
+    isLoading: statusLoading,
+    refetch: refetchStatus,
+  } = useQuery<WhatsAppStatus>({
+    queryKey: ["whatsapp", "status"],
+    queryFn: () => api.get<WhatsAppStatus>("/api/whatsapp/status"),
+    refetchInterval: 5000,
+    retry: 2,
+  });
+
+  const {
+    data: qrData,
+    isLoading: qrLoading,
+    refetch: refetchQR,
+  } = useQuery<WhatsAppQR>({
+    queryKey: ["whatsapp", "qr"],
+    queryFn: () => api.get<WhatsAppQR>("/api/whatsapp/qr"),
+    refetchInterval: (status?.connected === false || !status) ? 3000 : false,
+    retry: 2,
+  });
+
+  const {
+    data: clientsData,
+    isLoading: clientsLoading,
+  } = useQuery<{ items: ClientOption[] }>({
+    queryKey: ["clients", "list"],
+    queryFn: () => api.get<{ items: ClientOption[] }>("/clients?limit=500"),
+  });
+
+  const clients = clientsData?.items || [];
+
+  const pairMutation = useMutation({
+    mutationFn: (phoneNumber: string) =>
+      api.post("/api/whatsapp/pair", { phone_number: phoneNumber }),
+    onSuccess: () => {
+      setPairError(null);
+      setPairPhone("");
+      queryClient.invalidateQueries({ queryKey: ["whatsapp", "status"] });
+      queryClient.invalidateQueries({ queryKey: ["whatsapp", "qr"] });
+    },
+    onError: (err: any) => {
+      setPairError(err?.response?.data?.message || err?.message || "Pairing failed");
+    },
+  });
+
+  const sendMessageMutation = useMutation({
+    mutationFn: ({ phone_number, message }: { phone_number: string; message: string }) =>
+      api.post("/api/whatsapp/send-message", { phone_number, message }),
+    onSuccess: () => {
+      setSendMessageError(null);
+      setSendMessagePhone("");
+      setSendMessageText("");
+      queryClient.invalidateQueries({ queryKey: ["whatsapp", "status"] });
+    },
+    onError: (err: any) => {
+      setSendMessageError(err?.response?.data?.message || err?.message || "Send failed");
+    },
+  });
+
+  const sendInvoiceMutation = useMutation({
+    mutationFn: ({ invoice_id, message }: { invoice_id: string; message?: string }) =>
+      api.post(`/api/whatsapp/send-invoice/${invoice_id}`, { message }),
+    onSuccess: () => {
+      setSendInvoiceError(null);
+      setInvoiceId("");
+      setInvoiceMessage("");
+      queryClient.invalidateQueries({ queryKey: ["whatsapp", "status"] });
+    },
+    onError: (err: any) => {
+      setSendInvoiceError(err?.response?.data?.message || err?.message || "Send failed");
+    },
+  });
+
+  const isConnected = status?.connected === true;
+  const isPairing = status?.status === "qr_ready" || status?.status === "pairing";
+  const isConnecting = status?.status === "initializing" || status?.status === "connecting";
+
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <PageHeader title="Settings" subtitle="Firm-wide configuration and integrations." />
 
+      {/* ── Appearance ── */}
       <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <div className="flex items-center gap-3 border-b border-slate-200 px-5 py-4">
           <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-sky-50 text-sky-600 ring-1 ring-inset ring-sky-100">
@@ -37,6 +162,7 @@ export default function SettingsPage() {
         </div>
       </section>
 
+      {/* ── MCP connection ── */}
       <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <div className="flex items-center gap-3 border-b border-slate-200 px-5 py-4">
           <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-sky-50 text-sky-600 ring-1 ring-inset ring-sky-100">
@@ -75,6 +201,7 @@ export default function SettingsPage() {
         </div>
       </section>
 
+      {/* ── WhatsApp Connection ── */}
       <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <div className="flex items-center gap-3 border-b border-slate-200 px-5 py-4">
           <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-green-50 text-green-600 ring-1 ring-inset ring-green-100">
@@ -87,14 +214,182 @@ export default function SettingsPage() {
             </p>
           </div>
         </div>
-        <div className="space-y-3 px-5 py-4">
-          <WhatsAppConnection />
+
+        <div className="space-y-4 px-5 py-4">
+          {/* Status */}
+          <div className="flex items-center justify-between px-6 py-3 border-b border-slate-100">
+            <div className="flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-500">
+                <Icon name="clock" className="h-4 w-4" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-slate-900">Connection Status</p>
+                {status && (
+                  <p className="text-xs text-slate-500 mt-1">
+                    {status.configured ? "✓ Configured" : "✗ Not configured"} | Provider: {status.provider}
+                  </p>
+                )}
+              </div>
+            </div>
+            <Badge
+              tone={
+                isConnected ? "success" : isConnecting ? "info" : isPairing ? "warning" : "danger"
+              }
+            >
+              {isConnected ? "Connected" : isConnecting ? "Connecting…" : isPairing ? "QR required" : "Disconnected"}
+            </Badge>
+          </div>
+
+          {status?.connection_info && (
+            <div className="grid grid-cols-2 gap-4 text-sm text-slate-600 px-4 py-3 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <Icon name="clock" className="h-3 w-3" />
+                <span className="font-medium">{status.connection_info.status}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Icon name="clock" className="h-3 w-3" />
+                <span className="font-medium">{status.connection_info.last_disconnect || "—"}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Icon name="clock" className="h-3 w-3" />
+                <span className="font-medium">{status.connection_info.reconnect_count}</span>
+              </div>
+            </div>
+          )}
+
+          {/* QR Pairing */}
+          {!isConnected && !isConnecting && !isPairing && (
+            <div className="px-6 py-3">
+              <button
+                type="button"
+                className="w-full btn btn-ghost px-4 py-2"
+                onClick={() => refetchQR()}
+              >
+                <Icon name="clock" className="h-3 w-3 mr-2" />
+                Generate QR Code
+              </button>
+            </div>
+          )}
+
+          {qrData && qrData.qr_code && (
+            <div className="px-6 py-4 border-t border-slate-100">
+              <div className="flex flex-col items-center gap-3">
+                <div className="relative group">
+                  <img
+                    src={qrData.qr_code}
+                    alt="WhatsApp QR code"
+                    className="w-48 h-48 rounded-lg border border-slate-200 bg-white shadow-sm"
+                  />
+                  <div className="absolute inset-0 bg-black/20 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <Icon name="qrcode" className="h-10 w-10 text-white" />
+                  </div>
+                </div>
+                <p className="text-sm text-slate-500 text-center">
+                  {qrData.instructions || "Scan this QR code with WhatsApp > Linked devices > Link a device"}
+                </p>
+                {qrData.pairing_code && (
+                  <div className="px-3 py-1 rounded-md bg-slate-100 text-xs text-slate-600 font-mono">
+                    Pairing code: {qrData.pairing_code}
+                  </div>
+                )}
+              </div>
+              {pairError && <p className="px-2 text-xs text-rose-600">{pairError}</p>}
+            </div>
+          )}
+
+          {/* Pairing code form */}
+          {qrData?.pairing_code && (
+            <div className="px-6 py-3 border-t border-slate-100">
+              <form onSubmit={(e) => {
+                e.preventDefault();
+                pairMutation.mutate(pairPhone);
+              }} className="flex gap-2">
+                <TextField
+                  label="Pairing code"
+                  value={pairPhone}
+                  onChange={setPairPhone}
+                  placeholder="Enter code from phone"
+                />
+                <FormActions submitLabel="Pair" />
+              </form>
+              {pairError && <p className="px-2 text-xs text-rose-600">{pairError}</p>}
+            </div>
+          )}
+
+          {/* Send Message */}
+          <div className="pt-4 border-t border-slate-100">
+            <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-3 px-2">
+              Send Message
+            </h4>
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              sendMessageMutation.mutate({ phone_number: sendMessagePhone, message: sendMessageText });
+            }} className="grid grid-cols-1 gap-3 sm:grid-cols-3 px-2">
+              <TextField
+                label="Phone number"
+                value={sendMessagePhone}
+                onChange={setSendMessagePhone}
+                placeholder="+91 98765 43210"
+                hint="Include country code"
+                required
+              />
+              <TextAreaField
+                label="Message"
+                value={sendMessageText}
+                onChange={setSendMessageText}
+                rows={3}
+                placeholder="Hello, this is your CA firm…"
+              />
+              <div className="col-span-full flex items-end">
+                <FormActions submitLabel="Send message" busy={sendMessageMutation.isPending} />
+              </div>
+            </form>
+            {sendMessageError && <p className="px-2 text-xs text-rose-600">{sendMessageError}</p>}
+          </div>
+
+          {/* Send Invoice */}
+          <div className="pt-4 border-t border-slate-100">
+            <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-3 px-2">
+              Send Invoice
+            </h4>
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              sendInvoiceMutation.mutate({ invoice_id: invoiceId, message: invoiceMessage || undefined });
+            }} className="grid grid-cols-1 gap-3 sm:grid-cols-3 px-2">
+              <SelectField
+                label="Client"
+                value={invoiceId}
+                onChange={setInvoiceId}
+                placeholder="Select client…"
+                required
+                options={clients.map((c) => ({
+                  value: c.id,
+                  label: c.name + (c.whatsapp_number ? ` (${c.whatsapp_number})` : ""),
+                }))}
+              />
+              <TextAreaField
+                label="Message (optional)"
+                value={invoiceMessage}
+                onChange={setInvoiceMessage}
+                rows={2}
+                placeholder="Here is your invoice PDF…"
+              />
+              <div className="col-span-full flex items-end">
+                <FormActions submitLabel="Send invoice" busy={sendInvoiceMutation.isPending} />
+              </div>
+            </form>
+            {sendInvoiceError && <p className="px-2 text-xs text-rose-600">{sendInvoiceError}</p>}
+            {clients.length === 0 && (
+              <p className="px-2 pt-2 text-xs text-slate-500">
+                No clients found. Add a client first to send invoices via WhatsApp.
+              </p>
+            )}
+          </div>
         </div>
       </section>
     </div>
   );
 }
-
 
 /** A labelled radio option for the theme selector. */
 function ThemeOption({
@@ -144,95 +439,5 @@ function FieldSet({
       </legend>
       {children}
     </fieldset>
-  );
-}
-
-function WhatsAppConnection() {
-  const [qrData, setQrData] = useState<any>(null);
-  const [status, setStatus] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
-
-  const fetchStatus = async () => {
-    try {
-      const res = await fetch("/api/whatsapp/status");
-      if (!res.ok) {
-        setStatus({ configured: false, provider: "none" });
-        return;
-      }
-      const data = await res.json();
-      setStatus(data);
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const fetchQr = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/whatsapp/qr");
-      if (!res.ok) {
-        setQrData({
-          qr_code: null,
-          instructions: "WhatsApp integration is not configured.",
-        });
-        return;
-      }
-      const data = await res.json();
-      setQrData(data);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchStatus();
-  }, []);
-
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm font-medium text-slate-900">Connection Status</p>
-          {status && (
-            <p className="text-xs text-slate-500 mt-1">
-              {status.configured ? "✓ Configured" : "✗ Not configured"} | Provider: {status.provider}
-            </p>
-          )}
-        </div>
-        <button
-          type="button"
-          className="btn btn-ghost px-5 py-2.5"
-          onClick={fetchQr}
-          disabled={loading}
-        >
-          {loading ? "Generating..." : "Generate QR Code"}
-        </button>
-      </div>
-      {qrData && (
-        <div className="space-y-3">
-          {qrData.qr_code ? (
-            <img src={qrData.qr_code} alt="WhatsApp QR Code" className="w-48 h-48 border border-slate-200 rounded" />
-          ) : (
-            <div className="rounded-lg border border-slate-200 bg-[#f7f6f3] p-3 text-sm text-slate-700">
-              {qrData.instructions}
-            </div>
-          )}
-          <div className="text-xs text-slate-600 space-y-1">
-            <p><strong>Instructions:</strong> {qrData.instructions}</p>
-            <details className="mt-2">
-              <summary className="cursor-pointer text-slate-700">Connection Details</summary>
-              <pre className="mt-2 p-2 bg-[#f7f6f3] rounded text-[10px] overflow-auto">
-                {JSON.stringify(qrData.connection_info, null, 2)}
-              </pre>
-            </details>
-          </div>
-        </div>
-      )}
-      <div className="text-xs text-slate-500">
-        <p>To connect WhatsApp, configure the provider in your backend environment (.env file).</p>
-      </div>
-    </div>
   );
 }
