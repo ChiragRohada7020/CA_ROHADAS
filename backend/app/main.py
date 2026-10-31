@@ -25,6 +25,7 @@ from app.core.validation import validate_identifier
 from app.core.clock import today_local
 
 from app.routers.assistant import router as assistant_router
+from app.routers.attendance import router as attendance_router
 from app.routers.auth import router as auth_router
 from app.routers.billing import router as billing_router
 from app.routers.credit_notes import router as credit_notes_router
@@ -126,6 +127,7 @@ def create_app() -> FastAPI:
     for router in (
         auth_router,
         assistant_router,
+        attendance_router,
         billing_router,
         credit_notes_router,
         invoice_pdf_router,

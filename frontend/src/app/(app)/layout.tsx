@@ -57,6 +57,7 @@ const NAV: NavItem[] = [
     ],
   },
   { href: "/team", label: "Team", icon: "team", ready: true, permission: "user.read" },
+  { href: "/attendance", label: "Attendance", icon: "calendar", ready: true, permission: "user.read" },
   { href: "/reports", label: "Reports", icon: "reports", ready: true, permission: "report.read" },
   { href: "/services", label: "Services", icon: "check-circle", ready: true, permission: "service.read" },
   { href: "/integrations", label: "Integrations", icon: "integrations", ready: true, permission: "integration.read" },

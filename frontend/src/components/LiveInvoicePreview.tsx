@@ -37,6 +37,10 @@ export interface PreviewFormState {
 }
 
 const HEADER_CLASSES: Record<InvoiceTemplate, string> = {
+  modern_gst: "bg-[#172B4D] text-white",
+  wave: "bg-[#56C9C1] text-[#173F6B]",
+  studio: "bg-[#101C2C] text-white",
+  grid_v6: "bg-[#20262E] text-[#C7F36B]",
   fintech: "bg-[#635bff] text-white",
   corporate_premium: "border-t-4 border-[#1e3a5f] bg-[#f8fafc]",
   editorial: "border-b border-slate-300",
@@ -53,6 +57,10 @@ const HEADER_CLASSES: Record<InvoiceTemplate, string> = {
 };
 
 const TEXT_COLORS: Record<InvoiceTemplate, string> = {
+  modern_gst: "text-[#243247]",
+  wave: "text-[#243746]",
+  studio: "text-[#1B2A3A]",
+  grid_v6: "text-[#202A34]",
   fintech: "text-[#0a0a2e]",
   corporate_premium: "text-[#1a1a2e]",
   editorial: "text-[#1a1a2a]",

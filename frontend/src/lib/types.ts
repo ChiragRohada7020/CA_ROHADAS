@@ -2021,6 +2021,10 @@ export interface ShareLinkResult {
 }
 
 export type InvoiceTemplate =
+  | "modern_gst"
+  | "wave"
+  | "studio"
+  | "grid_v6"
   | "modern"
   | "classic"
   | "minimal"

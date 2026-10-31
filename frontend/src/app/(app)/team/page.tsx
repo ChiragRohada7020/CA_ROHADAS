@@ -500,58 +500,82 @@ export default function TeamPage() {
                           {humanise(person.status)}
                         </Badge>
                       </td>
-                      <td className="td text-right">
-                        <div className="relative inline-block">
-                          <button
-                            type="button"
-                            className="relative rounded px-1.5 py-0.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-                            onClick={() => setMenuMemberId(menuMemberId === person.id ? null : person.id)}
-                            aria-label={`Actions for ${person.full_name}`}
-                          >
-                            ⋮
-                          </button>
-                          {menuMemberId === person.id && (
-                            <div ref={menuRef} className="absolute right-0 z-20 mt-1 w-40 origin-top-right rounded-md border border-slate-200 bg-white shadow-lg">
-                              <button
-                                type="button"
-                                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-slate-100"
-                                onClick={() => {
-                                  setMenuMemberId(null);
-                                  setOpenMemberId(person.id);
-                                }}
-                              >
-                                <Icon name="eye" className="h-4 w-4" />
-                                Details
-                              </button>
-                              <button
-                                type="button"
-                                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-slate-100"
-                                onClick={() => {
-                                  setMenuMemberId(null);
-                                  setEditMemberId(person.id);
-                                }}
-                                disabled={!canDelete}
-                              >
-                                <Icon name="pencil" className="h-4 w-4" />
-                                Edit
-                              </button>
-                              <button
-                                type="button"
-                                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-rose-700 hover:bg-rose-50"
-                                onClick={async () => {
-                                  setMenuMemberId(null);
-                                  const ok = confirm(`Deactivate ${person.full_name}?`);
-                                  if (ok) {
-                                    await removeMutation.mutateAsync(person.id);
-                                  }
-                                }}
-                                disabled={!canDelete}
-                              >
-                                <Icon name="trash" className="h-4 w-4" />
-                                Delete
-                              </button>
-                            </div>
+                      <td className="td text-right overflow-visible">
+                        <div className="flex items-center gap-1">
+                          {canAddMember && (
+                            <button
+                              type="button"
+                              onClick={() => setEditMemberId(person.id)}
+                              className="rounded px-2 py-1 text-xs text-sky-700 hover:bg-sky-50 border border-sky-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                              disabled={!canAddMember}
+                              title="Edit member"
+                            >
+                              <Icon name="pencil" className="h-3 w-3" />
+                            </button>
                           )}
+                          <div className="relative inline-block">
+                            <button
+                              type="button"
+                              className="relative rounded px-1.5 py-0.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                              onClick={() => setMenuMemberId(menuMemberId === person.id ? null : person.id)}
+                              aria-label={`Actions for ${person.full_name}`}
+                            >
+                              ⋮
+                            </button>
+                            {menuMemberId === person.id && (
+                              <div ref={menuRef} className="absolute right-0 z-50 mt-1 w-48 origin-top-right rounded-md border border-slate-200 bg-white shadow-lg overflow-visible">
+                                <button
+                                  type="button"
+                                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-slate-100"
+                                  onClick={() => {
+                                    setMenuMemberId(null);
+                                    setOpenMemberId(person.id);
+                                  }}
+                                >
+                                  <Icon name="eye" className="h-4 w-4" />
+                                  Details
+                                </button>
+                                {canDelete ? (
+                                  <>
+                                    <button
+                                      type="button"
+                                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-slate-100"
+                                      onClick={() => {
+                                        setMenuMemberId(null);
+                                        setEditMemberId(person.id);
+                                      }}
+                                    >
+                                      <Icon name="pencil" className="h-4 w-4" />
+                                      Edit
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-rose-700 hover:bg-rose-50"
+                                      onClick={async () => {
+                                        setMenuMemberId(null);
+                                        const ok = confirm(`Deactivate ${person.full_name}?`);
+                                        if (ok) {
+                                          await removeMutation.mutateAsync(person.id);
+                                        }
+                                      }}
+                                    >
+                                      <Icon name="trash" className="h-4 w-4" />
+                                      Delete
+                                    </button>
+                                  </>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-slate-400"
+                                    disabled
+                                  >
+                                    <Icon name="pencil" className="h-4 w-4" />
+                                    Edit
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </td>
                     </tr>
