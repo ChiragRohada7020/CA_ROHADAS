@@ -26,19 +26,44 @@ const WINDOWS = [
   { value: "30", label: "Next 30 days" },
   { value: "90", label: "Next 90 days" },
   { value: "180", label: "Next 180 days" },
-] as const;
+];
+
+const CATEGORY_OPTIONS = [
+  { value: "gst", label: "GST" },
+  { value: "income_tax", label: "Income Tax" },
+  { value: "tds", label: "TDS" },
+  { value: "roc", label: "ROC/MCA" },
+  { value: "audit", label: "Audit" },
+];
+
+const STATUS_OPTIONS = [
+  { value: "open", label: "Open" },
+  { value: "filed", label: "Filed" },
+];
+
+const PRIORITY_OPTIONS = [
+  { value: "high", label: "High" },
+  { value: "medium", label: "Medium" },
+  { value: "normal", label: "Normal" },
+];
 
 export default function CalendarPage() {
   const today = todayInIST();
   const [windowDays, setWindowDays] = useState("30");
   const [onlyUnverified, setOnlyUnverified] = useState("");
   const [includeFiled, setIncludeFiled] = useState("");
+  const [category, setCategory] = useState("");
+  const [status, setStatus] = useState("");
+  const [priority, setPriority] = useState("");
 
   const fromDate = today;
   const toDate = addDays(today, Number(windowDays));
 
   const calendar = useQuery({
-    queryKey: ["calendar", { fromDate, toDate, onlyUnverified, includeFiled }],
+    queryKey: [
+      "calendar",
+      { fromDate, toDate, onlyUnverified, includeFiled, category, status, priority },
+    ],
     queryFn: () =>
       api.get<CalendarResponse>(
         `/compliance/calendar${buildQuery({
@@ -46,6 +71,9 @@ export default function CalendarPage() {
           to_date: toDate,
           only_unverified: onlyUnverified,
           include_filed: includeFiled,
+          category,
+          status,
+          priority,
           limit: 500,
         })}`,
       ),
@@ -61,8 +89,8 @@ export default function CalendarPage() {
       />
 
       {/* Filters bar */}
-      <Card className="p-4 sm:p-6">
-        <div className="grid grid-cols-1 gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <Card className="border-t-4 border-sky-200 p-4 sm:p-6 relative overflow-hidden">
+        <div className="grid grid-cols-1 gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
           <Select
             label="Window"
             value={windowDays}
@@ -83,6 +111,27 @@ export default function CalendarPage() {
             onChange={setIncludeFiled}
             options={[{ value: "true", label: "Include filed" }]}
             placeholder="Exclude filed"
+          />
+          <Select
+            label="Category"
+            value={category}
+            onChange={setCategory}
+            options={CATEGORY_OPTIONS}
+            placeholder="All categories"
+          />
+          <Select
+            label="Status"
+            value={status}
+            onChange={setStatus}
+            options={STATUS_OPTIONS}
+            placeholder="All statuses"
+          />
+          <Select
+            label="Priority"
+            value={priority}
+            onChange={setPriority}
+            options={PRIORITY_OPTIONS}
+            placeholder="All priorities"
           />
         </div>
       </Card>
@@ -125,7 +174,7 @@ export default function CalendarPage() {
       )}
 
       {calendar.isSuccess && data && data.entries.length > 0 && (
-        <Card className="p-4 sm:p-6">
+        <Card className="border-t-4 border-indigo-200 p-4 sm:p-6 relative overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[58rem]">
               <thead className="bg-[#f7f6f3]">

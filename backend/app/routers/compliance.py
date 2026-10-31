@@ -29,6 +29,9 @@ async def get_compliance_calendar(
     to_date: str | None = None,
     only_unverified: bool = False,
     include_filed: bool = False,
+    category: str | None = None,
+    status: str | None = None,
+    priority: str | None = None,
     limit: int = 500,
     db: Session = Depends(get_db),
 ) -> Any:
@@ -51,6 +54,7 @@ async def get_compliance_calendar(
             Deadline.period_key.label("period_key"),
             ComplianceRule.name.label("rule_name"),
             ComplianceRule.code.label("rule_code"),
+            ComplianceRule.category.label("rule_category"),
             Client.trade_name.label("trade_name"),
             Client.legal_name.label("legal_name"),
             Client.client_code.label("client_code"),
@@ -79,6 +83,12 @@ async def get_compliance_calendar(
         stmt = stmt.where(Deadline.verified.is_(False))
     if not include_filed:
         stmt = stmt.where((Task.filed_at.is_(None)) & (Deadline.verified.is_(False)))
+    if category:
+        stmt = stmt.where(ComplianceRule.category == category)
+    if status:
+        stmt = stmt.where(Task.status == status)
+    if priority:
+        stmt = stmt.where(Task.priority == priority)
 
     rows = db.execute(stmt).all()
 
