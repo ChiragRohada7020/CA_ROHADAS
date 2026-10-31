@@ -72,6 +72,25 @@ class CreditNote(Base):
     updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
     invoice = relationship("Invoice", foreign_keys=[invoice_id], back_populates="credit_notes")
+    lines = relationship("CreditNoteLine", back_populates="credit_note", cascade="all, delete-orphan")
+
+
+class CreditNoteLine(Base):
+    __tablename__ = "credit_note_lines"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    credit_note_id = Column(UUID(as_uuid=True), ForeignKey("credit_notes.id", ondelete="CASCADE"), nullable=False)
+    description = Column(String(255), nullable=False)
+    sac_code = Column(String(20), nullable=True)
+    quantity = Column(Float, default=1.0, nullable=False)
+    unit_price = Column(Float, default=0.0, nullable=False)
+    discount = Column(Float, default=0.0, nullable=False)
+    amount = Column(Float, default=0.0, nullable=False)
+    is_taxable = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+
+    credit_note = relationship("CreditNote", back_populates="lines")
 
 
 class RecurringFrequency(str, enum.Enum):

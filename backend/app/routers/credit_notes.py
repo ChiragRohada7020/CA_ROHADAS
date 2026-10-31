@@ -92,6 +92,16 @@ async def get_credit_note(request: Request, credit_note_id: str, db: Session = D
     }
 
 
+@router.get("/credit-notes/{credit_note_id}/lines")
+async def get_credit_note_lines_endpoint(request: Request, credit_note_id: str, db: Session = Depends(get_db)) -> Any:
+    principal = await get_current_user(request, db)
+    cn = db.get(CreditNote, credit_note_id)
+    if cn is None or str(cn.tenant_id) != str(principal.tenant_id):
+        raise NotFoundError(f"Credit note {credit_note_id} not found")
+    lines = credit_note_service.get_credit_note_lines(db, principal.tenant_id, credit_note_id)
+    return {"lines": lines}
+
+
 @router.post("/credit-notes/{credit_note_id}/issue", dependencies=[Depends(require_permission("credit_note.write"))])
 async def issue_credit_note(request: Request, credit_note_id: str, db: Session = Depends(get_db)) -> Any:
     principal = await get_current_user(request, db)

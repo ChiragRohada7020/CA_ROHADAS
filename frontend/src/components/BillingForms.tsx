@@ -1730,6 +1730,7 @@ export function CreditNoteForm({
   const [taxRate, setTaxRate] = useState(invoice.tax_rate || 0);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [itemsInitialized, setItemsInitialized] = useState(false);
 
   const computeTotalsFromItems = () => {
     let subtotal = 0;
@@ -1788,6 +1789,20 @@ export function CreditNoteForm({
         onClick={() => {
           setError(null);
           setOpen(true);
+          if (!itemsInitialized && invoice.lines?.length) {
+            setItems(
+              invoice.lines.map((line) => ({
+                description: line.description,
+                quantity: line.quantity,
+                unit_price: line.unit_price,
+                amount: line.amount,
+                discount: line.discount || 0,
+                is_taxable: line.is_taxable ?? true,
+                sac_code: line.sac_code ?? undefined,
+              })),
+            );
+            setItemsInitialized(true);
+          }
         }}
       >
         <Icon name="file-text" className="h-4 w-4" /> Raise Credit Note

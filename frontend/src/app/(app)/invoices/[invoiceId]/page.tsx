@@ -16,7 +16,7 @@ import { Icon } from "@/components/Icon";
 import { api } from "@/lib/api";
 import { formatDate, formatDateTime, formatMoney } from "@/lib/format";
 import { ageingTone, invoiceStatusLabel, invoiceStatusTone } from "@/lib/status";
-import type { InvoiceDetail, InvoiceTemplate } from "@/lib/types";
+import type { InvoiceDetail, InvoiceTemplate, CreditNoteRow, CreditNoteLine } from "@/lib/types";
 
 /**
  * One invoice: what was billed, what has been received, and what can be done to it.
@@ -54,6 +54,23 @@ export default function InvoiceDetailPage() {
   const [recurringFrequency, setRecurringFrequency] = useState("month");
   const [selectedPdfTemplate, setSelectedPdfTemplate] = useState<InvoiceTemplate | null>(null);
   const serviceOptions: ServiceOption[] = [];
+
+  const [selectedCreditNoteId, setSelectedCreditNoteId] = useState<string | null>(null);
+
+  const creditNotes = useQuery({
+    queryKey: ["invoice", invoiceId, "credit-notes"],
+    queryFn: () => api.get<CreditNoteRow[]>(`/invoices/${invoiceId}/credit-notes`),
+    enabled: !!invoiceId,
+  });
+
+  const creditNoteLines = useQuery({
+    queryKey: ["credit-note", selectedCreditNoteId, "lines"],
+    queryFn: () =>
+      api.get<{ lines: CreditNoteLine[] }>(`/credit-notes/${selectedCreditNoteId}/lines`).then(
+        (r) => r.lines,
+      ),
+    enabled: !!selectedCreditNoteId,
+  });
 
   const firmSettings = useQuery({
     queryKey: ["billing", "settings"],
@@ -483,6 +500,129 @@ export default function InvoiceDetailPage() {
               </p>
             )}
           </div>
+        </div>
+      </Card>
+
+      <Card title="Credit notes" subtitle="Credit notes raised against this invoice.">
+        <div className="p-4">
+          {creditNotes.isPending ? (
+            <LoadingState label="Loading credit notes…" />
+          ) : creditNotes.isError ? (
+            <ErrorState message="Could not load credit notes." />
+          ) : creditNotes.data?.length === 0 ? (
+            <EmptyState
+              title="No credit notes yet"
+              message="Credit notes raised against this invoice will appear here."
+            />
+          ) : (
+            <div className="space-y-2">
+              {creditNotes.data.map((cn) => (
+                <div
+                  key={cn.id}
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 p-3 hover:border-sky-300/50 transition-colors cursor-pointer"
+                  onClick={() => setSelectedCreditNoteId(selectedCreditNoteId === cn.id ? null : cn.id)}
+                >
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <div className="text-sm font-medium text-slate-900">
+                        {cn.note_number ?? "Credit note"}
+                      </div>
+                      <span
+                        className={`px-2 py-0.5 rounded text-xs font-medium ${
+                          cn.status === "issued"
+                            ? "bg-emerald-50 text-emerald-700"
+                            : cn.status === "cancelled"
+                              ? "bg-rose-50 text-rose-700"
+                              : "bg-slate-50 text-slate-700"
+                        }`}
+                      >
+                        {cn.status}
+                      </span>
+                    </div>
+                    {cn.reason && (
+                      <p className="text-xs text-slate-500 truncate max-w-[200px]">{cn.reason}</p>
+                    )}
+                    <div className="text-xs text-slate-500">
+                      {formatMoney(cn.total)} · {formatDate(cn.created_at)}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-sm font-semibold text-slate-900">
+                      -{formatMoney(cn.total)}
+                    </div>
+                    <button
+                      type="button"
+                      className="ml-2 text-xs text-sky-600 hover:text-sky-700"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedCreditNoteId(selectedCreditNoteId === cn.id ? null : cn.id);
+                      }}
+                    >
+                      {selectedCreditNoteId === cn.id ? "Hide details" : "View items"}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {selectedCreditNoteId && creditNoteLines.data && (
+            <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-slate-900">Credit note items</h3>
+                <button
+                  type="button"
+                  className="text-xs text-sky-600 hover:text-sky-700"
+                  onClick={() => setSelectedCreditNoteId(null)}
+                >
+                  Close
+                </button>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-slate-100">
+                    <tr>
+                      <th className="th text-left">Description</th>
+                      <th className="th text-center">SAC</th>
+                      <th className="th text-right">Qty</th>
+                      <th className="th text-right">Rate (₹)</th>
+                      <th className="th text-right">Amount (₹)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200">
+                    {creditNoteLines.data.map((line) => (
+                      <tr key={line.id} className="group hover:bg-white/50">
+                        <td className="td p-2">
+                          <div className="text-sm text-slate-900">{line.description}</div>
+                          {line.sac_code && (
+                            <div className="text-xs text-slate-500 font-mono">{line.sac_code}</div>
+                          )}
+                        </td>
+                        <td className="td p-2 text-center text-slate-600">{line.sac_code ?? "—"}</td>
+                        <td className="td p-2 text-right tabular text-slate-600">{line.quantity}</td>
+                        <td className="td p-2 text-right tabular text-slate-600">
+                          {formatMoney(line.unit_price)}
+                        </td>
+                        <td className="td p-2 text-right tabular text-slate-900 font-medium">
+                          {formatMoney(line.amount)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot className="bg-white">
+                    <tr>
+                      <td className="td p-3 text-right" colSpan={4}>
+                        <span className="text-sm font-medium text-slate-700">Total:</span>{" "}
+                        <span className="text-sm font-bold text-slate-900">
+                          -{formatMoney(creditNoteLines.data.reduce((sum, l) => sum + l.amount, 0))}
+                        </span>
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
       </Card>
 

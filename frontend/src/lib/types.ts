@@ -2254,6 +2254,17 @@ export interface CreditNoteCreatePayload {
   note_type?: 'credit' | 'debit';
 }
 
+export interface CreditNoteLine {
+  id: string;
+  description: string;
+  sac_code?: string | null;
+  quantity: number;
+  unit_price: number;
+  discount?: number;
+  amount: number;
+  is_taxable: boolean;
+}
+
 /** Metadata describing an invoice PDF template for the selector UI. */
 export interface InvoiceTemplateMeta {
   id: InvoiceTemplate;

@@ -25,7 +25,7 @@ def create_credit_note(
     note_type: str = "credit",
     created_by_id: str | None = None,
 ):
-    from app.models import Invoice, CreditNote, Client, BillingSettings
+    from app.models import Invoice, CreditNote, CreditNoteLine, Client, BillingSettings
     from app.services.billing import compute_invoice, resolve_tax
 
     invoice = db.get(Invoice, invoice_id)
@@ -63,6 +63,21 @@ def create_credit_note(
     db.add(cn)
     db.flush()
 
+    # Save line items
+    for item in items:
+        line = CreditNoteLine(
+            tenant_id=str(tenant_id),
+            credit_note_id=cn.id,
+            description=item.get("description", ""),
+            sac_code=item.get("sac_code"),
+            quantity=float(item.get("quantity", 1) or 1),
+            unit_price=float(item.get("unit_price", 0) or 0),
+            discount=float(item.get("discount", 0) or 0),
+            amount=float(item.get("amount", 0) or 0),
+            is_taxable=bool(item.get("is_taxable", True)),
+        )
+        db.add(line)
+
     prefix = f"CN-{datetime.utcnow().strftime('%y%m')}-"
     max_num = db.execute(
         select(CreditNote.note_number).where(
@@ -82,6 +97,30 @@ def create_credit_note(
     db.commit()
     db.refresh(cn)
     return cn
+
+
+def get_credit_note_lines(db, tenant_id, credit_note_id):
+    """Return line items for a credit note."""
+    from app.models import CreditNoteLine
+    rows = db.execute(
+        select(CreditNoteLine).where(
+            CreditNoteLine.credit_note_id == credit_note_id,
+            CreditNoteLine.tenant_id == tenant_id,
+        )
+    ).scalars().all()
+    return [
+        {
+            "id": str(r.id),
+            "description": r.description,
+            "sac_code": r.sac_code,
+            "quantity": r.quantity,
+            "unit_price": r.unit_price,
+            "discount": r.discount,
+            "amount": r.amount,
+            "is_taxable": r.is_taxable,
+        }
+        for r in rows
+    ]
 
 
 def issue_credit_note(db, tenant_id, credit_note_id):

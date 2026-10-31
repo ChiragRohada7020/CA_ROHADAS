@@ -30,7 +30,7 @@ from app.models.document import (
     DocumentShare, DocumentAccessLog, DocumentStatus,
 )
 from app.models.invoice import (
-    Invoice, InvoiceLine, Payment, PaymentAllocation, BillingSettings, ClientSummaryRow, CreditNote, RecurringSchedule,
+    Invoice, InvoiceLine, Payment, PaymentAllocation, BillingSettings, ClientSummaryRow, CreditNote, CreditNoteLine, RecurringSchedule,
     InvoiceStatus, GstTaxType, PaymentMethod, CreditNoteType, CreditNoteStatus, RecurringFrequency, RecurringStatus,
     PaymentReminder, Receipt,
 )
@@ -54,7 +54,7 @@ __all__ = [
     "DeadlineOverride", "FilingRecord", "Acknowledgement", "RuleStatus",
     "Document", "DocumentVersion", "DocumentLink", "DocumentRequest",
     "DocumentShare", "DocumentAccessLog", "DocumentStatus",
-    "Invoice", "InvoiceLine", "Payment", "PaymentAllocation", "BillingSettings", "ClientSummaryRow", "CreditNote",
+    "Invoice", "InvoiceLine", "Payment", "PaymentAllocation", "BillingSettings", "ClientSummaryRow", "CreditNote", "CreditNoteLine",
     "InvoiceStatus", "GstTaxType", "PaymentMethod", "CreditNoteType", "CreditNoteStatus",
     "PaymentReminder", "Receipt",
     "Conversation", "ConversationMessage", "Notification",
