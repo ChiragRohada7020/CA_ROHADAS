@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 
+import { Icon } from "@/components/Icon";
 import {
   Badge,
   Button,
@@ -59,8 +60,9 @@ export default function CalendarPage() {
         subtitle={`Statutory dates from ${formatDate(fromDate)} to ${formatDate(toDate)}, reasoned in IST.`}
       />
 
-      <Card>
-        <div className="grid grid-cols-1 gap-3 border-b border-slate-200 p-4 sm:grid-cols-2 lg:grid-cols-3">
+      {/* Filters bar */}
+      <Card className="p-4 sm:p-6">
+        <div className="grid grid-cols-1 gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Select
             label="Window"
             value={windowDays}
@@ -83,47 +85,50 @@ export default function CalendarPage() {
             placeholder="Exclude filed"
           />
         </div>
+      </Card>
 
-        {data && (
-          <div className="grid grid-cols-2 gap-3 border-b border-slate-200 p-4 md:grid-cols-4">
-            <StatCard label="Entries in window" value={data.total} />
-            <StatCard
-              label="Overdue"
-              value={data.overdue_count}
-              tone={data.overdue_count > 0 ? "danger" : "success"}
-            />
-            <StatCard
-              label="Unconfirmed dates"
-              value={data.unverified_count}
-              tone={data.unverified_count > 0 ? "warning" : "success"}
-              hint="No person has verified these"
-            />
-            <StatCard
-              label="Filed"
-              value={data.entries.filter((entry) => entry.is_filed).length}
-              tone="success"
-            />
-          </div>
-        )}
-
-        {calendar.isPending && <LoadingState label="Loading calendar…" />}
-        {calendar.isError && (
-          <ErrorState
-            message={
-              calendar.error instanceof ApiError
-                ? calendar.error.message
-                : "Could not load the calendar."
-            }
+      {/* Stats */}
+      {data && (
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4">
+          <StatCard label="Entries in window" value={data.total} />
+          <StatCard
+            label="Overdue"
+            value={data.overdue_count}
+            tone={data.overdue_count > 0 ? "danger" : "success"}
           />
-        )}
-        {calendar.isSuccess && data && data.entries.length === 0 && (
-          <EmptyState message="Nothing falls in this window." />
-        )}
+          <StatCard
+            label="Unconfirmed dates"
+            value={data.unverified_count}
+            tone={data.unverified_count > 0 ? "warning" : "success"}
+            hint="No person has verified these"
+          />
+          <StatCard
+            label="Filed"
+            value={data.entries.filter((entry) => entry.is_filed).length}
+            tone="success"
+          />
+        </div>
+      )}
 
-        {calendar.isSuccess && data && data.entries.length > 0 && (
+      {calendar.isPending && <LoadingState label="Loading calendar…" />}
+      {calendar.isError && (
+        <ErrorState
+          message={
+            calendar.error instanceof ApiError
+              ? calendar.error.message
+              : "Could not load the calendar."
+          }
+        />
+      )}
+      {calendar.isSuccess && data && data.entries.length === 0 && (
+        <EmptyState message="Nothing falls in this window." />
+      )}
+
+      {calendar.isSuccess && data && data.entries.length > 0 && (
+        <Card className="p-4 sm:p-6">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[58rem]">
-              <thead className="bg-slate-50">
+              <thead className="bg-[#f7f6f3]">
                 <tr>
                   <th className="th">Statutory date</th>
                   <th className="th">Timing</th>
@@ -142,7 +147,7 @@ export default function CalendarPage() {
                   return (
                     <tr
                       key={entry.task_id ?? entry.deadline_id ?? `${entry.client_id}-${index}`}
-                      className={`hover:bg-slate-50 ${isOverdue ? "bg-rose-50" : ""}`}
+                      className={`hover:bg-[#f7f6f3] ${isOverdue ? "bg-rose-50" : ""}`}
                     >
                       <td className="td tabular text-xs font-medium text-slate-900">
                         {formatDate(entry.statutory_due_date)}
@@ -209,8 +214,8 @@ export default function CalendarPage() {
               </tbody>
             </table>
           </div>
-        )}
-      </Card>
+        </Card>
+      )}
     </div>
   );
 }
