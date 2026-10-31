@@ -188,7 +188,6 @@ export default function CalendarPage() {
                           )}
                           {!entry.task_id && (
                             <Button
-                              asChild
                               size="sm"
                               variant="outline"
                               className="text-xs"
