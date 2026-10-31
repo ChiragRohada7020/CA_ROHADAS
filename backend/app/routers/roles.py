@@ -4,6 +4,7 @@ Endpoints:
   GET  /permissions              — permission catalogue
   GET  /roles                    — role list with permissions
   GET  /roles/{id}               — role detail
+  POST /roles                    — create a new role
   PATCH /roles/{id}              — update role permission grants
   GET  /users/{user_id}/permissions    — effective permissions for a user
   PATCH /users/{user_id}/permissions   — set per-user permission overrides
@@ -11,6 +12,7 @@ Endpoints:
 """
 from __future__ import annotations
 
+import re
 from datetime import datetime, timezone
 from typing import Any
 
@@ -269,6 +271,93 @@ async def delete_role(
     db.delete(role)
     db.commit()
     return {"ok": True}
+
+
+@router.post("/roles")
+async def create_role(
+    request: Request,
+    payload: Any = Body(...),
+    db: Session = Depends(get_db),
+    principal: Any = Depends(require_permission("role.write")),
+) -> Any:
+    """Create a new role with the given permission grants.
+
+    Body: {"name": "...", "description": "...", "data_scope": "team",
+           "is_system": false, "permission_codes": ["client.read", ...]}
+    """
+    principal = await get_current_user(request, db)
+    tenant_id = principal.tenant_id
+
+    p = payload if isinstance(payload, dict) else payload.dict()
+    name = (p.get("name") or "").strip()
+    if not name:
+        from app.core.errors import BadRequestError
+        raise BadRequestError("Role name is required.")
+
+    # Derive a stable code from the name (slugified).
+    code = re.sub(r"[^a-z0-9]+", "_", name.lower()).strip("_")
+    if not code:
+        from app.core.errors import BadRequestError
+        raise BadRequestError("Could not derive a role code from the name.")
+
+    description = p.get("description")
+    data_scope = p.get("data_scope") or "team"
+    is_system = bool(p.get("is_system", False))
+    permission_codes = list(p.get("permission_codes", []) or [])
+
+    # Validate duplicate code within tenant.
+    existing = db.execute(
+        select(Role).where(Role.code == code, Role.tenant_id == tenant_id)
+    ).scalars().first()
+    if existing is not None:
+        from app.core.errors import BadRequestError
+        raise BadRequestError(f"A role with code '{code}' already exists.")
+
+    # Validate that every permission code exists.
+    if permission_codes:
+        known = {
+            r[0]
+            for r in db.execute(
+                select(Permission.code).where(Permission.code.in_(permission_codes))
+            ).fetchall()
+        }
+        unknown = set(permission_codes) - known
+        if unknown:
+            from app.core.errors import BadRequestError
+            raise BadRequestError(
+                f"Unknown permission code(s): {', '.join(sorted(unknown))}"
+            )
+
+    role = Role(
+        tenant_id=tenant_id,
+        code=code,
+        name=name,
+        description=description,
+        data_scope=data_scope,
+        is_system=is_system,
+        is_active=True,
+    )
+    db.add(role)
+    db.flush()
+
+    for code_ in permission_codes:
+        db.add(RolePermission(role_id=role.id, permission_code=code_))
+
+    db.commit()
+
+    perms = db.execute(
+        select(RolePermission.permission_code).where(RolePermission.role_id == role.id)
+    ).scalars().all()
+    return {
+        "id": str(role.id),
+        "code": role.code,
+        "name": role.name,
+        "description": role.description,
+        "data_scope": role.data_scope,
+        "is_system": role.is_system,
+        "is_active": role.is_active,
+        "permissions": list(perms),
+    }
 
 
 @router.get("/users/{user_id}/permissions")

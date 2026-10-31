@@ -248,9 +248,13 @@ export default function RolesPage() {
     "Modules",
   );
   const [searchQuery, setSearchQuery] = useState("");
+  const [moduleSearchQuery, setModuleSearchQuery] = useState("");
+  const [roleSearchQuery, setRoleSearchQuery] = useState("");
   const [collapsedModules, setCollapsedModules] = useState<Set<string>>(
     new Set(),
   );
+  // Single module to focus on. When set, only that module's permissions show.
+  const [selectedModule, setSelectedModule] = useState<string | null>(null);
   // Working copy of permission grants: role id → set of permission codes.
   const [grants, setGrants] = useState<Map<string, Set<string>>>(new Map());
   // Snapshot of original grants (for change detection).
@@ -343,7 +347,7 @@ export default function RolesPage() {
 
   // Does the selected role have unsaved changes?
   const hasUnsavedChanges = useMemo(() => {
-    if (!selectedRoleId || !canSaveSelectedRole) return false;
+    if (!selectedRoleId) return false;
     const original = originalGrantsRef.current.get(selectedRoleId);
     const current = grants.get(selectedRoleId);
     if (!current) return false;
@@ -353,22 +357,16 @@ export default function RolesPage() {
       if (!original.has(code)) return true;
     }
     return false;
-  }, [grants, selectedRoleId, canSaveSelectedRole]);
+  }, [grants, selectedRoleId]);
 
-  // Permissions grouped by module, filtered by search + view mode.
+  // Permissions grouped by module, filtered by module search.
   // Each entry: { module, perms: PermissionDef[] }
   const modules = useMemo(() => {
-    const query = searchQuery.toLowerCase().trim();
+    const query = moduleSearchQuery.toLowerCase().trim();
     const grouped = new Map<string, PermissionDef[]>();
 
     for (const p of catalogue) {
-      const match =
-        !query ||
-        p.action.toLowerCase().includes(query) ||
-        p.module.toLowerCase().includes(query) ||
-        (p.description ?? "").toLowerCase().includes(query);
-      if (!match) continue;
-
+      if (query && !p.module.toLowerCase().includes(query)) continue;
       const arr = grouped.get(p.module) ?? [];
       arr.push(p);
       grouped.set(p.module, arr);
@@ -378,7 +376,7 @@ export default function RolesPage() {
       module,
       perms,
     }));
-  }, [catalogue, searchQuery, viewMode]);
+  }, [catalogue, moduleSearchQuery]);
 
   // Module is collapsed?
   const isModuleCollapsed = (module: string) =>
@@ -626,13 +624,57 @@ export default function RolesPage() {
           </div>
 
           {/* ── Role selection cards ── */}
+          <div className="relative mb-3">
+            <Icon
+              name="search"
+              className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400"
+            />
+            <input
+              type="search"
+              placeholder="Search roles…"
+              value={roleSearchQuery}
+              onChange={(e) => setRoleSearchQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") setRoleSearchQuery("");
+              }}
+              className="w-full h-[36px] rounded-md pl-9 pr-3 text-[12px] outline-none transition"
+               style={{
+                 borderColor: "var(--role-page-search-border)",
+                 borderRadius: 7,
+                 fontSize: 12,
+                 paddingLeft: 34,
+                 paddingRight: 10,
+                 backgroundColor: "var(--role-page-card-bg)",
+               }}
+              onFocus={(e) => {
+                (e.target).style.borderColor = PRIMARY;
+              }}
+              onBlur={(e) => {
+                (e.target).style.borderColor = "var(--role-page-search-border)";
+            }}
+          />
+          {roleSearchQuery && (
+            <button
+              type="button"
+              onClick={() => setRoleSearchQuery("")}
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-700"
+              aria-label="Clear role search"
+            >
+              <Icon name="x" className="h-3 w-3" />
+            </button>
+          )}
+          </div>
           <div
             role="tablist"
             aria-label="Select a role"
-            className="flex gap-8"
-            style={{ marginBottom: 24, display: "flex", gap: "8px" }}
+            className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:flex lg:flex-row gap-2 mb-6"
+            style={{ marginBottom: 24 }}
           >
-            {ROLE_ORDER.map((key) => {
+            {ROLE_ORDER.filter((key) => {
+              const config = ROLE_CONFIG[key];
+              const q = roleSearchQuery.toLowerCase().trim();
+              return !q || config.label.toLowerCase().includes(q) || config.description.toLowerCase().includes(q);
+            }).map((key) => {
               const config = ROLE_CONFIG[key];
               const isSelected = selectedKey === key;
               return (
@@ -644,17 +686,16 @@ export default function RolesPage() {
                     setSelectedKey(key);
                     setToast(null);
                   }}
-                  className="relative flex flex-col cursor-pointer"
+                  className="relative flex flex-col cursor-pointer w-full lg:flex-1 lg:min-w-0"
                   style={{
-                    minHeight: 128,
-                    padding: 16,
+                    minHeight: 112,
+                    padding: 12,
                     background: "var(--role-page-card-bg)",
                     borderColor: isSelected ? "var(--role-page-primary)" : "var(--role-page-border)",
                     borderRadius: 9,
                     boxShadow: isSelected
                       ? "0 0 0 3px rgba(22,119,255,0.12), 0 1px 2px rgba(15,23,42,0.04)"
                       : "0 1px 2px rgba(15,23,42,0.04)",
-                    flex: 1,
                     minWidth: 0,
                     cursor: "pointer",
                     transition: "all 120ms ease",
@@ -670,24 +711,24 @@ export default function RolesPage() {
                 >
                   <div
                     style={{
-                      width: 44,
-                      height: 44,
+                      width: 40,
+                      height: 40,
                       borderRadius: 9,
                       background: config.iconBg,
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      marginBottom: 12,
+                      marginBottom: 10,
                       color: config.iconColor,
                     }}
                   >
-                    <Icon name={config.icon} className="h-5 w-5" />
+                    <Icon name={config.icon} className="h-4 w-4" />
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <h3 style={{
                       color: INK,
                       fontWeight: "650",
-                      fontSize: 14,
+                      fontSize: 13,
                       margin: "0 0 4px 0",
                       overflow: "hidden",
                       whiteSpace: "nowrap",
@@ -698,11 +739,11 @@ export default function RolesPage() {
                     <p style={{
                       color: MUTED,
                       fontWeight: "400",
-                      fontSize: 12,
-                      lineHeight: "17px",
+                      fontSize: 11,
+                      lineHeight: "15px",
                       margin: 0,
                       display: "-webkit-box",
-                      WebkitLineClamp: 3,
+                      WebkitLineClamp: 2,
                       WebkitBoxOrient: "vertical",
                       overflow: "hidden",
                     }}>
@@ -711,7 +752,7 @@ export default function RolesPage() {
                   </div>
                   <div style={{
                      marginTop: "auto",
-                    fontSize: 12,
+                    fontSize: 11,
                     fontWeight: 500,
                     color: MUTED,
                   }}>
@@ -722,23 +763,26 @@ export default function RolesPage() {
                     aria-label={`Options for ${config.label}`}
                     onClick={(e) => {
                       e.stopPropagation();
+                      e.preventDefault();
                       const matched = matchedRoles.get(key);
                       if (!matched || matched.is_system) {
                         setToast({
-                          text:
-                            "System roles cannot be deleted.",
+                          text: "System roles cannot be deleted.",
                           kind: "error",
                         });
                       } else {
                         setToast({
-                          text:
-                            "Delete role is not yet implemented in the card menu. Use the Delete Role button in the detail panel.",
+                          text: "Use the Delete Role button in the detail panel.",
                           kind: "error",
                         });
                       }
                     }}
-                    className="btn-icon absolute bottom-6 right-8"
-                    style={{ bottom: 16, right: 16 }}
+                    onTouchEnd={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                    }}
+                    className="btn-icon absolute bottom-4 right-4 z-10"
+                    style={{ bottom: 12, right: 12 }}
                   >
                     <Icon name="more-vertical" className="h-4 w-4" />
                   </button>
@@ -767,11 +811,11 @@ export default function RolesPage() {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "minmax(0, 1fr) 450px",
+              gridTemplateColumns: "minmax(0, 1fr)",
               gap: 14,
               alignItems: "start",
             }}
-            className="min-w-0"
+            className="min-w-0 lg:grid-cols-[minmax(0,1fr)_450px]"
           >
             {/* Left: Permissions matrix panel */}
             <section
@@ -783,32 +827,32 @@ export default function RolesPage() {
               }}
               >
               <div
-                className="flex items-center justify-between border-b px-4 py-3"
+                className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b px-4 py-3"
                 style={{
-                  padding: "18px 19px 14px 19px",
+                  padding: "14px 19px 12px 19px",
                   backgroundColor: "var(--role-page-table-header)",
                   borderBottomColor: BORDER,
                 }}
               >
                 <div className="min-w-0 flex items-center gap-3">
                   <h2
-                    className="text-[20px] font-bold leading-none"
+                    className="text-[18px] font-bold leading-none sm:text-[20px]"
                     style={{ color: INK, fontWeight: 700, margin: 0 }}
                   >
                     Permissions
                   </h2>
                   <p
-                    className="text-[13px] text-slate-500 leading-none"
+                    className="text-[12px] text-slate-500 leading-none sm:text-[13px] hidden sm:block"
                     style={{ margin: 0, marginTop: 2 }}
                   >
                     Manage what each role can access and do
                   </p>
                 </div>
-                <div className="ml-auto flex items-center gap-2">
+                <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2 w-full sm:w-auto">
                   <div
                     role="group"
                     aria-label="View permissions by"
-                    className="inline-flex"
+                    className="inline-flex sm:min-w-[180px]"
                     style={{
                        background: "var(--role-page-toggle-bg)",
                       borderRadius: 7,
@@ -827,15 +871,18 @@ export default function RolesPage() {
                           onClick={() => setViewMode(option)}
                           className="inline-flex items-center justify-center whitespace-nowrap"
                           style={{
-                            fontSize: 12,
-                            padding: "8px 12px",
+                            fontSize: 11,
+                            padding: "6px 10px",
                             borderRadius: 5,
                             cursor: "pointer",
                              color: active ? SELECTED_TEXT : MUTED,
                             fontWeight: active ? 600 : 400,
                             background: active ? SELECTED_BG : "transparent",
-                            minWidth: 56,
+                            minWidth: 48,
                             textAlign: "center",
+                            flex: 1,
+                            display: "flex",
+                            justifyContent: "center",
                           }}
                         >
                           {option}
@@ -844,7 +891,7 @@ export default function RolesPage() {
                     })}
                   </div>
 
-                  <div className="relative">
+                  <div className="relative flex-1 sm:flex-0 sm:w-[190px]">
                     <Icon
                       name="search"
                       className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400"
@@ -857,7 +904,7 @@ export default function RolesPage() {
                       onKeyDown={(e) => {
                         if (e.key === "Escape") setSearchQuery("");
                       }}
-                      className="w-[190px] h-[36px] rounded-md pl-9 pr-3 text-[12px] outline-none transition"
+                      className="w-full h-[36px] rounded-md pl-9 pr-3 text-[12px] outline-none transition"
                        style={{
                          borderColor: "var(--role-page-search-border)",
                          borderRadius: 7,
@@ -887,9 +934,51 @@ export default function RolesPage() {
                 </div>
               </div>
 
+              {/* Module search */}
+              <div className="relative mb-2 px-4 sm:px-0">
+                <Icon
+                  name="search"
+                  className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400"
+                />
+                <input
+                  type="search"
+                  placeholder="Search modules…"
+                  value={moduleSearchQuery}
+                  onChange={(e) => setModuleSearchQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Escape") setModuleSearchQuery("");
+                  }}
+                  className="w-full h-[36px] rounded-md pl-9 pr-3 text-[12px] outline-none transition"
+                   style={{
+                     borderColor: "var(--role-page-search-border)",
+                     borderRadius: 7,
+                     fontSize: 12,
+                     paddingLeft: 34,
+                     paddingRight: 10,
+                     backgroundColor: "var(--role-page-card-bg)",
+                   }}
+                  onFocus={(e) => {
+                    (e.target).style.borderColor = PRIMARY;
+                  }}
+                  onBlur={(e) => {
+                    (e.target).style.borderColor = "var(--role-page-search-border)";
+                }}
+              />
+              {moduleSearchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setModuleSearchQuery("")}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-700"
+                  aria-label="Clear module search"
+                >
+                  <Icon name="x" className="h-3 w-3" />
+                </button>
+              )}
+            </div>
+
               <div
-                className="overflow-x-auto overflow-y-auto flex-1 min-h-0"
-                style={{ padding: "0 19px 19px 19px", outline: "none" }}
+                className="overflow-x-auto overflow-y-auto flex-1 min-h-0 -mx-2 px-2 md:mx-0 md:px-4"
+                style={{ paddingBottom: 19, outline: "none" }}
                 tabIndex={-1}
               >
                 {modules.length === 0 ? (
@@ -897,207 +986,257 @@ export default function RolesPage() {
                     No permissions match your search.
                   </div>
                 ) : (
-                  <div className="min-w-full">
-                    <table
-                      className="min-w-full border-collapse text-sm"
-                      style={{ borderSpacing: 0 }}
-                    >
-                      <thead>
-                          <tr className="sticky top-0 z-10 bg-white">
+                  <div className="relative min-w-full">
+                    {/* Header scrolls only vertically; stays fixed horizontally */}
+                    <div className="overflow-hidden border-b border-slate-200">
+                      <table
+                        className="min-w-full border-collapse text-sm table-fixed"
+                        style={{ borderSpacing: 0 }}
+                      >
+                        <colgroup>
+                          <col style={{ width: 240 }} />
+                          {selectedKey && (
+                            <col key="role" style={{ width: 70 }} />
+                          )}
+                        </colgroup>
+                        <thead>
+                          <tr>
                             <th
                               className="text-left"
                               style={{
-                                padding: "15px 15px 15px 0",
-                                fontSize: 12,
+                                padding: "10px 12px 10px 8px",
+                                fontSize: 11,
                                 fontWeight: 600,
                                 color: MUTED,
                                 borderBottom: `1px solid ${BORDER}`,
-                                position: "sticky",
-                                left: 0,
                                 background: "var(--role-page-table-header)",
-                              zIndex: 11,
-                              width: 315,
-                            }}
-                          >
-                            Module / Permission
-                          </th>
-                          {ROLE_ORDER.map((key) => {
-                            const config = ROLE_CONFIG[key];
-                            const backendRole = matchedRoles.get(key) ?? null;
-                            return (
+                                position: "sticky",
+                                top: 0,
+                                left: 0,
+                                zIndex: 30,
+                                width: 240,
+                              }}
+                            >
+                              Module / Permission
+                            </th>
+                            {selectedKey && (
                               <th
-                                key={key}
-                                className="px-2 py-2 text-center"
+                                key={selectedKey}
+                                className="px-1 py-1 text-center"
                                 style={{
-                                  width: 108,
-                                  paddingTop: 16,
-                                  paddingBottom: 16,
+                                  width: 70,
+                                  paddingTop: 10,
+                                  paddingBottom: 10,
+                                  fontSize: 10,
                                   borderBottom: `1px solid ${BORDER}`,
+                                  background: "var(--role-page-card-bg)",
                                   position: "sticky",
                                   top: 0,
-                background: "var(--role-page-card-bg)",
-                                  zIndex: 11,
+                                  zIndex: 20,
+                                  whiteSpace: "nowrap",
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
                                 }}
-                                title={`${config.label} · ${backendRole?.data_scope ?? "—"}`}
                               >
-                                <div className="flex flex-col items-center gap-1.5">
+                                <div className="flex flex-col items-center gap-1">
                                   <div
                                     style={{
-                                      width: 25,
-                                      height: 25,
-                                      borderRadius: 6,
-                                      background: config.iconBg,
+                                      width: 30,
+                                      height: 30,
+                                      borderRadius: 8,
+                                      background: ROLE_CONFIG[selectedKey].iconBg,
                                       display: "flex",
                                       alignItems: "center",
                                       justifyContent: "center",
                                       marginBottom: 2,
-                                      color: config.iconColor,
+                                      color: ROLE_CONFIG[selectedKey].iconColor,
                                     }}
                                   >
-                                    <Icon name={config.icon} className="h-3.5 w-3.5" />
+                                    <Icon
+                                      name={ROLE_CONFIG[selectedKey].icon}
+                                      className="h-6 w-6"
+                                    />
                                   </div>
                                   <span
-                                    className="text-[11px] leading-none"
+                                    className="text-[9px] leading-none font-bold"
                                     style={{
-                                      fontWeight: 600,
                                       color: "#172554",
                                       display: "block",
                                       textAlign: "center",
                                     }}
                                   >
-                                    {config.label}
+                                    {
+                                      ROLE_CONFIG[selectedKey].label.length > 6
+                                        ? ROLE_CONFIG[selectedKey].label.slice(
+                                            0,
+                                            6,
+                                          ) + "..."
+                                        : ROLE_CONFIG[selectedKey].label
+                                    }
                                   </span>
                                 </div>
                               </th>
-                            );
-                          })}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {modules.map((mod) => {
-                          const collapsed = collapsedModules.has(mod.module);
-                          const visiblePerms = collapsed ? [] : mod.perms;
-                          return (
-                                            <Fragment key={`module-${mod.module}`}>
-                                              <tr
-                                                key={`module-${mod.module}`}
-                                                className="cursor-pointer"
-                                                onClick={() => {
-                                                  setCollapsedModules((prev) => {
-                                                    const next = new Set(prev);
-                                                    if (next.has(mod.module)) next.delete(mod.module);
-                                                    else next.add(mod.module);
-                                                    return next;
-                                                  });
+                            )}
+                          </tr>
+                        </thead>
+                      </table>
+                    </div>
+                    {/* Body scrolls horizontally and vertically */}
+                    {selectedModule && (
+                      <div
+                        className="flex items-center gap-2 mb-2"
+                        style={{ paddingLeft: 8 }}
+                      >
+                        <button
+                          type="button"
+                          className="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-[#f7f6f3] px-2.5 py-1 text-[11px] text-slate-700 hover:bg-slate-100"
+                          onClick={() => setSelectedModule(null)}
+                        >
+                          <span className="text-slate-500">← All modules</span>
+                          <span className="text-slate-400">×</span>
+                        </button>
+                        <span className="font-semibold text-slate-900">
+                          Viewing: {selectedModule}
+                        </span>
+                      </div>
+                    )}
+                    <div className="overflow-x-auto overflow-y-auto flex-1 min-h-0 -mx-2 px-2 md:mx-0 md:px-4" style={{ paddingBottom: 19, outline: "none" }} tabIndex={-1}>
+                      <table
+                        className="min-w-full border-collapse text-sm table-fixed"
+                        style={{ borderSpacing: 0 }}
+                      >
+                        <colgroup>
+                          <col style={{ width: 240 }} />
+                          {selectedKey && (
+                            <col key="role" style={{ width: 70 }} />
+                          )}
+                        </colgroup>
+                        <tbody>
+                          {modules.map((mod) => {
+                            const isOpen = selectedModule === mod.module;
+                            const visiblePerms = isOpen ? mod.perms : [];
+                            return (
+                              <Fragment key={`module-${mod.module}`}>
+                                <tr key={`module-${mod.module}`} className="cursor-pointer">
+                                  <td
+                                    colSpan={selectedKey ? 2 : ROLE_ORDER.length + 1}
+                                    className="px-2 md:px-4 py-2 sticky left-0"
+                                    style={{
+                                      height: 36,
+                                      background: MODULE_BG,
+                                      fontSize: 11,
+                                      fontWeight: 700,
+                                      color: INK,
+                                      borderBottom: `1px solid ${BORDER}`,
+                                      position: "sticky",
+                                      left: 0,
+                                      zIndex: 15,
+                                    }}
+                                  >
+                                    <div
+                                      className="flex items-center justify-between w-full"
+                                      style={{ paddingLeft: 6 }}
+                                      onClick={() => {
+                                        setSelectedModule((prev) =>
+                                          prev === mod.module ? null : mod.module,
+                                        );
+                                      }}
+                                    >
+                                      <div className="flex items-center gap-2">
+                                        <span style={{ color: PRIMARY }}>
+                                          <Icon
+                                            name={moduleIcon(mod.module)}
+                                            className="h-4 w-4"
+                                          />
+                                        </span>
+                                        <span>{mod.module}</span>
+                                        <span className="text-xs text-slate-500 ml-2">
+                                          ({mod.perms.length})
+                                        </span>
+                                      </div>
+                                      <Icon
+                                        name={isOpen ? "chevron-down" : "chevron-right"}
+                                        className="h-3.5 w-3.5 text-slate-400"
+                                      />
+                                    </div>
+                                  </td>
+                                </tr>
+                                {visiblePerms.map((p) => (
+                                  <tr key={p.code} className="table-row" style={{ height: 34 }}>
+                                    <td className="px-2 md:px-4 py-1 sticky left-0" style={{
+                                      paddingLeft: 8,
+                                      fontSize: 10,
+                                      color: "#334155",
+                                      verticalAlign: "middle",
+                                      borderBottom: `1px solid ${ROW_BORDER}`,
+                                      background: "#fff",
+                                      position: "sticky",
+                                      left: 0,
+                                      zIndex: 5,
+                                      width: 240,
+                                    }}>
+                                      <span>{p.action}</span>
+                                    </td>
+                                    {selectedKey && (
+                                      <>
+                                        {(() => {
+                                          const backendRole = matchedRoles.get(selectedKey) ?? null;
+                                          const roleId = backendRole?.id ?? selectedKey;
+                                          const checked = isChecked(roleId, p.code);
+                                          const roleDisabled = false;
+                                          return (
+                                            <td key={selectedKey} className="px-1 py-1 text-center" style={{
+                                              width: 70,
+                                              borderBottom: `1px solid ${ROW_BORDER}`,
+                                              borderRight: `1px solid ${BORDER}`,
+                                              verticalAlign: "middle",
+                                              paddingTop: 0,
+                                              paddingBottom: 0,
+                                              paddingLeft: 2,
+                                              paddingRight: 2,
+                                            }}>
+                                              <label
+                                                className="relative inline-flex h-4.5 w-4.5 items-center justify-center rounded-sm cursor-pointer"
+                                                style={{
+                                                  borderRadius: 4,
+                                                  border: `1px solid ${checked ? PRIMARY : "#B9C8DB"}`,
+                                                  background: checked ? PRIMARY : "#FFF",
+                                                  display: "inline-flex",
+                                                  alignItems: "center",
+                                                  justifyContent: "center",
+                                                  width: 17,
+                                                  height: 17,
+                                                  margin: 0,
+                                                  cursor: roleDisabled ? 'default' : 'pointer',
+                                                  opacity: roleDisabled ? 0.5 : 1,
                                                 }}
                                               >
-                                                <td
-                                                  colSpan={7}
-                                                  className="px-4 py-2"
-                                                  style={{
-                                                    height: 36,
-                                                    background: MODULE_BG,
-                                                    fontSize: 12,
-                                                    fontWeight: 700,
-                                      color: INK,
-                                                    borderBottom: `1px solid ${BORDER}`,
-                                                    display: "flex",
-                                                    alignItems: "center",
-                                                    justifyContent: "space-between",
-                                                    paddingLeft: 15,
-                                                  }}
-                                                >
-                                                  <div className="flex items-center gap-2">
-                                                    <span style={{ color: PRIMARY }}>
-                                                      <Icon
-                                                        name={moduleIcon(mod.module)}
-                                                        className="h-4 w-4"
-                                                      />
-                                                    </span>
-                                                    <span>{mod.module}</span>
-                                                    <span className="text-xs text-slate-500 ml-2">
-                                                      ({mod.perms.length})
-                                                    </span>
-                                                  </div>
-                                                  <Icon
-                                                    name={collapsed ? "chevron-right" : "chevron-down"}
-                                                    className="h-3.5 w-3.5 text-slate-400"
-                                                  />
-                                                </td>
-                                              </tr>
-                                              {visiblePerms.map((p) => (
-                                                <tr key={p.code} className="table-row" style={{ height: 34 }}>
-                                                  <td className="px-4" style={{
-                                                    paddingLeft: 15,
-                                                    paddingTop: 0,
-                                                    paddingBottom: 0,
-                                                    fontSize: 12,
-                                                    color: "#334155",
-                                                    verticalAlign: "middle",
-                                                    borderBottom: `1px solid ${ROW_BORDER}`,
-                                                    display: "flex",
-                                                    alignItems: "center",
-                                                    gap: 8,
-                                                  }}>
-                                                    <span>{p.action}</span>
-                                                  </td>
-                                                  {ROLE_ORDER.map((key) => {
-                                                    const backendRole = matchedRoles.get(key) ?? null;
-                                                    const roleId = backendRole?.id ?? key;
-                                                    const checked = isChecked(roleId, p.code);
-                                                    const roleDisabled = false;
-                                                    return (
-                                                      <td key={key} className="px-2 py-2 text-center" style={{
-                                                        width: 108,
-                                                        borderBottom: `1px solid ${ROW_BORDER}`,
-                                                        borderRight: `1px solid ${BORDER}`,
-                                                        verticalAlign: "middle",
-                                                        paddingTop: 0,
-                                                        paddingBottom: 0,
-                                                        paddingLeft: 4,
-                                                        paddingRight: 4,
-                                                      }}>
-                                                        <label
-                                                          className="relative inline-flex h-4.5 w-4.5 items-center justify-center rounded-sm cursor-pointer"
-                                                          style={{
-                                                            borderRadius: 4,
-                                                            border: `1px solid ${checked ? PRIMARY : "#B9C8DB"}`,
-                                                            background: checked ? PRIMARY : "#FFF",
-                                                            display: "inline-flex",
-                                                            alignItems: "center",
-                                                            justifyContent: "center",
-                                                            width: 17,
-                                                            height: 17,
-                                                            margin: 0,
-                                                            cursor: roleDisabled ? 'default' : 'pointer',
-                                                            opacity: roleDisabled ? 0.5 : 1,
-                                                          }}
-                                                        >
-                                                          <input
-                                                            type="checkbox"
-                                                            checked={checked}
-                                                            onChange={() => { if (!roleDisabled) togglePermission(roleId, p.code); }}
-                                                            className="sr-only"
-                                                            aria-label={`${ROLE_CONFIG[key].label} — ${p.action}`}
-                                                          />
-                                                          {checked && (
-                                                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                                                              <polyline points="20 6 9 17 4 12" />
-                                                            </svg>
-                                                          )}
-                                                        </label>
-                                                      </td>
-                                                    );
-                                                  })}
-                                                </tr>
-                                              ))}
-                                            </Fragment>
+                                                <input
+                                                  type="checkbox"
+                                                  checked={checked}
+                                                  onChange={() => { if (!roleDisabled) togglePermission(roleId, p.code); }}
+                                                  className="sr-only"
+                                                  aria-label={`${ROLE_CONFIG[selectedKey].label} — ${p.action}`}
+                                                />
+                                                {checked && (
+                                                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                                    <polyline points="20 6 9 17 4 12" />
+                                                  </svg>
+                                                )}
+                                              </label>
+                                            </td>
                                           );
-                                                    })
-                                                  }
-
-                      </tbody>
-                    </table>
+                                        })()}
+                                      </>
+                                    )}
+                                  </tr>
+                                ))}
+                              </Fragment>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 )}
               </div>
@@ -1105,7 +1244,7 @@ export default function RolesPage() {
 
             {/* Right: Role editor panel */}
             <section
-              className="flex flex-col min-w-[450px]"
+              className="flex flex-col min-w-full sm:min-w-[450px]"
               style={{
                 background: "#FFFFFF",
                 border: `1px solid ${BORDER}`,
@@ -1160,6 +1299,10 @@ export default function RolesPage() {
                     aria-label="More options"
                     className="btn-icon ml-auto"
                     disabled={!canManageRoles}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
                   >
                     <Icon name="more-vertical" className="h-4 w-4" />
                   </button>
@@ -1280,10 +1423,10 @@ export default function RolesPage() {
                     </p>
                   </div>
                 </div>
-                <div className="mt-6 flex items-center justify-between gap-2">
+                <div className="mt-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                   <button
                     type="button"
-                    className="inline-flex items-center gap-2 rounded-md border border-rose-200 bg-white px-4 py-2 text-sm font-medium text-rose-700 hover:bg-rose-50 disabled:opacity-60"
+                    className="inline-flex items-center justify-center gap-2 rounded-md border border-rose-200 bg-white px-4 py-2 text-sm font-medium text-rose-700 hover:bg-rose-50 disabled:opacity-60 w-full sm:w-auto"
                     disabled={
                       !canManageRoles ||
                       isRoleReadOnly ||
@@ -1296,10 +1439,11 @@ export default function RolesPage() {
                   </button>
                   <button
                     type="button"
-                    className="btn btn-primary text-xs gap-2 px-3 py-1.5 rounded-lg disabled:opacity-60"
+                    className="btn btn-primary text-xs gap-2 px-3 py-1.5 rounded-lg disabled:opacity-60 w-full sm:w-auto"
                     disabled={
                       !canManageRoles ||
                       isRoleReadOnly ||
+                      !canSaveSelectedRole ||
                       !hasUnsavedChanges
                     }
                     onClick={saveSelectedRole}

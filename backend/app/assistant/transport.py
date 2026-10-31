@@ -14,6 +14,7 @@ details matter and both were wrong before:
 from __future__ import annotations
 
 from typing import Any
+from urllib.parse import urlparse, urlunparse
 
 from fastapi import Request
 
@@ -93,8 +94,18 @@ class MCPTransport:
 
     @staticmethod
     def url_for(request: Request) -> str:
-        """The MCP URL for the server this request arrived at."""
-        return build_mcp_url(str(request.base_url))
+        """The MCP URL for the server this request arrived at.
+
+        Uses 127.0.0.1 as the host so the backend can reach its own MCP
+        endpoint even when the request arrived via a public IP (which the
+        server may not be able to route to itself).
+        """
+        base = str(request.base_url)
+        parsed = urlparse(base)
+        local = parsed._replace(
+            netloc=f"127.0.0.1:{parsed.port or 8000}"
+        )
+        return build_mcp_url(urlunparse(local))
 
     @staticmethod
     def for_request(request: Request) -> Any:

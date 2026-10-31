@@ -355,7 +355,7 @@ export default function AssistantPage() {
 
       <div
         ref={chatRef}
-        className="flex-1 space-y-5 overflow-y-auto rounded-2xl border border-slate-200 bg-gradient-to-b from-white to-slate-50/60 px-4 py-5 sm:px-6"
+        className="flex-1 space-y-5 overflow-y-auto rounded-2xl border border-slate-200 bg-gradient-to-b from-white to-slate-50/60 px-4 py-5 sm:px-6 mb-2 sm:mb-0"
       >
         {messages.map((message, index) => {
           const isUser = message.role === "user";
@@ -410,63 +410,66 @@ export default function AssistantPage() {
         )}
       </div>
 
-      <div className="space-y-3 pt-3">
-        {running && <AssistantActivity steps={steps} headline={headline} elapsedMs={elapsedMs} />}
+      {/* Sticky input bar - always visible at bottom */}
+      <div className="sticky bottom-0 z-20 bg-white/90 backdrop-blur border-t border-slate-200 pt-2 pb-2 sm:pb-0">
+        <div className="space-y-3 pt-3">
+          {running && <AssistantActivity steps={steps} headline={headline} elapsedMs={elapsedMs} />}
 
-        <form
-          onSubmit={handleSubmit}
-          className="flex items-end gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-[0_1px_2px_rgba(16,27,61,0.04),0_12px_32px_-24px_rgba(16,27,61,0.35)]"
-        >
-          <textarea
-            value={input}
-            onChange={(event) => setInput(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" && !event.shiftKey) {
-                event.preventDefault();
-                sendMessage(input);
-              }
-            }}
-            rows={1}
-            placeholder="Ask about tasks, clients, compliance, documents… or use voice"
-            className="max-h-32 min-h-[2.5rem] flex-1 resize-none bg-transparent px-3 py-2.5 text-sm text-slate-800 outline-none placeholder:text-slate-400"
-          />
-          <button
-            type="button"
-            onClick={() => {
-              setVoiceMode(!voiceMode);
-              if (!voiceMode) {
-                startListening();
-              } else {
-                if (recognitionRef.current) {
-                  try { recognitionRef.current.stop(); } catch {}
-                }
-                if (typeof window !== "undefined" && window.speechSynthesis) {
-                  window.speechSynthesis.cancel();
-                }
-                setIsListening(false);
-                setIsSpeaking(false);
-              }
-            }}
-            disabled={running && !voiceMode}
-            className={`flex h-10 items-center justify-center rounded-xl px-3 transition ${voiceMode ? 'bg-gradient-to-r from-rose-500 to-pink-500 text-white animate-pulse' : 'border border-slate-200 text-slate-600 hover:bg-slate-50'}`}
-            title={voiceMode ? "Stop conversation" : "Start voice conversation"}
+          <form
+            onSubmit={handleSubmit}
+            className="flex items-end gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-[0_1px_2px_rgba(16,27,61,0.04),0_12px_32px_-24px_rgba(16,27,61,0.35)] mx-2 sm:mx-0"
           >
-            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-            </svg>
-          </button>
-          <button
-            type="submit"
-            disabled={running || !input.trim()}
-            className="flex h-10 items-center gap-2 rounded-xl bg-gradient-to-r from-sky-600 to-indigo-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:from-sky-700 hover:to-indigo-700 disabled:from-slate-300 disabled:to-slate-300 disabled:shadow-none"
-          >
-            {running ? "Working…" : "Send"}
-          </button>
-        </form>
-        <p className="pb-1 text-center text-[11px] text-slate-400">
-          Answers come from your own records. Anything that changes data asks for confirmation
-          first.
-        </p>
+            <textarea
+              value={input}
+              onChange={(event) => setInput(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && !event.shiftKey) {
+                  event.preventDefault();
+                  sendMessage(input);
+                }
+              }}
+              rows={1}
+              placeholder="Ask about tasks, clients, compliance, documents… or use voice"
+              className="max-h-32 min-h-[2.5rem] flex-1 resize-none bg-transparent px-3 py-2.5 text-sm text-slate-800 outline-none placeholder:text-slate-400"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                setVoiceMode(!voiceMode);
+                if (!voiceMode) {
+                  startListening();
+                } else {
+                  if (recognitionRef.current) {
+                    try { recognitionRef.current.stop(); } catch {}
+                  }
+                  if (typeof window !== "undefined" && window.speechSynthesis) {
+                    window.speechSynthesis.cancel();
+                  }
+                  setIsListening(false);
+                  setIsSpeaking(false);
+                }
+              }}
+              disabled={running && !voiceMode}
+              className={`flex h-10 items-center justify-center rounded-xl px-3 transition ${voiceMode ? 'bg-gradient-to-r from-rose-500 to-pink-500 text-white animate-pulse' : 'border border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+              title={voiceMode ? "Stop conversation" : "Start voice conversation"}
+            >
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+              </svg>
+            </button>
+            <button
+              type="submit"
+              disabled={running || !input.trim()}
+              className="flex h-10 items-center gap-2 rounded-xl bg-gradient-to-r from-sky-600 to-indigo-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:from-sky-700 hover:to-indigo-700 disabled:from-slate-300 disabled:to-slate-300 disabled:shadow-none"
+            >
+              {running ? "Working…" : "Send"}
+            </button>
+          </form>
+          <p className="pb-1 text-center text-[11px] text-slate-400">
+            Answers come from your own records. Anything that changes data asks for confirmation
+            first.
+          </p>
+        </div>
       </div>
     </div>
   );

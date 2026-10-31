@@ -1,23 +1,18 @@
 #!/usr/bin/env bash
 # Start the CA Rohadas backend and frontend for local development.
-#
-# Starts uvicorn on :8000 and the Next.js dev server on :3000, writing logs to
-# ./logs/. Frees the two ports first, so a stale process from an earlier run does
-# not silently keep serving old code.
-#
-# Usage:
-#   ./start-dev.sh                 # start both
-#   ./start-dev.sh --frontend-only # start only the frontend
-#   ./start-dev.sh --backend-only  # start only the backend
-#
+
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LOGS="$ROOT/logs"
 mkdir -p "$LOGS"
 
+# Use node/npm from /tmp if available
+export PATH="/tmp/node-v22.11.0-linux-arm64/bin:$PATH"
+
 BACKEND_PORT=8000
 FRONTEND_PORT=3000
+BIND_HOST="${BIND_HOST:-0.0.0.0}"
 
 FRONTEND_ONLY=0
 BACKEND_ONLY=0
@@ -29,9 +24,6 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# ── 1. Free conflicting ports ──
-# Only stop python/node processes on these ports; anything else is reported and
-# left alone so we never kill an unrelated service.
 free_port() {
     local port="$1"
     local line pid comm pname
@@ -66,7 +58,7 @@ free_port() {
 echo "Freeing ports $BACKEND_PORT and $FRONTEND_PORT..."
 if [[ $BACKEND_ONLY -eq 0 ]]; then free_port "$FRONTEND_PORT"; fi
 if [[ $FRONTEND_ONLY -eq 0 ]]; then free_port "$BACKEND_PORT"; fi
-sleep 1
+sleep 2
 
 # ── 2. Backend ──
 BACKEND_PID=""
@@ -76,10 +68,8 @@ if [[ $FRONTEND_ONLY -eq 0 ]]; then
     export ENVIRONMENT="${ENVIRONMENT:-development}"
     export AI_PROVIDER="${AI_PROVIDER:-kilo}"
     export AI_MODEL="${AI_MODEL:-kilo-auto/free}"
-     export WHATSAPP_PROVIDER="${WHATSAPP_PROVIDER:-baileys}"
+    export WHATSAPP_PROVIDER="${WHATSAPP_PROVIDER:-baileys}"
     export WHATSAPP_API_URL="${WHATSAPP_API_URL:-http://127.0.0.1:3001}"
-    # Disable MCP rate limiting in development so automated test suites
-    # hitting the dev server are not throttled (production keeps the default).
     export MCP_RATE_LIMIT_ENABLED="${MCP_RATE_LIMIT_ENABLED:-false}"
     if [[ -f "$ROOT/backend/.env" ]]; then
         set -a
@@ -87,13 +77,13 @@ if [[ $FRONTEND_ONLY -eq 0 ]]; then
         set +a
     fi
 
-    echo "Starting backend on http://127.0.0.1:$BACKEND_PORT ..."
+    echo "Starting backend on http://$BIND_HOST:$BACKEND_PORT ..."
     VENV_PY="$ROOT/backend/.venv/bin/python"
     if [[ ! -x "$VENV_PY" ]]; then
         echo "backend venv python not found at $VENV_PY" >&2
         exit 1
     fi
-    nohup "$VENV_PY" -m uvicorn app.main:app --host 127.0.0.1 --port "$BACKEND_PORT" --timeout-keep-alive 120 \
+    nohup "$VENV_PY" -m uvicorn app.main:app --host "$BIND_HOST" --port "$BACKEND_PORT" --timeout-keep-alive 120 \
         > "$LOGS/backend.log" 2> "$LOGS/backend.err.log" &
     BACKEND_PID=$!
     echo "  backend pid $BACKEND_PID"
@@ -102,8 +92,8 @@ fi
 # ── 3. Frontend ──
 FRONTEND_PID=""
 if [[ $BACKEND_ONLY -eq 0 ]]; then
-    echo "Starting frontend on http://localhost:$FRONTEND_PORT ..."
-    ( cd "$ROOT/frontend" && exec npm run dev ) > "$LOGS/frontend.log" 2> "$LOGS/frontend.err.log" &
+    echo "Starting frontend on http://$BIND_HOST:$FRONTEND_PORT ..."
+    ( cd "$ROOT/frontend" && exec npm run dev -- --hostname "$BIND_HOST" --port "$FRONTEND_PORT" ) > "$LOGS/frontend.log" 2> "$LOGS/frontend.err.log" &
     FRONTEND_PID=$!
     echo "  frontend pid $FRONTEND_PID"
 fi
@@ -131,10 +121,10 @@ done
 
 echo ""
 if [[ $BACKEND_ONLY -eq 0 ]]; then
-    if [[ $backend_up -eq 1 ]]; then echo "  backend   http://127.0.0.1:$BACKEND_PORT  (docs at /docs)"; else echo "  backend did not answer - see logs/backend.err.log"; fi
+    if [[ $backend_up -eq 1 ]]; then echo "  backend   http://$BIND_HOST:$BACKEND_PORT  (docs at /docs)"; else echo "  backend did not answer - see logs/backend.err.log"; fi
 fi
 if [[ $FRONTEND_ONLY -eq 0 ]]; then
-    if [[ $frontend_up -eq 1 ]]; then echo "  frontend  http://localhost:$FRONTEND_PORT"; else echo "  frontend did not answer - see logs/frontend.err.log"; fi
+    if [[ $frontend_up -eq 1 ]]; then echo "  frontend  http://$BIND_HOST:$FRONTEND_PORT"; else echo "  frontend did not answer - see logs/frontend.err.log"; fi
 fi
 echo ""
 echo "Logs: $LOGS   Stop with: ./stop-dev.sh"

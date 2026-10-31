@@ -87,7 +87,7 @@ async def handle_chat_stream(
             user_id=principal.user_id,
         )
 
-        if not settings.AI_API_KEY:
+        if not settings.AI_API_KEY and settings.AI_PROVIDER != "kilo":
             yield _emit_error(
                 sse,
                 "AI provider API key is not configured. Set AI_API_KEY in the environment.",
@@ -192,6 +192,8 @@ async def handle_chat_stream(
         # we execute them and call the AI again with the results. This loop
         # continues until the AI returns no more tool_calls.
         tools_schema = _get_tool_schema()
+        if not settings.AI_API_KEY and settings.AI_PROVIDER == "kilo":
+            tools_schema = tools_schema[:20]
         response_buffer = ""
         ai_tool_call_counter = 0
         max_iterations = 5

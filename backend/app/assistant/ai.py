@@ -85,7 +85,7 @@ async def call_chat(
 
     Raises ``HTTPException`` if the provider is unconfigured or the call fails.
     """
-    if not api_key:
+    if not api_key and provider != "kilo":
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="AI provider API key is not configured",
@@ -105,6 +105,12 @@ async def call_chat(
             payload["tools"] = tools
             payload["tool_choice"] = "auto"
 
+        headers: dict[str, str] = {
+            "Content-Type": "application/json",
+        }
+        if api_key:
+            headers["Authorization"] = f"{config['header_prefix']} {api_key}"
+
         async with AsyncClient(
             timeout=120.0, verify=settings.ENVIRONMENT != "development"
         ) as client:
@@ -112,10 +118,7 @@ async def call_chat(
                 async with client.stream(
                     "POST",
                     config["url"],
-                    headers={
-                        "Authorization": f"{config['header_prefix']} {api_key}",
-                        "Content-Type": "application/json",
-                    },
+                    headers=headers,
                     json=payload,
                 ) as resp:
                     if resp.status_code != 200:

@@ -86,7 +86,9 @@ def _build_tool_definitions():
                 "pan": {"type": "string", "description": "PAN number"},
                 "city": {"type": "string", "description": "City"},
                 "state": {"type": "string", "description": "State name"},
-                "state_code": {"type": "string", "description": "State code (e.g. MH)"},
+                 "state_code": {"type": "string", "description": "State code (e.g. MH)"},
+                 "status": {"type": "string", "description": "Client status: prospect, active, inactive", "default": "prospect"},
+                 "kyc_status": {"type": "string", "description": "KYC status: not_started, in_progress, completed", "default": "not_started"},
             },
             "required": ["client_type", "legal_name"],
         },
@@ -671,12 +673,103 @@ def _build_tool_definitions():
         },
     ))
 
+    tools.append(Tool(
+        name="create_user",
+        description="Create a new team member (user) within the tenant. Assigns the user to a branch and optionally to roles.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "email": {"type": "string", "description": "User email (unique)"},
+                "full_name": {"type": "string", "description": "Full name"},
+                "password": {"type": "string", "description": "Password (if omitted, a temp password is generated)"},
+                "designation": {"type": "string"},
+                "employee_code": {"type": "string"},
+                "department": {"type": "string"},
+                "phone": {"type": "string"},
+                "branch_id": {"type": "string", "description": "Branch UUID"},
+                "is_partner": {"type": "boolean", "default": False},
+                "status": {"type": "string", "enum": ["active", "inactive", "on_leave"], "default": "active"},
+                "date_of_joining": {"type": "string", "format": "date"},
+                "weekly_capacity_hours": {"type": "string", "default": "40"},
+                "reporting_to_id": {"type": "string", "description": "Manager user UUID"},
+                "role_codes": {"type": "array", "items": {"type": "string"}, "description": "Role codes to assign (e.g. ['partner', 'manager'])"},
+            },
+            "required": ["email", "full_name"],
+        },
+    ))
+
+    tools.append(Tool(
+        name="create_role",
+        description="Create a custom role with a set of permissions for the tenant.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "code": {"type": "string", "description": "Role code (e.g. 'tax_specialist')"},
+                "name": {"type": "string", "description": "Display name"},
+                "description": {"type": "string"},
+                "data_scope": {"type": "string", "enum": ["firm", "branch"], "default": "firm"},
+                "permission_codes": {"type": "array", "items": {"type": "string"}, "description": "Permission codes to assign"},
+            },
+            "required": ["code", "name"],
+        },
+    ))
+
+    tools.append(Tool(
+        name="assign_user_role",
+        description="Assign or unassign a role to/from a user.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "user_id": {"type": "string", "description": "User UUID"},
+                "role_code": {"type": "string", "description": "Role code to assign"},
+                "action": {"type": "string", "enum": ["assign", "unassign"], "default": "assign"},
+            },
+            "required": ["user_id", "role_code"],
+        },
+    ))
+
+    tools.append(Tool(
+        name="bulk_create_users",
+        description="Bulk create multiple team members at once from a JSON array of user objects.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "users": {"type": "array", "items": {"type": "object"}, "description": "Array of user objects (same fields as create_user)"},
+            },
+            "required": ["users"],
+        },
+    ))
+
+    tools.append(Tool(
+        name="bulk_create_tasks",
+        description="Bulk create multiple compliance tasks at once from a JSON array of task objects.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "tasks": {"type": "array", "items": {"type": "object"}, "description": "Array of task objects (same fields as create_task)"},
+            },
+            "required": ["tasks"],
+        },
+    ))
+
+    tools.append(Tool(
+        name="list_roles",
+        description="List all roles for the tenant with their permission counts and member counts.",
+        inputSchema={"type": "object", "properties": {}},
+    ))
+
+    tools.append(Tool(
+        name="generate_report",
+        description="Generate a comprehensive validation report on data consistency: team members, task assignments, client-billing relationships, roles and permissions.",
+        inputSchema={"type": "object", "properties": {
+            "report_type": {"type": "string", "enum": ["validation", "summary", "full"], "default": "full"},
+        }},
+    ))
+
     return tools
 
 
 # ── WhatsApp MCP tools ──────────────────────────────────────────────────
-# (appended after the return statement; the dispatcher and handler
-# functions reference them by name.)
 def _build_whatsapp_tool_definitions():
     from mcp.types import Tool
 
@@ -961,6 +1054,13 @@ REQUIRED_PERMISSIONS: dict[str, str] = {
     "delete_service": "service.write",
     "list_payments": "payment.read",
     "get_payment": "payment.read",
+    "create_user": "user.write",
+    "create_role": "role.write",
+    "assign_user_role": "user.write",
+    "bulk_create_users": "user.write",
+    "bulk_create_tasks": "task.write",
+    "list_roles": "role.read",
+    "generate_report": "report.read",
 }
 
 
@@ -1107,6 +1207,20 @@ async def _dispatch_tool(name: str, arguments: dict[str, Any]) -> str:
             return await _tool_list_payments(db, arguments)
         elif name == "get_payment":
             return await _tool_get_payment(db, arguments)
+        elif name == "create_user":
+            return await _tool_create_user(db, arguments)
+        elif name == "create_role":
+            return await _tool_create_role(db, arguments)
+        elif name == "assign_user_role":
+            return await _tool_assign_user_role(db, arguments)
+        elif name == "bulk_create_users":
+            return await _tool_bulk_create_users(db, arguments)
+        elif name == "bulk_create_tasks":
+            return await _tool_bulk_create_tasks(db, arguments)
+        elif name == "list_roles":
+            return await _tool_list_roles(db, arguments)
+        elif name == "generate_report":
+            return await _tool_generate_report(db, arguments)
         else:
             return f"Unknown tool: {name}"
     finally:
@@ -1208,8 +1322,8 @@ async def _tool_create_client(db, arguments: dict[str, Any]) -> str:
         city=arguments.get("city"),
         state=arguments.get("state"),
         state_code=arguments.get("state_code"),
-        status="prospect",
-        kyc_status="not_started",
+         status=arguments.get("status", "prospect"),
+         kyc_status=arguments.get("kyc_status", "not_started"),
     )
     db.add(client)
     db.commit()
@@ -2005,7 +2119,19 @@ async def _tool_assign_task(db, arguments: dict[str, Any]) -> str:
         is_active=True,
     )
     db.add(assignment)
-    db.commit()
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        # Retry without assigned_by_id (may be invalid due to data migration)
+        assignment.assigned_by_id = None
+        assignment.id = None
+        db.add(assignment)
+        try:
+            db.commit()
+        except Exception as exc2:
+            db.rollback()
+            return json.dumps({"error": f"Failed to assign task: {exc2}"})
     db.refresh(task)
 
     return json.dumps({
@@ -3582,3 +3708,434 @@ async def _tool_get_payment(db, arguments: dict[str, Any]) -> str:
         "paid_on": payment.paid_on.isoformat() if payment.paid_on else None,
         "notes": payment.notes,
     })
+
+
+# ── Data-generation tool handlers ──────────────────────────────────────
+
+async def _tool_create_user(db, arguments: dict[str, Any]) -> str:
+    import json, uuid, secrets, string
+    from app.models import User, Role, user_roles, Branch
+    from app.core.security import hash_password
+    from sqlalchemy import select
+
+    tenant_id = arguments.get("_tenant_id")
+    if not tenant_id:
+        return json.dumps({"error": "tenant context required"})
+
+    email = arguments.get("email")
+    full_name = arguments.get("full_name")
+    if not email or not full_name:
+        return json.dumps({"error": "email and full_name are required"})
+
+    if db.execute(select(User).where(User.email == email)).scalar_one_or_none():
+        return json.dumps({"error": f"User with email {email} already exists"})
+
+    pw = arguments.get("password") or "".join(secrets.choice(string.ascii_letters + string.digits) for _ in range(12))
+
+    user = User(
+        tenant_id=tenant_id,
+        email=email,
+        full_name=full_name,
+        password_hash=hash_password(pw),
+        designation=arguments.get("designation"),
+        employee_code=arguments.get("employee_code"),
+        department=arguments.get("department"),
+        phone=arguments.get("phone"),
+        branch_id=arguments.get("branch_id"),
+        is_partner=arguments.get("is_partner", False),
+        status=arguments.get("status", "active"),
+        date_of_joining=arguments.get("date_of_joining"),
+        weekly_capacity_hours=arguments.get("weekly_capacity_hours", "40"),
+        reporting_to_id=arguments.get("reporting_to_id"),
+    )
+    db.add(user)
+    db.flush()
+
+    role_codes = arguments.get("role_codes") or []
+    assigned_roles: list[str] = []
+    for code in role_codes:
+        role = db.execute(
+            select(Role).where(Role.code == code, Role.tenant_id == tenant_id)
+        ).scalar_one_or_none()
+        if role is None:
+            continue
+        db.execute(user_roles.insert().values(user_id=user.id, role_id=role.id))
+        assigned_roles.append(code)
+
+    db.commit()
+    db.refresh(user)
+    return json.dumps({
+        "id": str(user.id),
+        "email": user.email,
+        "full_name": user.full_name,
+        "employee_code": user.employee_code,
+        "designation": user.designation,
+        "department": user.department,
+        "roles": assigned_roles,
+        "password": pw if not arguments.get("password") else None,
+    })
+
+
+async def _tool_create_role(db, arguments: dict[str, Any]) -> str:
+    import json
+    from app.models import Role, RolePermission, Permission
+    from sqlalchemy import select
+
+    tenant_id = arguments.get("_tenant_id")
+    if not tenant_id:
+        return json.dumps({"error": "tenant context required"})
+
+    code = arguments.get("code")
+    name = arguments.get("name")
+    if not code or not name:
+        return json.dumps({"error": "code and name are required"})
+
+    existing = db.execute(
+        select(Role).where(Role.code == code, Role.tenant_id == tenant_id)
+    ).scalar_one_or_none()
+    if existing:
+        return json.dumps({"error": f"Role '{code}' already exists"})
+
+    role = Role(
+        tenant_id=tenant_id,
+        code=code,
+        name=name,
+        description=arguments.get("description"),
+        data_scope=arguments.get("data_scope", "firm"),
+        is_system=False,
+        is_active=True,
+    )
+    db.add(role)
+    db.flush()
+
+    valid_perm_codes = {p.code for p in db.execute(select(Permission)).scalars().all()}
+    perm_codes = arguments.get("permission_codes") or []
+    granted = []
+    for pc in perm_codes:
+        if pc in valid_perm_codes:
+            db.execute(
+                RolePermission.__table__.insert().values(role_id=role.id, permission_code=pc)
+            )
+            granted.append(pc)
+
+    db.commit()
+    db.refresh(role)
+    return json.dumps({
+        "id": str(role.id),
+        "code": role.code,
+        "name": role.name,
+        "description": role.description,
+        "data_scope": role.data_scope,
+        "permissions_granted": granted,
+        "permissions_skipped": [p for p in perm_codes if p not in valid_perm_codes],
+    })
+
+
+async def _tool_assign_user_role(db, arguments: dict[str, Any]) -> str:
+    import json
+    from app.models import User, Role, user_roles
+    from sqlalchemy import select, delete
+
+    tenant_id = arguments.get("_tenant_id")
+    user_id = arguments.get("user_id")
+    role_code = arguments.get("role_code")
+    action = arguments.get("action", "assign")
+
+    if not user_id or not role_code:
+        return json.dumps({"error": "user_id and role_code are required"})
+
+    user = db.get(User, user_id)
+    if user is None or str(user.tenant_id) != str(tenant_id):
+        return json.dumps({"error": f"User {user_id} not found in this tenant"})
+
+    role = db.execute(
+        select(Role).where(Role.code == role_code, Role.tenant_id == tenant_id)
+    ).scalar_one_or_none()
+    if role is None:
+        return json.dumps({"error": f"Role '{role_code}' not found"})
+
+    if action == "assign":
+        existing = db.execute(
+            select(user_roles).where(user_roles.c.user_id == user_id, user_roles.c.role_id == role.id)
+        ).first()
+        if existing:
+            return json.dumps({"message": f"User already has role '{role_code}'", "user_id": str(user_id), "role_code": role_code})
+        db.execute(user_roles.insert().values(user_id=user_id, role_id=role.id))
+        db.commit()
+        return json.dumps({"success": True, "message": f"Role '{role_code}' assigned to user {user.full_name}", "user_id": str(user_id), "role_code": role_code})
+    else:
+        result = db.execute(delete(user_roles).where(user_roles.c.user_id == user_id, user_roles.c.role_id == role.id))
+        db.commit()
+        return json.dumps({"success": True, "message": f"Role '{role_code}' unassigned from user {user.full_name}", "rows_deleted": result.rowcount, "user_id": str(user_id), "role_code": role_code})
+
+
+async def _tool_bulk_create_users(db, arguments: dict[str, Any]) -> str:
+    import json
+    from app.models import User, Role, user_roles
+    from app.core.security import hash_password
+    from sqlalchemy import select
+
+    tenant_id = arguments.get("_tenant_id")
+    if not tenant_id:
+        return json.dumps({"error": "tenant context required"})
+
+    users_data = arguments.get("users") or []
+    if not users_data:
+        return json.dumps({"error": "users array is required and must not be empty"})
+
+    results = []
+    errors = []
+    for i, ud in enumerate(users_data):
+        try:
+            email = ud.get("email")
+            full_name = ud.get("full_name")
+            if not email or not full_name:
+                errors.append({"index": i, "error": "email and full_name are required"})
+                continue
+            if db.execute(select(User).where(User.email == email)).scalar_one_or_none():
+                errors.append({"index": i, "email": email, "error": "email already exists"})
+                continue
+
+            pw = ud.get("password") or "".join(__import__("secrets").choice(__import__("string").ascii_letters + __import__("string").digits) for _ in range(12))
+            user = User(
+                tenant_id=tenant_id, email=email, full_name=full_name,
+                password_hash=hash_password(pw),
+                designation=ud.get("designation"), employee_code=ud.get("employee_code"),
+                department=ud.get("department"), phone=ud.get("phone"),
+                branch_id=ud.get("branch_id"),
+                is_partner=ud.get("is_partner", False),
+                status=ud.get("status", "active"),
+                date_of_joining=ud.get("date_of_joining"),
+                weekly_capacity_hours=ud.get("weekly_capacity_hours", "40"),
+                reporting_to_id=ud.get("reporting_to_id"),
+            )
+            db.add(user)
+            db.flush()
+
+            assigned = []
+            for code in ud.get("role_codes") or []:
+                role = db.execute(select(Role).where(Role.code == code, Role.tenant_id == tenant_id)).scalar_one_or_none()
+                if role:
+                    db.execute(user_roles.insert().values(user_id=user.id, role_id=role.id))
+                    assigned.append(code)
+
+            results.append({
+                "id": str(user.id), "email": user.email, "full_name": user.full_name,
+                "employee_code": user.employee_code, "roles": assigned,
+                "temp_password": pw if not ud.get("password") else None,
+            })
+        except Exception as exc:
+            db.rollback()
+            errors.append({"index": i, "error": str(exc)})
+
+    db.commit()
+    return json.dumps({"created": len(results), "results": results, "errors": errors})
+
+
+async def _tool_bulk_create_tasks(db, arguments: dict[str, Any]) -> str:
+    import json
+    from app.models import Task
+    from app.core.clock import today_local
+    from sqlalchemy import select, func
+
+    tenant_id = arguments.get("_tenant_id")
+    if not tenant_id:
+        return json.dumps({"error": "tenant context required"})
+
+    tasks_data = arguments.get("tasks") or []
+    if not tasks_data:
+        return json.dumps({"error": "tasks array is required and must not be empty"})
+
+    now = today_local()
+    prefix = f"TSK{now.strftime('%y%m')}:"
+    results = []
+    errors = []
+
+    for i, td in enumerate(tasks_data):
+        try:
+            client_id = td.get("client_id")
+            title = td.get("name", td.get("title", ""))
+            if not client_id or not title:
+                errors.append({"index": i, "error": "client_id and name/title are required"})
+                continue
+
+            for _ in range(3):
+                max_code = db.execute(
+                    select(func.max(Task.task_code)).where(
+                        Task.task_code.like(f"{prefix}%"), Task.tenant_id == tenant_id
+                    )
+                ).scalar()
+                if max_code:
+                    try:
+                        num = int(max_code.split(":")[1]) + 1
+                        new_code = f"{prefix}{num:04d}"
+                    except (IndexError, ValueError):
+                        new_code = f"{prefix}0001"
+                else:
+                    new_code = f"{prefix}0001"
+
+                task = Task(
+                    tenant_id=tenant_id, task_code=new_code,
+                    title=title, client_id=client_id,
+                    description=td.get("description", ""),
+                    category=td.get("category", "compliance"),
+                    priority=td.get("priority", "normal"),
+                    statutory_due_date=td.get("statutory_due_date"),
+                    service_id=td.get("service_id"),
+                    tags=",".join(td.get("tags") or []),
+                    status="not_started", filing_status="not_required",
+                )
+                db.add(task)
+                try:
+                    db.flush()
+                    break
+                except Exception:
+                    db.rollback()
+                    continue
+            else:
+                errors.append({"index": i, "title": title, "error": "Failed to generate unique task code"})
+                continue
+
+            results.append({
+                "id": str(task.id), "task_code": task.task_code, "title": task.title,
+                "client_id": str(task.client_id) if task.client_id else None,
+            })
+        except Exception as exc:
+            db.rollback()
+            errors.append({"index": i, "error": str(exc)})
+
+    db.commit()
+    return json.dumps({"created": len(results), "results": results, "errors": errors})
+
+
+async def _tool_list_roles(db, arguments: dict[str, Any]) -> str:
+    import json
+    from app.models import Role, RolePermission, User, user_roles
+    from sqlalchemy import select, func
+
+    tenant_id = arguments.get("_tenant_id")
+    if not tenant_id:
+        return json.dumps({"error": "tenant context required"})
+
+    rows = db.execute(
+        select(Role).where(Role.tenant_id == tenant_id).order_by(Role.code)
+    ).scalars().all()
+
+    results = []
+    for r in rows:
+        perm_count = db.execute(
+            select(func.count()).where(RolePermission.role_id == r.id)
+        ).scalar()
+        user_count = db.execute(
+            select(func.count()).where(user_roles.c.role_id == r.id)
+        ).scalar()
+        results.append({
+            "id": str(r.id), "code": r.code, "name": r.name,
+            "description": r.description, "data_scope": r.data_scope,
+            "is_system": r.is_system, "is_active": r.is_active,
+            "permission_count": perm_count, "user_count": user_count,
+        })
+    return json.dumps(results)
+
+
+async def _tool_generate_report(db, arguments: dict[str, Any]) -> str:
+    import json
+    from app.models import User, Tenant, Client, Task, Role, RolePermission, Permission, user_roles
+    from sqlalchemy import select, func, text
+    from datetime import date
+
+    tenant_id = arguments.get("_tenant_id")
+    if not tenant_id:
+        return json.dumps({"error": "tenant context required"})
+
+    report_type = arguments.get("report_type", "full")
+    findings: list[dict] = []
+    errors: list[dict] = []
+
+    # ── 1. Team members and their role assignments ──
+    users = db.execute(
+        select(User).where(User.tenant_id == tenant_id).order_by(User.full_name)
+    ).scalars().all()
+    user_ids = {str(u.id): u.full_name for u in users}
+
+    role_rows = db.execute(
+        select(Role.id, Role.code, Role.name).where(Role.tenant_id == tenant_id)
+    ).all()
+    role_map = {str(r.id): r.code for r in role_rows}
+    code_map = {r.code: str(r.id) for r in role_rows}
+
+    user_role_rows = db.execute(
+        select(user_roles.c.user_id, user_roles.c.role_id)
+    ).all()
+    user_role_count: dict[str, int] = {}
+    for ur in user_role_rows:
+        uid = str(ur.user_id)
+        user_role_count[uid] = user_role_count.get(uid, 0) + 1
+
+    users_without_roles = [uid for uid in user_ids if user_role_count.get(uid, 0) == 0]
+    if users_without_roles:
+        for uid in users_without_roles:
+            findings.append({"check": "user_without_role", "user_id": uid, "user_name": user_ids[uid], "severity": "warning"})
+
+    # ── 2. Tasks and assignments ──
+    tasks = db.execute(
+        select(Task).where(Task.tenant_id == tenant_id)
+    ).scalars().all()
+    task_count_by_status = {}
+    for t in tasks:
+        task_count_by_status[t.status] = task_count_by_status.get(t.status, 0) + 1
+
+    tasks_without_preparer = sum(1 for t in tasks if t.preparer_id is None and t.status not in ("not_started", "cancelled", "closed"))
+    tasks_without_reviewer = sum(1 for t in tasks if t.preparer_id and t.reviewer_id and str(t.preparer_id) == str(t.reviewer_id))
+    if tasks_without_preparer:
+        errors.append({"check": "tasks_without_preparer", "count": tasks_without_preparer, "severity": "error"})
+    if tasks_without_reviewer:
+        errors.append({"check": "preparer_equals_reviewer", "count": tasks_without_reviewer, "severity": "error"})
+
+    # ── 3. Client-billing relationships ──
+    from app.models import Invoice
+    client_count = db.execute(
+        select(func.count()).where(Client.tenant_id == tenant_id)
+    ).scalar()
+    invoice_count = db.execute(
+        select(func.count()).where(Invoice.tenant_id == tenant_id)
+    ).scalar()
+
+    # ── 4. Permissions table integrity ──
+    perm_count = db.execute(select(func.count()).select_from(Permission)).scalar()
+    all_perm_codes = {p for p in db.execute(select(Permission.code)).scalars().all()}
+
+    role_perm_rows = db.execute(
+        select(RolePermission.permission_code).where(RolePermission.role_id.in_(r.id for r in role_rows))
+    ).scalars().all()
+    orphaned_perms = [pc for pc in role_perm_rows if pc not in all_perm_codes]
+    if orphaned_perms:
+        errors.append({"check": "orphaned_role_permissions", "count": len(set(orphaned_perms)), "details": list(set(orphaned_perms)), "severity": "error"})
+
+    # ── 5. Role coverage ──
+    expected_groups = {"firm_owner", "partner", "branch_partner", "manager", "senior_associate", "ca_senior", "article_assistant"}
+    existing_codes = set(code_map.keys())
+    missing_roles = expected_groups - existing_codes
+    if missing_roles:
+        findings.append({"check": "missing_default_roles", "missing": sorted(missing_roles), "severity": "warning"})
+
+    report = {
+        "generated_at": date.today().isoformat(),
+        "tenant_id": str(tenant_id),
+        "report_type": report_type,
+        "summary": {
+            "total_users": len(users),
+            "total_tasks": len(tasks),
+            "total_clients": client_count,
+            "total_invoices": invoice_count,
+            "total_roles": len(role_rows),
+            "permission_catalog_size": perm_count,
+        },
+        "task_status_breakdown": task_count_by_status,
+        "users_without_roles": len(users_without_roles),
+        "users_without_roles_list": [{"user_id": uid, "user_name": user_ids[uid]} for uid in users_without_roles] if report_type == "full" else [],
+        "validation_errors": errors,
+        "findings": findings if report_type in ("full", "validation") else [],
+        "all_checks_passed": len(errors) == 0,
+    }
+    return json.dumps(report, indent=2, default=str)

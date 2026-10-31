@@ -349,6 +349,216 @@ function Sidebar({
   );
 }
 
+function MobileSidebar({
+  pathname,
+  permissions,
+  onSignOut,
+  signingOut,
+  onClose,
+}: {
+  pathname: string;
+  permissions: string[];
+  onSignOut: () => void;
+  signingOut: boolean;
+  onClose: () => void;
+}) {
+  const firm = useQuery({
+    queryKey: ["billing", "settings"],
+    queryFn: () => api.get<FirmBillingSettings>("/billing/settings"),
+    staleTime: 10 * 60 * 1000,
+  });
+
+  const years = useQuery({
+    queryKey: ["financial-years"],
+    queryFn: () => api.get<FinancialYearRow[]>("/financial-years"),
+    staleTime: 10 * 60 * 1000,
+  });
+
+  const activeYear = years.data?.find((row) => row.is_active);
+
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col lg:hidden">
+      {/* Backdrop */}
+      <button
+        type="button"
+        className="absolute inset-0 bg-black/40 lg:hidden z-40"
+        onClick={onClose}
+        aria-label="Close menu"
+      />
+      {/* Drawer */}
+      <aside className="fixed inset-y-0 right-0 z-50 w-64 shrink-0 flex-col border-l border-slate-200 bg-white shadow-lg lg:hidden">
+        {/* Fixed header - logo & firm name */}
+        <div className="flex-shrink-0 flex items-center gap-3 border-b border-slate-200 px-4 py-4 bg-white relative">
+          <button type="button" className="absolute left-4 top-1/2 -translate-y-1/2 p-1 text-slate-500 hover:text-slate-900" onClick={onClose} aria-label="Close">
+            <Icon name="x" className="h-5 w-5" />
+          </button>
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#b85c38] to-[#9a4a2d] text-sm font-bold text-white">
+            CA
+          </span>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold tracking-tight text-slate-900">Rohadas CA</p>
+            <p className="truncate text-[11px] text-slate-500">CA Practice Management</p>
+          </div>
+        </div>
+
+        {/* Scrollable navigation area */}
+        <nav className="flex-1 overflow-y-auto space-y-0.5 p-2">
+          {NAV.filter((item) => {
+            if (item.children) {
+              if (item.permission && !permissions.includes(item.permission)) return false;
+              return true;
+            }
+            if (!item.ready) return true;
+            if (item.permission === null || item.permission === undefined) return true;
+            return permissions.includes(item.permission);
+          }).map((item) => {
+            if (item.children) {
+              const isGroupActive = item.children.some((c) => c.href && (pathname === c.href || pathname.startsWith(`${c.href}/`)));
+              const isExpanded = expandedGroups.has(item.label) || isGroupActive;
+              return (
+                <div key={item.label} className="space-y-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const next = new Set(expandedGroups);
+                      if (next.has(item.label)) next.delete(item.label);
+                      else next.add(item.label);
+                      setExpandedGroups(next);
+                    }}
+                    className={cn("flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors", isGroupActive ? "text-[#b85c38]" : "text-slate-700 hover:text-slate-900")}
+                  >
+                    <Icon name={item.icon} className={cn("h-[18px] w-[18px] transition-transform duration-200", isExpanded ? "rotate-90" : "", isGroupActive ? "text-sky-600" : "text-slate-400")} />
+                    {item.label}
+                  </button>
+                  {isExpanded && (
+                    <div className="ml-6 space-y-1">
+                      {item.children.filter((c) => {
+                        if (c.permission && !permissions.includes(c.permission)) return false;
+                        if (!c.ready) return true;
+                        return true;
+                      }).map((child) => {
+                        if (!child.ready || !child.href) {
+                          return (
+                            <span key={child.label} aria-disabled="true" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-400">
+                              <Icon name={child.icon} className="h-[18px] w-[18px]" />
+                              {child.label}
+                            </span>
+                          );
+                        }
+                        const isChildActive = pathname === child.href || pathname.startsWith(`${child.href}/`);
+                        return (
+                          <Link
+                            key={child.href}
+                            href={child.href}
+                            onClick={onClose}
+                            className={cn(
+                              "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition",
+                              isChildActive
+                                ? "bg-[#f7ede8] text-[#b85c38] ring-1 ring-inset ring-[#e6d3cc]"
+                                : "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
+                            )}
+                          >
+                            <Icon name={child.icon} className={cn("h-[18px] w-[18px]", isChildActive ? "text-sky-600" : "text-slate-400")} />
+                            {child.label}
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            }
+            const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+
+            if (!item.ready || !item.href) {
+              return (
+                <span
+                  key={item.label}
+                  aria-disabled="true"
+                  title="Coming next"
+                   className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-400"
+                >
+                  <Icon name={item.icon} className="h-[18px] w-[18px]" />
+                  {item.label}
+                  <span className="ml-auto rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-slate-500">
+                    next
+                  </span>
+                </span>
+              );
+            }
+
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={onClose}
+                className={cn(
+                  "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition",
+                  isActive
+                    ? "bg-[#f7ede8] text-[#b85c38] ring-1 ring-inset ring-[#e6d3cc]"
+                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
+                )}
+              >
+                <Icon
+                  name={item.icon}
+                  className={cn("h-[18px] w-[18px]", isActive ? "text-sky-600" : "text-slate-400")}
+                />
+                {item.label}
+              </Link>
+            );
+          })}
+        </nav>
+
+        {/* Footer - financial year, firm info, sign out */}
+        <div className="flex-shrink-0 border-t border-slate-200 bg-white">
+          <div className="space-y-2 p-2">
+            <div className="rounded-lg bg-[#f7f6f3] px-3 py-2">
+              <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500">
+                Financial year
+              </p>
+              {years.isPending && <p className="mt-0.5 text-xs text-slate-400">Loading…</p>}
+              {years.isSuccess && activeYear && (
+                <>
+                  <p className="mt-0.5 text-sm font-semibold text-slate-800">{activeYear.label}</p>
+                  {activeYear.assessment_year && (
+                    <p className="text-[11px] text-slate-500">
+                      Assessment year {activeYear.assessment_year}
+                    </p>
+                  )}
+                </>
+              )}
+              {years.isSuccess && !activeYear && (
+                <p className="mt-0.5 text-xs text-slate-400">None set up yet</p>
+              )}
+            </div>
+
+            <div className="flex items-start gap-2 px-3 py-1">
+              <Icon name="building" className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
+              <div className="min-w-0">
+                <p className="truncate text-xs font-medium text-slate-800">
+                  {firm.data?.legal_name || firm.data?.name || "Your firm"}
+                </p>
+                <p className="truncate text-[11px] text-slate-500">
+                  {firm.data
+                    ? [firm.data.city, firm.data.state].filter(Boolean).join(", ") || "No address set"
+                    : "…"}
+                </p>
+              </div>
+            </div>
+
+            <button type="button" className="btn btn-danger w-full justify-center py-2 gap-2" disabled={signingOut} onClick={onSignOut}>
+              <Icon name="logout" className="h-4 w-4" />
+              {signingOut ? "Signing out…" : "Sign out"}
+            </button>
+          </div>
+        </div>
+      </aside>
+    </div>
+  );
+}
+
 /** The real "create something" actions, which is what the + button is for. */
 const QUICK_ADD = [
   { href: "/clients/new", label: "New client", icon: "clients" as IconName },
