@@ -62,6 +62,7 @@ const NAV: NavItem[] = [
   { href: "/services", label: "Services", icon: "check-circle", ready: true, permission: "service.read" },
   { href: "/integrations", label: "Integrations", icon: "integrations", ready: true, permission: "integration.read" },
   { href: "/communications", label: "Communications", icon: "communications", ready: true, permission: "communication.read" },
+  { href: "/whatsapp", label: "WhatsApp", icon: "whatsapp", ready: true, permission: "communication.read" },
   { href: "/settings", label: "Settings", icon: "settings", ready: true, permission: "financial_year.read" },
   { href: "/assistant", label: "Assistant", icon: "assistant", ready: true, permission: "assistant.use" },
 ];
