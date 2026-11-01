@@ -221,28 +221,37 @@ export default function SettingsPage() {
             </div>
           )}
 
-          {qrData && qrData.qr_code && (
+          {qrData && (
             <div className="px-6 py-4 border-t border-slate-100">
-              <div className="flex flex-col items-center gap-3">
-                <div className="relative group">
-                  <img
-                    src={qrData.qr_code}
-                    alt="WhatsApp QR code"
-                    className="w-48 h-48 rounded-lg border border-slate-200 bg-white shadow-sm"
-                  />
-                  <div className="absolute inset-0 bg-black/20 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <Icon name="qrcode" className="h-10 w-10 text-white" />
+              {qrData.qr_code ? (
+                <div className="flex flex-col items-center gap-3">
+                  <div className="relative group">
+                    <img
+                      src={qrData.qr_code}
+                      alt="WhatsApp QR code"
+                      className="w-48 h-48 rounded-lg border border-slate-200 bg-white shadow-sm"
+                    />
+                    <div className="absolute inset-0 bg-black/20 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <Icon name="qrcode" className="h-10 w-10 text-white" />
+                    </div>
                   </div>
+                  <p className="text-sm text-slate-500 text-center">
+                    {qrData.instructions || "Scan this QR code with WhatsApp > Linked devices > Link a device"}
+                  </p>
+                  {qrData.pairing_code && (
+                    <div className="px-3 py-1 rounded-md bg-slate-100 text-xs text-slate-600 font-mono">
+                      Pairing code: {qrData.pairing_code}
+                    </div>
+                  )}
                 </div>
-                <p className="text-sm text-slate-500 text-center">
-                  {qrData.instructions || "Scan this QR code with WhatsApp > Linked devices > Link a device"}
-                </p>
-                {qrData.pairing_code && (
-                  <div className="px-3 py-1 rounded-md bg-slate-100 text-xs text-slate-600 font-mono">
-                    Pairing code: {qrData.pairing_code}
-                  </div>
-                )}
-              </div>
+              ) : (
+                <div className="flex flex-col items-center gap-3 p-4 rounded-lg bg-amber-50 border border-amber-200 text-amber-800">
+                  <Icon name="alert-triangle" className="h-8 w-8 text-amber-600" />
+                  <p className="text-sm text-center">
+                    {qrData.instructions || "Connecting to WhatsApp… Please wait."}
+                  </p>
+                </div>
+              )}
               {pairError && <p className="px-2 text-xs text-rose-600">{pairError}</p>}
             </div>
           )}
