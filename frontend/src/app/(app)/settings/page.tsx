@@ -4,26 +4,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { Icon } from "@/components/Icon";
-import { Badge, Button, Input, PageHeader } from "@/components/ui";
-import {
-  CheckboxField,
-  FormActions,
-  SelectField,
-  TextAreaField,
-  TextField,
-} from "@/components/form";
+import { Badge, Button, Card, Input, PageHeader } from "@/components/ui";
+import { FormActions, TextField } from "@/components/form";
 import { cn } from "@/lib/format";
-import { api, ApiError } from "@/lib/api";
+import { api } from "@/lib/api";
 import { useTheme } from "@/lib/theme";
 
 const MCP_URL = process.env.NEXT_PUBLIC_MCP_URL || "http://127.0.0.1:8000/mcp";
-
-interface ClientOption {
-  id: string;
-  name: string;
-  phone?: string;
-  whatsapp_number?: string;
-}
 
 interface WhatsAppStatus {
   configured: boolean;
@@ -48,15 +35,8 @@ export default function SettingsPage() {
   const queryClient = useQueryClient();
 
   // ── WhatsApp state ──
-  const [sendMessageError, setSendMessageError] = useState<string | null>(null);
-  const [sendInvoiceError, setSendInvoiceError] = useState<string | null>(null);
   const [pairError, setPairError] = useState<string | null>(null);
-
-  const [sendMessagePhone, setSendMessagePhone] = useState("");
-  const [sendMessageText, setSendMessageText] = useState("");
   const [pairPhone, setPairPhone] = useState("");
-  const [invoiceId, setInvoiceId] = useState("");
-  const [invoiceMessage, setInvoiceMessage] = useState("");
 
   const {
     data: status,
@@ -64,7 +44,7 @@ export default function SettingsPage() {
     refetch: refetchStatus,
   } = useQuery<WhatsAppStatus>({
     queryKey: ["whatsapp", "status"],
-    queryFn: () => api.get<WhatsAppStatus>("/api/whatsapp/status"),
+    queryFn: () => api.get<WhatsAppStatus>("/whatsapp/status"),
     refetchInterval: 5000,
     retry: 2,
   });
@@ -75,24 +55,14 @@ export default function SettingsPage() {
     refetch: refetchQR,
   } = useQuery<WhatsAppQR>({
     queryKey: ["whatsapp", "qr"],
-    queryFn: () => api.get<WhatsAppQR>("/api/whatsapp/qr"),
+    queryFn: () => api.get<WhatsAppQR>("/whatsapp/qr"),
     refetchInterval: (status?.connected === false || !status) ? 3000 : false,
     retry: 2,
   });
 
-  const {
-    data: clientsData,
-    isLoading: clientsLoading,
-  } = useQuery<{ items: ClientOption[] }>({
-    queryKey: ["clients", "list"],
-    queryFn: () => api.get<{ items: ClientOption[] }>("/clients?limit=500"),
-  });
-
-  const clients = clientsData?.items || [];
-
   const pairMutation = useMutation({
     mutationFn: (phoneNumber: string) =>
-      api.post("/api/whatsapp/pair", { phone_number: phoneNumber }),
+      api.post("/whatsapp/pair", { phone_number: phoneNumber }),
     onSuccess: () => {
       setPairError(null);
       setPairPhone("");
@@ -104,37 +74,17 @@ export default function SettingsPage() {
     },
   });
 
-  const sendMessageMutation = useMutation({
-    mutationFn: ({ phone_number, message }: { phone_number: string; message: string }) =>
-      api.post("/api/whatsapp/send-message", { phone_number, message }),
-    onSuccess: () => {
-      setSendMessageError(null);
-      setSendMessagePhone("");
-      setSendMessageText("");
-      queryClient.invalidateQueries({ queryKey: ["whatsapp", "status"] });
-    },
-    onError: (err: any) => {
-      setSendMessageError(err?.response?.data?.message || err?.message || "Send failed");
-    },
-  });
-
-  const sendInvoiceMutation = useMutation({
-    mutationFn: ({ invoice_id, message }: { invoice_id: string; message?: string }) =>
-      api.post(`/api/whatsapp/send-invoice/${invoice_id}`, { message }),
-    onSuccess: () => {
-      setSendInvoiceError(null);
-      setInvoiceId("");
-      setInvoiceMessage("");
-      queryClient.invalidateQueries({ queryKey: ["whatsapp", "status"] });
-    },
-    onError: (err: any) => {
-      setSendInvoiceError(err?.response?.data?.message || err?.message || "Send failed");
-    },
-  });
-
   const isConnected = status?.connected === true;
   const isPairing = status?.status === "qr_ready" || status?.status === "pairing";
   const isConnecting = status?.status === "initializing" || status?.status === "connecting";
+
+  const handlePair = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const phone = formData.get("phone") as string;
+    if (!phone) return;
+    pairMutation.mutate(phone);
+  };
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -300,10 +250,7 @@ export default function SettingsPage() {
           {/* Pairing code form */}
           {qrData?.pairing_code && (
             <div className="px-6 py-3 border-t border-slate-100">
-              <form onSubmit={(e) => {
-                e.preventDefault();
-                pairMutation.mutate(pairPhone);
-              }} className="flex gap-2">
+              <form onSubmit={handlePair} className="flex gap-2">
                 <TextField
                   label="Pairing code"
                   value={pairPhone}
@@ -315,76 +262,6 @@ export default function SettingsPage() {
               {pairError && <p className="px-2 text-xs text-rose-600">{pairError}</p>}
             </div>
           )}
-
-          {/* Send Message */}
-          <div className="pt-4 border-t border-slate-100">
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-3 px-2">
-              Send Message
-            </h4>
-            <form onSubmit={(e) => {
-              e.preventDefault();
-              sendMessageMutation.mutate({ phone_number: sendMessagePhone, message: sendMessageText });
-            }} className="grid grid-cols-1 gap-3 sm:grid-cols-3 px-2">
-              <TextField
-                label="Phone number"
-                value={sendMessagePhone}
-                onChange={setSendMessagePhone}
-                placeholder="+91 98765 43210"
-                hint="Include country code"
-                required
-              />
-              <TextAreaField
-                label="Message"
-                value={sendMessageText}
-                onChange={setSendMessageText}
-                rows={3}
-                placeholder="Hello, this is your CA firm…"
-              />
-              <div className="col-span-full flex items-end">
-                <FormActions submitLabel="Send message" busy={sendMessageMutation.isPending} />
-              </div>
-            </form>
-            {sendMessageError && <p className="px-2 text-xs text-rose-600">{sendMessageError}</p>}
-          </div>
-
-          {/* Send Invoice */}
-          <div className="pt-4 border-t border-slate-100">
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-3 px-2">
-              Send Invoice
-            </h4>
-            <form onSubmit={(e) => {
-              e.preventDefault();
-              sendInvoiceMutation.mutate({ invoice_id: invoiceId, message: invoiceMessage || undefined });
-            }} className="grid grid-cols-1 gap-3 sm:grid-cols-3 px-2">
-              <SelectField
-                label="Client"
-                value={invoiceId}
-                onChange={setInvoiceId}
-                placeholder="Select client…"
-                required
-                options={clients.map((c) => ({
-                  value: c.id,
-                  label: c.name + (c.whatsapp_number ? ` (${c.whatsapp_number})` : ""),
-                }))}
-              />
-              <TextAreaField
-                label="Message (optional)"
-                value={invoiceMessage}
-                onChange={setInvoiceMessage}
-                rows={2}
-                placeholder="Here is your invoice PDF…"
-              />
-              <div className="col-span-full flex items-end">
-                <FormActions submitLabel="Send invoice" busy={sendInvoiceMutation.isPending} />
-              </div>
-            </form>
-            {sendInvoiceError && <p className="px-2 text-xs text-rose-600">{sendInvoiceError}</p>}
-            {clients.length === 0 && (
-              <p className="px-2 pt-2 text-xs text-slate-500">
-                No clients found. Add a client first to send invoices via WhatsApp.
-              </p>
-            )}
-          </div>
         </div>
       </section>
     </div>
