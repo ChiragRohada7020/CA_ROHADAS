@@ -22,7 +22,7 @@ let currentQrCode = null;
 let currentPairingCode = null;
 let connectionStatus = {
   connected: false,
-  status: "initializing",
+  status: "connecting",
   last_disconnect: null,
   reconnect_count: 0,
 };
@@ -60,6 +60,7 @@ async function loadBaileys() {
   try {
     baileys = await import("baileys");
     baileysReady = true;
+    console.log("Baileys library loaded successfully");
   } catch (err) {
     baileysError = err;
     console.error("Failed to load baileys:", err.message);
@@ -81,23 +82,29 @@ async function initializeSocket() {
     printQRInTerminal: false,
     logger: createLogger(),
     browser: Browsers.macOS("Desktop"),
+    syncFullHistory: false,
+    markOnlineOnConnect: false,
   });
 
   sock.ev.on("creds.save", saveCreds);
 
   sock.ev.on("connection.update", (update) => {
     const { connection, lastDisconnect, qr } = update;
+    
     if (qr) {
       qrcode
         .toDataURL(qr)
         .then((url) => {
           currentQrCode = url;
+          currentPairingCode = null;
           updateConnection({ status: "qr_ready", connected: false });
+          console.log("QR code generated successfully");
         })
         .catch((err) => {
           console.error("QR generation error:", err.message);
         });
     }
+    
     if (connection === "close") {
       const reason = lastDisconnect ? lastDisconnect.error : new Error("connection closed");
       updateConnection({
@@ -105,18 +112,18 @@ async function initializeSocket() {
         status: "disconnected",
         last_disconnect: new Date().toISOString(),
       });
-      if (!reason || reason.message?.includes("connection closed")) {
-        return;
-      }
+      console.log("Connection closed:", reason.message);
       setTimeout(() => {
-        updateConnection({ reconnect_count: connectionStatus.reconnect_count + 1 });
+        console.log("Attempting reconnection...");
         initializeSocket();
-      }, 3000);
+      }, 5000);
     }
+    
     if (connection === "open") {
       currentQrCode = null;
       currentPairingCode = null;
       updateConnection({ connected: true, status: "connected", last_disconnect: null });
+      console.log("WhatsApp connected successfully!");
     }
   });
 
@@ -129,6 +136,7 @@ async function initializeSocket() {
 
 function updateConnection(partial) {
   connectionStatus = { ...connectionStatus, ...partial };
+  console.log("Connection status updated:", JSON.stringify(connectionStatus));
 }
 
 function ensureSocket() {
@@ -139,7 +147,6 @@ function ensureSocket() {
 }
 
 // ── Endpoints ──
-
 app.get("/qr", async (_req, res) => {
   try {
     await initializeSocket();
