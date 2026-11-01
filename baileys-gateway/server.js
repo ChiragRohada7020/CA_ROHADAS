@@ -31,6 +31,30 @@ let baileys = null;
 let baileysReady = false;
 let baileysError = null;
 
+function createLogger() {
+  const baseLogger = pino({ level: "silent" });
+  return {
+    child: (bindings) => {
+      const childLogger = baseLogger.child(bindings);
+      return {
+        trace: (...args) => childLogger.trace(...args),
+        debug: (...args) => childLogger.debug(...args),
+        info: (...args) => childLogger.info(...args),
+        warn: (...args) => childLogger.warn(...args),
+        error: (...args) => childLogger.error(...args),
+        fatal: (...args) => childLogger.fatal(...args),
+        child: (bindings2) => childLogger.child(bindings2),
+      };
+    },
+    trace: (...args) => baseLogger.trace(...args),
+    debug: (...args) => baseLogger.debug(...args),
+    info: (...args) => baseLogger.info(...args),
+    warn: (...args) => baseLogger.warn(...args),
+    error: (...args) => baseLogger.error(...args),
+    fatal: (...args) => baseLogger.fatal(...args),
+  };
+}
+
 async function loadBaileys() {
   if (baileysReady || baileysError) return;
   try {
@@ -40,22 +64,6 @@ async function loadBaileys() {
     baileysError = err;
     console.error("Failed to load baileys:", err.message);
   }
-}
-
-function normalizePhone(phone) {
-  const digits = phone.replace(/\D/g, "");
-  if (!digits.startsWith("91") && digits.length === 10) {
-    return "91" + digits;
-  }
-  return digits;
-}
-
-function jidFor(phone) {
-  return `${normalizePhone(phone)}@s.whatsapp.net`;
-}
-
-function updateConnection(partial) {
-  connectionStatus = { ...connectionStatus, ...partial };
 }
 
 async function initializeSocket() {
@@ -71,7 +79,7 @@ async function initializeSocket() {
   sock = makeWASocket({
     auth: state,
     printQRInTerminal: false,
-    logger: pino({ level: "silent" }),
+    logger: createLogger(),
     browser: Browsers.macOS("Desktop"),
   });
 
@@ -119,6 +127,10 @@ async function initializeSocket() {
   return sock;
 }
 
+function updateConnection(partial) {
+  connectionStatus = { ...connectionStatus, ...partial };
+}
+
 function ensureSocket() {
   if (!sock) {
     throw new Error("Socket not initialized");
@@ -126,7 +138,7 @@ function ensureSocket() {
   return sock;
 }
 
-// ── Endpoints ──────────────────────────────────────────────
+// ── Endpoints ──
 
 app.get("/qr", async (_req, res) => {
   try {
@@ -262,6 +274,14 @@ app.post("/send-media", upload.single("file"), async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+function jidFor(phone) {
+  const digits = phone.replace(/\D/g, "");
+  if (!digits.startsWith("91") && digits.length === 10) {
+    return "91" + digits + "@s.whatsapp.net";
+  }
+  return digits + "@s.whatsapp.net";
+}
 
 app.listen(PORT, async () => {
   console.log(`Baileys gateway running on http://127.0.0.1:${PORT}`);
