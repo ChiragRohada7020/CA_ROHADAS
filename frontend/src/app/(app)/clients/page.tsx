@@ -1,18 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMemo, useRef, useState, useEffect } from "react";
 
 import {
   Badge,
+  Button,
   Card,
+  ConfirmDialog,
   EmptyState,
   ErrorState,
   LoadingState,
   PageHeader,
   Pagination,
   StatCard,
+  useToast,
 } from "@/components/ui";
 import { Icon } from "@/components/Icon";
 import { ApiError, api, buildQuery } from "@/lib/api";
@@ -158,6 +161,12 @@ export default function ClientsPage() {
   const search = useDebouncedValue(filters.search ?? "");
   const directory = useUserDirectory();
 
+  const queryClient = useQueryClient();
+  const toast = useToast();
+  const [openId, setActionsOpen] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<{ id: string; name: string } | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
   const [tab, setTab] = useState("all");
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
@@ -224,6 +233,39 @@ export default function ClientsPage() {
     setOffset(0);
     // A selection made under one tab has no meaning under another.
     setSelected(new Set());
+    setActionsOpen(null);
+  }
+
+  // Close an open actions menu when the user clicks elsewhere or hits Escape.
+  const menuRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (openId === null) return;
+    function onOutside(event: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) setActionsOpen(null);
+    }
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") setActionsOpen(null);
+    }
+    document.addEventListener("mousedown", onOutside);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onOutside);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [openId]);
+
+  async function deleteOne(id: string, name: string) {
+    setDeletingId(id);
+    try {
+      await api.delete(`/clients/${id}`);
+      toast.push({ type: "success", message: `Deleted ${name}.` });
+      void queryClient.invalidateQueries({ queryKey: ["clients"] });
+    } catch {
+      toast.push({ type: "error", message: `Could not delete ${name}.` });
+    } finally {
+      setConfirmDelete(null);
+      setDeletingId(null);
+    }
   }
 
   const hasFilters = Object.values(filters).some(Boolean);
@@ -245,7 +287,7 @@ export default function ClientsPage() {
       <SummaryTiles summary={s} />
 
       <Card>
-        <div className="flex flex-wrap items-center gap-1 border-b border-slate-200 px-3 pt-2">
+        <div className="flex items-center gap-1 border-b border-slate-200 px-3 pt-2 pb-1 overflow-x-auto">
           {TABS.map((row) => {
             const isActive = row.key === tab;
             return (
@@ -254,17 +296,17 @@ export default function ClientsPage() {
                 type="button"
                 onClick={() => changeTab(row.key)}
                 className={cn(
-                  "-mb-px border-b-2 px-3 py-2 text-sm font-medium transition-colors",
+                  "whitespace-nowrap -mb-px border-b-2 px-3 py-1.5 text-xs font-medium transition-colors duration-150 shrink-0",
                   isActive
                     ? "border-sky-600 text-sky-700"
-                    : "border-transparent text-slate-500 hover:text-slate-800",
+                    : "border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50 rounded",
                 )}
               >
                 {row.label}
                 <span
                   className={cn(
-                    "tabular ml-1.5 rounded px-1.5 py-0.5 text-[10px]",
-                    isActive ? "bg-sky-100 text-sky-700" : "bg-slate-100 text-slate-500",
+                    "tabular ml-1.5 px-1.5 py-0.5 text-[10px] font-semibold",
+                    isActive ? "bg-sky-100 text-sky-700 rounded" : "bg-slate-100 text-slate-500 rounded",
                   )}
                 >
                   {tabCount(s, row.key)}
@@ -428,6 +470,7 @@ export default function ClientsPage() {
                     <th className="th">Status</th>
                     <th className="th">Next Due Date</th>
                     <th className="th">Owner</th>
+                    <th className="th w-20">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -486,6 +529,55 @@ export default function ClientsPage() {
                       <td className="td">
                         <OwnerAvatar name={client.manager_name} />
                       </td>
+                      <td className="td">
+                        <div
+                          id={`actions-menu-${client.id}`}
+                          ref={openId === client.id ? menuRef : null}
+                          className="relative inline-block"
+                        >
+                          <button
+                            type="button"
+                            className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors duration-150 active:bg-[#e6e3dc]"
+                            aria-label={`Actions for ${client.legal_name}`}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setActionsOpen((current) => (current === client.id ? null : client.id));
+                            }}
+                          >
+                            <Icon name="more-vertical" className="h-4 w-4" />
+                          </button>
+                          {openId === client.id && (
+                            <div
+                              role="menu"
+                              className="absolute right-0 top-full z-30 mt-1 w-48 overflow-hidden rounded-md border border-slate-200 bg-white py-1 shadow-lg animate-in fade-in slide-in-from-right-2 duration-200 ease-out"
+                            >
+                              <Link
+                                href={`/clients/${client.id}/edit`}
+                                role="menuitem"
+                                className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-slate-700 hover:bg-[#f7f6f3] transition-colors duration-150 active:bg-[#e6e3dc]"
+                                onClick={() => setActionsOpen(null)}
+                              >
+                                <Icon name="pencil" className="h-3 w-3" />
+                                Edit
+                              </Link>
+                              <div className="my-1 border-t border-slate-100" />
+                              <button
+                                type="button"
+                                role="menuitem"
+                                className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-rose-700 hover:bg-rose-50 transition-colors duration-150 active:bg-rose-100"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  setActionsOpen(null);
+                                  setConfirmDelete({ id: client.id, name: client.legal_name });
+                                }}
+                              >
+                                <Icon name="trash" className="h-3 w-3" />
+                                Delete
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -502,6 +594,20 @@ export default function ClientsPage() {
           </>
         )}
       </Card>
+
+      <ConfirmDialog
+        open={confirmDelete !== null}
+        onClose={() => setConfirmDelete(null)}
+        onConfirm={() => {
+          if (confirmDelete) void deleteOne(confirmDelete.id, confirmDelete.name);
+        }}
+        title={`Delete "${confirmDelete?.name}"?`}
+        description="Deleting a client cannot be undone. Its records will no longer appear in lists."
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="danger"
+        loading={deletingId === confirmDelete?.id}
+      />
     </div>
   );
 }

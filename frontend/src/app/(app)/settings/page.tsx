@@ -38,6 +38,8 @@ export default function SettingsPage() {
   const [pairError, setPairError] = useState<string | null>(null);
   const [pairPhone, setPairPhone] = useState("");
 
+  const [qrData, setQrData] = useState<WhatsAppQR | null>(null);
+
   const {
     data: status,
     isLoading: statusLoading,
@@ -49,15 +51,32 @@ export default function SettingsPage() {
     retry: 2,
   });
 
-  const {
-    data: qrData,
-    isLoading: qrLoading,
-    refetch: refetchQR,
-  } = useQuery<WhatsAppQR>({
-    queryKey: ["whatsapp", "qr"],
-    queryFn: () => api.get<WhatsAppQR>("/whatsapp/qr"),
-    refetchInterval: (status?.connected === false || !status) ? 3000 : false,
-    retry: 2,
+  const generateQRMutation = useMutation({
+    mutationFn: () => api.get<WhatsAppQR>("/whatsapp/qr"),
+    onSuccess: (data) => {
+      setQrData(data);
+      queryClient.invalidateQueries({ queryKey: ["whatsapp", "status"] });
+    },
+    onError: (err: any) => {
+      setPairError(err?.response?.data?.message || err?.message || "Failed to generate QR code");
+    },
+  });
+
+  // Clear QR data when connected
+  if (status?.connected && qrData) {
+    setQrData(null);
+  }
+
+  const resetMutation = useMutation({
+    mutationFn: () => api.post("/whatsapp/reset"),
+    onSuccess: () => {
+      setPairError(null);
+      queryClient.invalidateQueries({ queryKey: ["whatsapp", "status"] });
+      queryClient.invalidateQueries({ queryKey: ["whatsapp", "qr"] });
+    },
+    onError: (err: any) => {
+      setPairError(err?.response?.data?.message || err?.message || "Reset failed");
+    },
   });
 
   const pairMutation = useMutation({
@@ -208,15 +227,16 @@ export default function SettingsPage() {
           )}
 
           {/* QR Pairing */}
-          {!isConnected && !isConnecting && !isPairing && (
+          {!isConnected && !isConnecting && !qrData && (
             <div className="px-6 py-3">
               <button
                 type="button"
+                onClick={() => generateQRMutation.mutate()}
+                disabled={generateQRMutation.isPending}
                 className="w-full btn btn-ghost px-4 py-2"
-                onClick={() => refetchQR()}
               >
                 <Icon name="clock" className="h-3 w-3 mr-2" />
-                Generate QR Code
+                {generateQRMutation.isPending ? "Generating…" : "Generate QR Code"}
               </button>
             </div>
           )}
@@ -269,6 +289,27 @@ export default function SettingsPage() {
                 <FormActions submitLabel="Pair" />
               </form>
               {pairError && <p className="px-2 text-xs text-rose-600">{pairError}</p>}
+            </div>
+          )}
+
+          {/* Reset connection */}
+          {!isConnected && !isConnecting && (
+            <div className="px-6 py-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => {
+                  resetMutation.mutate();
+                  setQrData(null);
+                }}
+                disabled={resetMutation.isPending}
+                className="w-full btn btn-ghost px-4 py-2 text-rose-600 hover:bg-rose-50"
+              >
+                <Icon name="clock" className="h-3 w-3 mr-2" />
+                {resetMutation.isPending ? "Resetting…" : "Reset connection"}
+              </button>
+              <p className="text-xs text-slate-500 text-center mt-2">
+                Clears saved session. Press Generate QR Code to create a new pairing code.
+              </p>
             </div>
           )}
         </div>

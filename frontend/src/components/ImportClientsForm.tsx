@@ -34,33 +34,40 @@ export function ImportClientsForm() {
   const queryClient = useQueryClient();
   const fileInput = useRef<HTMLInputElement>(null);
 
-  const [content, setContent] = useState("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [provider, setProvider] = useState<IntegrationProvider>("winman");
   const [sourceRef, setSourceRef] = useState("");
-  const [defaultType, setDefaultType] = useState("company");
+  const [defaultType, setDefaultType] = useState("individual");
+  const [dataType, setDataType] = useState("clients");
 
   const validate = useMutation({
-    mutationFn: () =>
-      api.post<ImportPlanResult>("/imports/clients", {
-        content,
-        provider,
-        source_ref: sourceRef.trim() || null,
-        default_client_type: defaultType,
-        dry_run: true,
-      }),
+    mutationFn: () => {
+      if (!selectedFile) throw new Error("No file selected");
+      const form = new FormData();
+      form.append("file", selectedFile);
+      form.append("provider", provider);
+      form.append("source_ref", sourceRef.trim() || "");
+      form.append("default_client_type", defaultType);
+      form.append("data_type", dataType);
+      form.append("dry_run", "true");
+      return api.upload<ImportPlanResult>("/imports/upload", form);
+    },
   });
 
   const commit = useMutation({
-    mutationFn: () =>
-      api.post<ImportJobRow>("/imports/clients", {
-        content,
-        provider,
-        source_ref: sourceRef.trim() || null,
-        default_client_type: defaultType,
-        dry_run: false,
-      }),
+    mutationFn: () => {
+      if (!selectedFile) throw new Error("No file selected");
+      const form = new FormData();
+      form.append("file", selectedFile);
+      form.append("provider", provider);
+      form.append("source_ref", sourceRef.trim() || "");
+      form.append("default_client_type", defaultType);
+      form.append("data_type", dataType);
+      form.append("dry_run", "false");
+      return api.upload<ImportJobRow>("/imports/upload", form);
+    },
     onSuccess: () => {
-      setContent("");
+      setSelectedFile(null);
       setSourceRef("");
       validate.reset();
       if (fileInput.current) fileInput.current.value = "";
@@ -71,8 +78,7 @@ export function ImportClientsForm() {
 
   async function pickFile(file: File | undefined) {
     if (!file) return;
-    const text = await file.text();
-    setContent(text);
+    setSelectedFile(file);
     if (!sourceRef) setSourceRef(file.name);
     // Any previous validation is now stale.
     validate.reset();
@@ -82,8 +88,8 @@ export function ImportClientsForm() {
 
   return (
     <Card
-      title="Import client master data"
-      subtitle="Read a Winman or Tally export. Nothing is written until you confirm."
+      title="Import data"
+      subtitle="Upload an export file. Columns are matched automatically — preview first, then import."
     >
       <div className="space-y-4 p-4">
         {(validate.isError || commit.isError) && (
@@ -105,6 +111,19 @@ export function ImportClientsForm() {
             onChange={(value) => setProvider(value as IntegrationProvider)}
             options={PROVIDERS}
           />
+          <SelectField
+            label="Data type"
+            value={dataType}
+            onChange={setDataType}
+            options={[
+              { value: "clients", label: "Client data" },
+              { value: "contacts", label: "Contact data" },
+              { value: "invoices", label: "Invoice data" },
+              { value: "services", label: "Service data" },
+              { value: "other", label: "Other" },
+            ]}
+            hint="What kind of records the file contains."
+          />
           <TextField
             label="Source reference"
             value={sourceRef}
@@ -116,8 +135,8 @@ export function ImportClientsForm() {
             label="Default client type"
             value={defaultType}
             onChange={setDefaultType}
-            placeholder="company"
-            hint="Used for rows with no client-type column, which is most exports."
+            placeholder="individual"
+            hint="Used for rows with no client-type column."
           />
         </div>
 
@@ -127,33 +146,22 @@ export function ImportClientsForm() {
             <input
               ref={fileInput}
               type="file"
-              accept=".csv,.tsv,.txt,text/csv,text/plain"
+              accept=".csv,.tsv,.txt,.xlsx,.xls,text/csv,text/plain,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
               className="mt-1 block w-full text-xs text-slate-600"
               onChange={(event) => void pickFile(event.target.files?.[0])}
             />
           </label>
           <p className="mt-1 text-xs text-slate-500">
-            Read in your browser and sent as text. Or paste the contents below.
+            Supports CSV, TXT, and Excel (.xlsx/.xls) exports. Columns are matched
+            automatically — preview first, then import.
           </p>
         </div>
-
-        <TextAreaField
-          label="File contents"
-          value={content}
-          onChange={(value) => {
-            setContent(value);
-            validate.reset();
-          }}
-          rows={6}
-          placeholder={"Ledger Code,Ledger Name,PAN No.,Constitution\nC0001,ABC Pvt Ltd,AAACB1234C,company"}
-          hint="The first row must be the column headers."
-        />
 
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
             className="btn btn-primary"
-            disabled={!content.trim() || validate.isPending}
+            disabled={!selectedFile || validate.isPending}
             onClick={() => validate.mutate()}
           >
             {validate.isPending ? "Checking…" : "Validate"}

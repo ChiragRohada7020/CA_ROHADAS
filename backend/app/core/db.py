@@ -47,9 +47,43 @@ def init_db() -> None:
     """Create all tables that do not yet exist.
 
     In production migrations are applied via Alembic before the app starts, so
-    this is only reached in development or when explicitly invoked.
+    this is only reached in development or when explicitly invoked. It also
+    backfills columns added to existing models after a table was created —
+    ``create_all`` alone does not add columns to a table that already exists.
     """
     Base.metadata.create_all(bind=engine)
+    _backfill_client_mis_columns(engine)
+
+
+def _backfill_client_mis_columns(engine) -> None:
+    """Add the Winman CA-ERP MIS columns to an existing ``clients`` table.
+
+    Idempotent: skips columns that are already present, so it is safe to run
+    on every startup.
+    """
+    from sqlalchemy import inspect, text
+
+    additions = [
+        ("district", "VARCHAR(100)"),
+        ("locality", "VARCHAR(255)"),
+        ("mobile", "VARCHAR(20)"),
+        ("phone", "VARCHAR(20)"),
+        ("email", "VARCHAR(255)"),
+        ("father_name", "VARCHAR(200)"),
+        ("aadhaar_no", "VARCHAR(20)"),
+        ("residential_status", "VARCHAR(50)"),
+        ("passport_no", "VARCHAR(20)"),
+        ("file_no", "VARCHAR(100)"),
+    ]
+    try:
+        existing = {c["name"] for c in inspect(engine).get_columns("clients")}
+    except Exception:
+        return
+    with engine.begin() as conn:
+        for name, coltype in additions:
+            if name in existing:
+                continue
+            conn.execute(text(f"ALTER TABLE clients ADD COLUMN {name} {coltype}"))
 
 
 def get_db() -> Session:

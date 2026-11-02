@@ -63,11 +63,20 @@ export default function EditClientPage() {
   const [district, setDistrict] = useState("");
   const [state, setState] = useState("");
   const [stateCode, setStateCode] = useState("");
-  const [pincode, setPincode] = useState("");
-  const [risk, setRisk] = useState("low");
-  const [partnerId, setPartnerId] = useState("");
-  const [managerId, setManagerId] = useState("");
-  const [notes, setNotes] = useState("");
+const [pincode, setPincode] = useState("");
+    const [mobile, setMobile] = useState("");
+    const [phone, setPhone] = useState("");
+    const [email, setEmail] = useState("");
+    const [locality, setLocality] = useState("");
+    const [fatherName, setFatherName] = useState("");
+    const [aadhaarNo, setAadhaarNo] = useState("");
+    const [residentialStatus, setResidentialStatus] = useState("");
+    const [passportNo, setPassportNo] = useState("");
+    const [fileNo, setFileNo] = useState("");
+    const [risk, setRisk] = useState("low");
+    const [partnerId, setPartnerId] = useState("");
+    const [managerId, setManagerId] = useState("");
+    const [notes, setNotes] = useState("");
 
   useEffect(() => {
     if (client.data) {
@@ -92,6 +101,15 @@ export default function EditClientPage() {
       setStateCode(row.state_code ?? "");
       setPincode(row.pincode ?? "");
       setRisk(row.risk_classification ?? "low");
+      setMobile(row.mobile ?? "");
+      setPhone(row.phone ?? "");
+      setEmail(row.email ?? "");
+      setLocality(row.locality ?? "");
+      setFatherName(row.father_name ?? "");
+      setAadhaarNo(row.aadhaar_no ?? "");
+      setResidentialStatus(row.residential_status ?? "");
+      setPassportNo(row.passport_no ?? "");
+      setFileNo(row.file_no ?? "");
       setPartnerId(row.partner_id ?? "");
       setManagerId(row.manager_id ?? "");
       setNotes(row.relationship_notes ?? "");
@@ -142,6 +160,15 @@ export default function EditClientPage() {
     if (state.trim()) payload.state = state.trim();
     if (stateCode.trim()) payload.state_code = stateCode.trim();
     if (pincode.trim()) payload.pincode = pincode.trim();
+    if (mobile.trim()) payload.mobile = mobile.trim();
+    if (phone.trim()) payload.phone = phone.trim();
+    if (email.trim()) payload.email = email.trim();
+    if (locality.trim()) payload.locality = locality.trim();
+    if (fatherName.trim()) payload.father_name = fatherName.trim();
+    if (aadhaarNo.trim()) payload.aadhaar_no = aadhaarNo.trim();
+    if (residentialStatus.trim()) payload.residential_status = residentialStatus.trim();
+    if (passportNo.trim()) payload.passport_no = passportNo.trim();
+    if (fileNo.trim()) payload.file_no = fileNo.trim();
     if (incorporationDate) {
       if (PERSONAL_TYPES.has(client.data?.client_type ?? "other")) payload.date_of_birth = incorporationDate;
       else payload.date_of_incorporation = incorporationDate;
@@ -318,6 +345,36 @@ export default function EditClientPage() {
             </div>
           </section>
 
+          {/* ── MIS report fields ── */}
+          <section className="client-section client-section-accent-mis">
+            <div className="client-section-header">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-teal-50 text-teal-600">
+                <Icon name="file-text" className="h-4 w-4" />
+              </div>
+              <div>
+                <h3 className="client-section-title">MIS report fields</h3>
+                <p className="client-section-subtitle">Columns from the Winman CA-ERP MIS report.</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 gap-4 p-5 sm:grid-cols-2 lg:grid-cols-3">
+              <TextField label="Mobile number" value={mobile} onChange={setMobile} maxLength={20} placeholder="9028122760" />
+              <TextField label="Telephone" value={phone} onChange={setPhone} maxLength={20} />
+              <TextField label="Email ID" value={email} onChange={setEmail} type="email" maxLength={255} placeholder="itr4321@gmail.com" />
+              <TextField label="Area / locality" value={locality} onChange={setLocality} maxLength={255} placeholder="Sindhi Colony" />
+              <TextField label="Father name" value={fatherName} onChange={setFatherName} maxLength={200} />
+              <TextField label="Aadhaar number" value={aadhaarNo} onChange={setAadhaarNo} maxLength={20} placeholder="507041227510" />
+              <SelectField
+                label="Residential status"
+                value={residentialStatus}
+                onChange={setResidentialStatus}
+                options={["Resident", "Non-Resident", "Not Available"].map((v) => ({ value: v, label: v }))}
+                placeholder="Choose one"
+              />
+              <TextField label="Passport number" value={passportNo} onChange={setPassportNo} maxLength={20} />
+              <TextField label="File number" value={fileNo} onChange={setFileNo} maxLength={100} />
+            </div>
+          </section>
+
           {/* ── Who looks after them ── */}
           <section className="client-section client-section-accent-staff">
             <div className="client-section-header">
@@ -358,7 +415,7 @@ export default function EditClientPage() {
           <FormActions
             submitLabel="Save changes"
             busy={update.isPending}
-            onCancel={() => router.push(`/clients/${clientId}`)}
+            onCancel={() => router.push(`/clients`)}
             disabled={!legalName.trim()}
           />
         </form>

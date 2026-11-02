@@ -81,7 +81,8 @@ export type IconName =
   | "info"
   | "copy"
   | "smile"
-  | "bookmark";
+  | "bookmark"
+  | "paperclip";
 
 const PATHS: Record<IconName, React.ReactNode> = {
   dashboard: (
@@ -276,6 +277,12 @@ const PATHS: Record<IconName, React.ReactNode> = {
     <>
       <path d="M4 16v2.5A2.5 2.5 0 0 0 6.5 21h11a2.5 2.5 0 0 0 2.5-2.5V16" />
       <path d="M12 3.5V15M7.5 10.5L12 15l4.5-4.5" />
+    </>
+  ),
+  paperclip: (
+    <>
+      <path d="M16.5 7.5a5 5 0 0 0-7.5 5.5v5.5a3.5 3.5 0 0 0 7 0V9" />
+      <path d="M7.5 16.5a5 5 0 0 0 7.5-5.5V6" />
     </>
   ),
   share: (

@@ -134,6 +134,7 @@ async def list_clients(
     stmt = (
         select(Client)
         .where(Client.tenant_id == principal.tenant_id)
+        .where(Client.deleted_at.is_(None))
         .order_by(Client.legal_name)
     )
 
@@ -263,8 +264,8 @@ async def create_client(
     from app.core.rbac import Permission as Perm
 
     principal = await get_current_user(request, db)
-    if "client.create" not in principal.permissions and "*:*" not in principal.permissions:
-        raise HTTPException(status_code=403, detail="Permission 'client.create' is required")
+    if "client.write" not in principal.permissions and "*:*" not in principal.permissions:
+        raise HTTPException(status_code=403, detail="Permission 'client.write' is required")
 
     p = payload if isinstance(payload, dict) else payload.dict()
     client = Client(
@@ -282,11 +283,20 @@ async def create_client(
         date_of_birth=p.get("date_of_birth"),
         address_line1=p.get("address_line1"),
         address_line2=p.get("address_line2"),
+        locality=p.get("locality"),
         district=p.get("district"),
         city=p.get("city"),
         state=p.get("state"),
         state_code=p.get("state_code"),
         pincode=p.get("pincode"),
+        mobile=p.get("mobile"),
+        phone=p.get("phone"),
+        email=p.get("email"),
+        father_name=p.get("father_name"),
+        aadhaar_no=p.get("aadhaar_no"),
+        residential_status=p.get("residential_status"),
+        passport_no=p.get("passport_no"),
+        file_no=p.get("file_no"),
         country=p.get("country", "India"),
         risk_classification=p.get("risk_classification", "low"),
         partner_id=p.get("partner_id"),
@@ -337,7 +347,11 @@ async def get_client(
     principal = await get_current_user(request, db)
 
     client = db.get(Client, client_id)
-    if client is None or str(client.tenant_id) != str(principal.tenant_id):
+    if (
+        client is None
+        or str(client.tenant_id) != str(principal.tenant_id)
+        or client.deleted_at is not None
+    ):
         raise NotFoundError(f"Client {client_id} not found")
 
     entities = db.execute(
@@ -398,6 +412,15 @@ async def get_client(
         "branch_id": str(client.branch_id) if client.branch_id else None,
         "created_at": client.created_at.isoformat() if client.created_at else None,
         "updated_at": client.updated_at.isoformat() if client.updated_at else None,
+        "mobile": client.mobile,
+        "phone": client.phone,
+        "email": client.email,
+        "locality": client.locality,
+        "father_name": client.father_name,
+        "aadhaar_no": client.aadhaar_no,
+        "residential_status": client.residential_status,
+        "passport_no": client.passport_no,
+        "file_no": client.file_no,
         "entities": [
             {
                 "id": str(e.id),
@@ -629,6 +652,37 @@ async def change_client_status(
     db.commit()
 
     return {"id": str(client.id), "status": client.status, "previous_status": old_status}
+
+
+@router.delete("/clients/{client_id}")
+async def delete_client(
+    request: Request,
+    client_id: str,
+    db: SessionLocal = Depends(get_db),
+) -> Any:
+    from app.core.rbac import Permission as Perm
+
+    principal = await get_current_user(request, db)
+    if "client.write" not in principal.permissions and "*:*" not in principal.permissions:
+        raise HTTPException(status_code=403, detail="Permission 'client.write' is required")
+
+    client = db.get(Client, client_id)
+    if (
+        client is None
+        or str(client.tenant_id) != str(principal.tenant_id)
+        or client.deleted_at is not None
+    ):
+        raise NotFoundError(f"Client {client_id} not found")
+
+    client.deleted_at = datetime.utcnow()
+    db.commit()
+
+    return {
+        "id": str(client.id),
+        "client_code": client.client_code,
+        "legal_name": client.legal_name,
+        "status": "cancelled",
+    }
 
 
 @router.post("/clients/{client_id}/contacts")

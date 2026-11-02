@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { Card, Modal } from "@/components/ui";
+import { Icon } from "@/components/Icon";
 import {
   CheckboxField,
   FormActions,
@@ -94,31 +95,31 @@ export function ClientActions({
         <div className="flex flex-wrap gap-2 p-4">
           <button
             type="button"
-            className="btn-ghost text-xs"
+            className="btn-primary text-xs px-4 py-2 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 active:scale-95"
             onClick={() => toggle("status")}
           >
-            Change status
+            <Icon name="info" className="h-3 w-3" /> Change status
           </button>
           <button
             type="button"
-            className="btn-ghost text-xs"
+            className="btn-ghost text-xs px-4 py-2 rounded-lg border border-[#d5d1c8] text-[#4a453d] hover:bg-[#f8f7f4] hover:text-[#101B3D] transition-all duration-200 active:scale-95"
             onClick={() => toggle("registration")}
           >
-            Add registration
+            <Icon name="file-text" className="h-3 w-3" /> Add registration
           </button>
           <button
             type="button"
-            className="btn-ghost text-xs"
+            className="btn-ghost text-xs px-4 py-2 rounded-lg border border-[#d5d1c8] text-[#4a453d] hover:bg-[#f8f7f4] hover:text-[#101B3D] transition-all duration-200 active:scale-95"
             onClick={() => toggle("contact")}
           >
-            Add contact
+            <Icon name="user" className="h-3 w-3" /> Add contact
           </button>
           <button
             type="button"
-            className="btn-ghost text-xs"
+            className="btn-ghost text-xs px-4 py-2 rounded-lg border border-[#d5d1c8] text-[#4a453d] hover:bg-[#f8f7f4] hover:text-[#101B3D] transition-all duration-200 active:scale-95"
             onClick={() => toggle("service")}
           >
-            Attach service
+            <Icon name="briefcase-business" className="h-3 w-3" /> Attach service
           </button>
         </div>
       </Card>

@@ -735,6 +735,16 @@ export interface ClientRead extends ClientCore {
   branch_id: string | null;
   created_at: string;
   updated_at: string;
+  /** Winman CA-ERP MIS report columns. */
+  mobile: string | null;
+  phone: string | null;
+  email: string | null;
+  locality: string | null;
+  father_name: string | null;
+  aadhaar_no: string | null;
+  residential_status: string | null;
+  passport_no: string | null;
+  file_no: string | null;
 }
 
 export interface ClientDetail extends ClientRead {
@@ -1420,15 +1430,25 @@ export interface ClientCreatePayload {
   tan?: string;
   cin?: string;
   gstin?: string;
+  llpin?: string;
   date_of_incorporation?: string;
   date_of_birth?: string;
   address_line1?: string;
   address_line2?: string;
+  locality?: string;
   district?: string;
   city?: string;
   state?: string;
   state_code?: string;
   pincode?: string;
+  mobile?: string;
+  phone?: string;
+  email?: string;
+  father_name?: string;
+  aadhaar_no?: string;
+  residential_status?: string;
+  passport_no?: string;
+  file_no?: string;
   risk_classification?: RiskClassification;
   relationship_notes?: string;
   branch_id?: string;
@@ -1453,6 +1473,15 @@ export interface ClientUpdatePayload {
   state?: string;
   state_code?: string;
   pincode?: string;
+  mobile?: string;
+  phone?: string;
+  email?: string;
+  father_name?: string;
+  locality?: string;
+  aadhaar_no?: string;
+  residential_status?: string;
+  passport_no?: string;
+  file_no?: string;
   kyc_status?: KycStatus;
   risk_classification?: RiskClassification;
   relationship_notes?: string;

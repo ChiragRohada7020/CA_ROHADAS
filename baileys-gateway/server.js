@@ -7,7 +7,7 @@ import fs from "fs";
 import pino from "pino";
 
 const PORT = parseInt(process.env.PORT || "3001", 10);
-const AUTH_DIR = path.join(process.cwd(), "auth_info");
+const AUTH_DIR = path.join(process.cwd(), process.env.WA_AUTH_DIR || "wa-sessions");
 
 fs.mkdirSync(AUTH_DIR, { recursive: true });
 
@@ -22,7 +22,7 @@ let currentQrCode = null;
 let currentPairingCode = null;
 let connectionStatus = {
   connected: false,
-  status: "connecting",
+  status: "disconnected",
   last_disconnect: null,
   reconnect_count: 0,
 };
@@ -84,13 +84,25 @@ async function initializeSocket() {
     browser: Browsers.macOS("Desktop"),
     syncFullHistory: false,
     markOnlineOnConnect: false,
+    defaultQueryTimeoutMs: 30000,
+    keepAliveIntervalMs: 30000,
+    getMessage: undefined,
+  });
+
+  sock.ev.on("error", (err) => {
+    console.error("Socket error:", err.message);
   });
 
   sock.ev.on("creds.save", saveCreds);
 
   sock.ev.on("connection.update", (update) => {
     const { connection, lastDisconnect, qr } = update;
-    
+
+    if (connection === "pending") {
+      updateConnection({ status: "connecting", connected: false });
+      console.log("Waiting for QR scan / authentication...");
+    }
+
     if (qr) {
       qrcode
         .toDataURL(qr)
@@ -104,7 +116,7 @@ async function initializeSocket() {
           console.error("QR generation error:", err.message);
         });
     }
-    
+
     if (connection === "close") {
       const reason = lastDisconnect ? lastDisconnect.error : new Error("connection closed");
       updateConnection({
@@ -113,12 +125,9 @@ async function initializeSocket() {
         last_disconnect: new Date().toISOString(),
       });
       console.log("Connection closed:", reason.message);
-      setTimeout(() => {
-        console.log("Attempting reconnection...");
-        initializeSocket();
-      }, 5000);
+      sock = null;
     }
-    
+
     if (connection === "open") {
       currentQrCode = null;
       currentPairingCode = null;
@@ -147,7 +156,17 @@ function ensureSocket() {
 }
 
 // ── Endpoints ──
-app.get("/qr", async (_req, res) => {
+app.get("/status", (_req, res) => {
+  res.json({
+    configured: true,
+    provider: "baileys",
+    connected: connectionStatus.connected,
+    status: connectionStatus.status,
+    connection_info: { ...connectionStatus },
+  });
+});
+
+app.post("/qr/generate", async (_req, res) => {
   try {
     await initializeSocket();
   } catch (err) {
@@ -172,11 +191,17 @@ app.get("/qr", async (_req, res) => {
     });
   }
 
+  // Wait up to 6 seconds for QR code to be generated
+  const start = Date.now();
+  while (!currentQrCode && Date.now() - start < 6000) {
+    await new Promise((resolve) => setTimeout(resolve, 200));
+  }
+
   if (!currentQrCode) {
     return res.json({
       qr_code: null,
       pairing_code: null,
-      instructions: "Waiting for QR code. The gateway is connecting to WhatsApp servers. Please try again in a few seconds.",
+      instructions: "QR code not yet generated. Please press Generate QR Code again.",
       provider: "baileys",
       connected: false,
       connection_info: { ...connectionStatus },
@@ -187,6 +212,28 @@ app.get("/qr", async (_req, res) => {
     qr_code: currentQrCode,
     pairing_code: currentPairingCode,
     instructions: "Scan this QR with your phone's WhatsApp app.",
+    provider: "baileys",
+    connected: false,
+    connection_info: { ...connectionStatus },
+  });
+});
+
+app.get("/qr", async (_req, res) => {
+  if (connectionStatus.connected) {
+    return res.json({
+      qr_code: null,
+      pairing_code: null,
+      instructions: "WhatsApp is already connected.",
+      provider: "baileys",
+      connected: true,
+      connection_info: { ...connectionStatus },
+    });
+  }
+
+  res.json({
+    qr_code: currentQrCode,
+    pairing_code: currentPairingCode,
+    instructions: currentQrCode ? "Scan this QR with your phone's WhatsApp app." : "Press Generate QR Code to create a pairing code.",
     provider: "baileys",
     connected: false,
     connection_info: { ...connectionStatus },
@@ -221,14 +268,39 @@ app.post("/pair", async (req, res) => {
   }
 });
 
-app.get("/status", (_req, res) => {
-  res.json({
-    configured: true,
-    provider: "baileys",
-    connected: connectionStatus.connected,
-    status: connectionStatus.status,
-    connection_info: { ...connectionStatus },
-  });
+app.post("/reset", async (_req, res) => {
+  try {
+    if (sock) {
+      try {
+        await sock.logout();
+      } catch (_) {
+        // ignore logout errors
+      }
+      sock = null;
+    }
+    currentQrCode = null;
+    currentPairingCode = null;
+    baileysReady = false;
+    baileysError = null;
+    baileys = null;
+    connectionStatus = {
+      connected: false,
+      status: "disconnected",
+      last_disconnect: null,
+      reconnect_count: 0,
+    };
+    // Clear saved auth credentials
+    try {
+      await fs.promises.rm(AUTH_DIR, { recursive: true, force: true });
+    } catch (_) {
+      // ignore
+    }
+    fs.mkdirSync(AUTH_DIR, { recursive: true });
+    console.log("WhatsApp session reset");
+    res.json({ success: true, message: "Session reset. Press Generate QR Code to create a new pairing code." });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 app.post("/send-message", async (req, res) => {
@@ -292,7 +364,6 @@ function jidFor(phone) {
 
 app.listen(PORT, async () => {
   console.log(`Baileys gateway running on http://127.0.0.1:${PORT}`);
-  await initializeSocket();
 });
 
 export default app;

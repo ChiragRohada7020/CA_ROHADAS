@@ -72,6 +72,7 @@ class CreditNote(Base):
     updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
     invoice = relationship("Invoice", foreign_keys=[invoice_id], back_populates="credit_notes")
+    client = relationship("Client", foreign_keys=[client_id])
     lines = relationship("CreditNoteLine", back_populates="credit_note", cascade="all, delete-orphan")
 
 

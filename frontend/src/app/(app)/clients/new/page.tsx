@@ -55,8 +55,17 @@ export default function NewClientPage() {
   const [district, setDistrict] = useState("");
   const [state, setState] = useState("");
   const [stateCode, setStateCode] = useState("");
-  const [pincode, setPincode] = useState("");
-  const [risk, setRisk] = useState("low");
+const [pincode, setPincode] = useState("");
+    const [mobile, setMobile] = useState("");
+    const [phone, setPhone] = useState("");
+    const [email, setEmail] = useState("");
+    const [locality, setLocality] = useState("");
+    const [fatherName, setFatherName] = useState("");
+    const [aadhaarNo, setAadhaarNo] = useState("");
+    const [residentialStatus, setResidentialStatus] = useState("");
+    const [passportNo, setPassportNo] = useState("");
+    const [fileNo, setFileNo] = useState("");
+    const [risk, setRisk] = useState("low");
   const [partnerId, setPartnerId] = useState("");
   const [managerId, setManagerId] = useState("");
   const [notes, setNotes] = useState("");
@@ -115,6 +124,15 @@ export default function NewClientPage() {
     if (state.trim()) payload.state = state.trim();
     if (stateCode.trim()) payload.state_code = stateCode.trim();
     if (pincode.trim()) payload.pincode = pincode.trim();
+    if (mobile.trim()) payload.mobile = mobile.trim();
+    if (phone.trim()) payload.phone = phone.trim();
+    if (email.trim()) payload.email = email.trim();
+    if (locality.trim()) payload.locality = locality.trim();
+    if (fatherName.trim()) payload.father_name = fatherName.trim();
+    if (aadhaarNo.trim()) payload.aadhaar_no = aadhaarNo.trim();
+    if (residentialStatus.trim()) payload.residential_status = residentialStatus.trim();
+    if (passportNo.trim()) payload.passport_no = passportNo.trim();
+    if (fileNo.trim()) payload.file_no = fileNo.trim();
     if (partnerId) payload.partner_id = partnerId;
     if (managerId) payload.manager_id = managerId;
     if (notes.trim()) payload.relationship_notes = notes.trim();
@@ -273,6 +291,31 @@ export default function NewClientPage() {
               hint="Used to derive place of supply"
             />
             <TextField label="PIN code" value={pincode} onChange={setPincode} maxLength={10} placeholder="400001" />
+          </div>
+        </Card>
+
+        {/* ── MIS report fields ── */}
+        <Card
+          title="MIS report fields"
+          subtitle="Columns from the Winman CA-ERP MIS report. Not required; add what you have."
+          icon={<Icon name="file-text" className="h-4 w-4" />}
+        >
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 p-6">
+            <TextField label="Mobile number" value={mobile} onChange={setMobile} maxLength={20} placeholder="9028122760" />
+            <TextField label="Telephone" value={phone} onChange={setPhone} maxLength={20} />
+            <TextField label="Email ID" value={email} onChange={setEmail} type="email" maxLength={255} placeholder="itr4321@gmail.com" />
+            <TextField label="Area / locality" value={locality} onChange={setLocality} maxLength={255} placeholder="Sindhi Colony" />
+            <TextField label="Father name" value={fatherName} onChange={setFatherName} maxLength={200} />
+            <TextField label="Aadhaar number" value={aadhaarNo} onChange={setAadhaarNo} maxLength={20} placeholder="507041227510" />
+            <SelectField
+              label="Residential status"
+              value={residentialStatus}
+              onChange={setResidentialStatus}
+              options={["Resident", "Non-Resident", "Not Available"].map((v) => ({ value: v, label: v }))}
+              placeholder="Choose one"
+            />
+            <TextField label="Passport number" value={passportNo} onChange={setPassportNo} maxLength={20} />
+            <TextField label="File number" value={fileNo} onChange={setFileNo} maxLength={100} />
           </div>
         </Card>
 

@@ -1,5 +1,41 @@
-"""Tests for backend imports and module availability."""
+"""Tests for backend imports, module availability, and the client import endpoint."""
 import importlib
+import io
+import json
+import urllib.error
+import urllib.request
+from openpyxl import Workbook
+
+from app.assistant.extract import extract_text
+
+BASE = "http://127.0.0.1:8000/api"
+
+
+def _post_json(token, path, body):
+    """POST a JSON body to the API using stdlib."""
+    data = json.dumps(body).encode()
+    req = urllib.request.Request(
+        f"{BASE}{path}", data=data, headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {token}",
+        }, method="POST",
+    )
+    try:
+        resp = urllib.request.urlopen(req, timeout=15)
+        return resp.status, json.loads(resp.read().decode())
+    except urllib.error.HTTPError as exc:
+        try:
+            return exc.code, json.loads(exc.read().decode())
+        except Exception:
+            return exc.code, {"error": str(exc)}
+
+
+def _get(path, token):
+    req = urllib.request.Request(
+        f"{BASE}{path}", headers={"Authorization": f"Bearer {token}"}, method="GET",
+    )
+    resp = urllib.request.urlopen(req, timeout=10)
+    return resp.status, json.loads(resp.read().decode())
 
 
 def test_models_import():
@@ -110,3 +146,89 @@ def test_routers_import():
     assert clients.router is not None
     assert tasks.router is not None
     assert billing.router is not None
+
+
+class TestClientImport:
+    def _make_xlsx(self, rows):
+        wb = Workbook()
+        ws = wb.active
+        ws.append([
+            "Name", "PAN", "Mobile Number", "Email ID", "Telephone No", "DOB/DOI/DOF",
+            "Father name", "Address", "Area / Locality", "City", "State", "PIN / ZIP code",
+            "Aadhaar No.", "Residential Status", "Status", "Passport No.", "File No.",
+        ])
+        for row in rows:
+            ws.append(row)
+        buf = io.BytesIO()
+        wb.save(buf)
+        return buf.getvalue()
+
+    def _import_json(self, token, filename, data, dry_run=True):
+        """Extract text from xlsx and POST as JSON body."""
+        text = extract_text(filename, data, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        return _post_json(token, "/imports/clients", {
+            "content": text,
+            "provider": "winman",
+            "source_ref": filename,
+            "default_client_type": "individual",
+            "data_type": "clients",
+            "dry_run": dry_run,
+        })
+
+    def test_import_clients_from_xlsx(self, test_token):
+        data = self._make_xlsx([[
+            "Aachal Bharat Pursnani", "GZZPP1904E", "9028122760", "itr4321@gmail.com", "",
+            "1989-07-11", "GULABCHAND MOTUMAL VARLANI",
+            "MONDHALA ROAD, SINDHI COLONY, PACHORA", "PACHORA", "Jalgaon", "Maharashtra",
+            "424201", "507041227510", "Resident", "Individual", "", "",
+        ]])
+
+        # Dry run (preview) first.
+        status, plan = self._import_json(test_token, "clients.xlsx", data, dry_run=True)
+        assert status == 200, plan
+        assert plan["would_create"] == 1, plan
+        assert plan["rows_rejected"] == 0, plan
+        assert "legal_name" in plan["mapping"], plan
+        assert plan["mapping"]["legal_name"] == "name", plan
+
+        # Then commit.
+        status, result = self._import_json(test_token, "clients.xlsx", data, dry_run=False)
+        assert status == 200, result
+        assert result["rows_imported"] == 1, result
+        assert result["rows_rejected"] == 0, result
+        assert len(result["created"]) == 1
+        client = result["created"][0]
+        assert client["legal_name"] == "Aachal Bharat Pursnani"
+        assert client["status"] == "prospect"
+
+        # The created client is readable via the detail endpoint with all MIS fields.
+        status, detail = _get(f"/clients/{client['id']}", test_token)
+        assert status == 200, detail
+        assert detail["pan"] == "GZZPP1904E"
+        assert detail["mobile"] == "9028122760"
+        assert detail["email"] == "itr4321@gmail.com"
+        assert detail["city"] == "Jalgaon"
+        assert detail["state"] == "Maharashtra"
+        assert detail["status"] == "prospect"
+        assert detail["kyc_status"] == "not_started"
+
+    def test_import_duplicate_pan_within_file(self, test_token):
+        data = self._make_xlsx([
+            ["Dup Client One", "DUPAN1234A", "9000000001", "one@example.com", "", "", "", "", "", "", "", "", "", "", "", "", ""],
+            ["Dup Client Two", "DUPAN1234A", "9000000002", "two@example.com", "", "", "", "", "", "", "", "", "", "", "", "", ""],
+        ])
+        status, result = self._import_json(test_token, "dup.xlsx", data, dry_run=False)
+        assert status == 200, result
+        assert result["rows_imported"] == 1, result
+        assert result["rows_rejected"] == 1, result
+        assert "duplicate PAN" in result["rejected"][0]["reason"], result
+
+    def test_import_missing_name_rejected(self, test_token):
+        data = self._make_xlsx([[
+            "", "NONAME1234A", "9000000003", "none@example.com", "", "", "", "", "", "", "", "", "", "", "", "", "",
+        ]])
+        status, result = self._import_json(test_token, "noname.xlsx", data, dry_run=False)
+        assert status == 200, result
+        assert result["rows_imported"] == 0, result
+        assert result["rows_rejected"] == 1, result
+        assert "legal_name" in result["rejected"][0]["reason"], result

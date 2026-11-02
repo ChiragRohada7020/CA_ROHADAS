@@ -20,6 +20,7 @@ from app.services.whatsapp_service import (
     get_whatsapp_status,
     get_whatsapp_qr,
     pair_whatsapp,
+    reset_whatsapp,
     send_whatsapp_message,
     send_invoice_via_whatsapp,
 )
@@ -34,6 +35,15 @@ async def whatsapp_status(
 ) -> dict[str, Any]:
     await get_current_user(request, db)
     return await get_whatsapp_status()
+
+
+@router.post("/whatsapp/reset")
+async def whatsapp_reset(
+    request: Request,
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    await get_current_user(request, db)
+    return await reset_whatsapp()
 
 
 @router.get("/whatsapp/qr")

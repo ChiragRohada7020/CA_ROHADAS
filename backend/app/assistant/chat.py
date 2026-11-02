@@ -25,12 +25,58 @@ from app.assistant.sessions import (
     add_message,
     get_or_create_session,
     get_session,
+    get_uploaded_files,
 )
 from app.assistant.transport import MCPTransport
 from app.core.config import settings
 from app.core.db import get_db
 
 logger = logging.getLogger("ca_software.assistant")
+
+#: The free kilo-auto tier routes to a model that rejects requests carrying
+#: more than this many function definitions (returns 400 "The stealth model
+#: could not complete the request"). The intent-based tools the assistant
+#: relies on — list_tasks, list_clients, list_financial_years — are defined
+#: first in :func:`_get_tool_schema`, so capping here keeps them available.
+MAX_TOOLS_FOR_FREE_PROVIDER = 30
+
+
+def _uploaded_files_context(session_id: str) -> str:
+    """Render the session's attached files as a block of context for the model.
+
+    The model can only "read" what it is given, so every uploaded file's
+    extracted text is prepended to the user message as an attachment block.
+    Files that could not be reduced to text are summarised instead, so the
+    model still knows they exist.
+    """
+    files = get_uploaded_files(session_id)
+    if not files:
+        return ""
+    parts: list[str] = []
+    total_chars = 0
+    for fid, rec in files.items():
+        text = rec.get("text") or ""
+        total_chars += len(text)
+        label = f"Attachment [{fid}] {rec.get('name') or 'file'} ({rec.get('mime_type') or 'unknown'}, {rec.get('size_bytes')} bytes)"
+        if text.startswith("["):
+            # A note from the extractor (e.g. an unsupported binary). The model
+            # must report it plainly rather than inventing a "corrupted" error.
+            parts.append(f"{label}\n{text}")
+        else:
+            parts.append(f"{label}\n-----BEGIN FILE-----\n{text}\n-----END FILE-----")
+    # Built with concatenation, not str.format: file contents can contain
+    # literal braces (JSON, code) that .format() would misinterpret.
+    return (
+        "The user attached the following file(s) to this conversation.\n"
+        "The text between the BEGIN/END markers below IS the complete contents "
+        "of the file — it was already extracted for you. It is " + str(total_chars) + " characters "
+        "long. Answer questions about it using only this content.\n"
+        "If the text starts with '[', that is the extractor's own note — quote "
+        "it verbatim and do not embellish it or invent a different error (no "
+        "'bad offset', no 'corrupted', no 'unreadable' unless that exact phrase "
+        "appears in the note).\n\n"
+        + "\n\n".join(parts)
+    )
 
 
 class SSE:
@@ -103,7 +149,14 @@ async def handle_chat_stream(
             {"role": "system", "content": ai.format_system_prompt()},
         ]
         messages.extend(session.messages[-20:])  # last 10 exchanges
-        messages.append({"role": "user", "content": message})
+
+        attachment_context = _uploaded_files_context(session.id)
+        user_content = message
+        if attachment_context:
+            # The model can only read what it is given, so any uploaded file's
+            # extracted text travels with the message it is being asked about.
+            user_content = f"{attachment_context}\n\nUser question: {message}"
+        messages.append({"role": "user", "content": user_content})
 
         # ── First turn: call MCP tools to gather context ───────────────────
         mcp_results: list[dict[str, Any]] = []
@@ -192,8 +245,14 @@ async def handle_chat_stream(
         # we execute them and call the AI again with the results. This loop
         # continues until the AI returns no more tool_calls.
         tools_schema = _get_tool_schema()
-        if not settings.AI_API_KEY and settings.AI_PROVIDER == "kilo":
-            tools_schema = tools_schema[:20]
+        # The free kilo-auto tier routes to a model with a hard limit on the
+        # number of function definitions it can accept (see
+        # MAX_TOOLS_FOR_FREE_PROVIDER). Sending all 46 MCP tools makes every
+        # turn return 400 "The stealth model could not complete the request."
+        # Cap here so the assistant still works; the intent-based tools
+        # (list_tasks, list_clients, list_financial_years) are defined first.
+        if settings.AI_PROVIDER == "kilo":
+            tools_schema = tools_schema[:MAX_TOOLS_FOR_FREE_PROVIDER]
         response_buffer = ""
         ai_tool_call_counter = 0
         max_iterations = 5

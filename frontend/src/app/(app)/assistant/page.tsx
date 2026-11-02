@@ -2,14 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 
+import { Icon } from "@/components/Icon";
 import { AssistantActivity, type ActivityStep, toolLabel } from "@/components/AssistantActivity";
 import { ActionButtons, StructuredCard, type AssistantAction } from "@/components/AssistantCards";
 import { AssistantMarkdown } from "@/components/AssistantMarkdown";
-import {
-  AssistantRequestError,
-  streamAssistantTurn,
-  type AssistantEvent,
-} from "@/lib/assistantStream";
+import { AssistantUpload } from "@/components/AssistantUpload";
+import { AssistantRequestError, streamAssistantTurn, type AssistantEvent } from "@/lib/assistantStream";
+import { formatBytes } from "@/lib/format";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -124,6 +123,11 @@ export default function AssistantPage() {
   const [headline, setHeadline] = useState("Thinking about your question…");
   const [elapsedMs, setElapsedMs] = useState(0);
   const [expandedTrace, setExpandedTrace] = useState<number | null>(null);
+  /** Files uploaded this session, shown as chips under the input bar so the
+   * user knows the model has read them. */
+  const [attachedFiles, setAttachedFiles] = useState<
+    { id: string; name: string; size_bytes: number; mime_type: string; extracted_chars: number }[]
+  >([]);
 
   const chatRef = useRef<HTMLDivElement>(null);
   const startedAt = useRef<number>(0);
@@ -132,6 +136,12 @@ export default function AssistantPage() {
   useEffect(() => {
     chatRef.current?.scrollTo({ top: chatRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, steps]);
+
+  // Attachments belong to one conversation: clear them when the session
+  // changes so a stale file is never sent into a new discussion.
+  useEffect(() => {
+    setAttachedFiles([]);
+  }, [sessionId]);
 
   // A live clock while a turn runs, so a 30-second wait never looks like a hang.
   useEffect(() => {
@@ -333,6 +343,28 @@ export default function AssistantPage() {
     sendMessage(input);
   }
 
+  function onFileUploaded(
+    file: {
+      id: string;
+      name: string;
+      size_bytes: number;
+      mime_type: string;
+      extracted_chars: number;
+    },
+    newSessionId: string,
+  ) {
+    setAttachedFiles((prev) => [...prev, file]);
+    // The upload endpoint creates a session if one does not exist yet. The
+    // chat loop sends whatever session id is in state, so without this the
+    // next message would land in a *different* session that has no
+    // attachment — the model would see the question but no file.
+    setSessionId(newSessionId);
+  }
+
+  function removeAttached(fileId: string) {
+    setAttachedFiles((prev) => prev.filter((f) => f.id !== fileId));
+  }
+
   return (
     <div className="flex h-[calc(100vh-4rem)] flex-col">
       <header className="flex items-center gap-3 pb-4">
@@ -419,6 +451,11 @@ export default function AssistantPage() {
             onSubmit={handleSubmit}
             className="flex items-end gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-[0_1px_2px_rgba(16,27,61,0.04),0_12px_32px_-24px_rgba(16,27,61,0.35)] mx-2 sm:mx-0"
           >
+            <AssistantUpload
+              sessionId={sessionId}
+              onUploaded={onFileUploaded}
+              disabled={running}
+            />
             <textarea
               value={input}
               onChange={(event) => setInput(event.target.value)}
@@ -469,6 +506,29 @@ export default function AssistantPage() {
             Answers come from your own records. Anything that changes data asks for confirmation
             first.
           </p>
+          {attachedFiles.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 pb-1">
+              {attachedFiles.map((file) => (
+                <span
+                  key={file.id}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-sky-200 bg-sky-50 pl-2 pr-1 py-0.5 text-[11px] text-sky-800"
+                  title={`${file.name} — ${formatBytes(file.size_bytes)}; ${file.extracted_chars} chars read by the assistant`}
+                >
+                  <Icon name="file-text" className="h-3 w-3" />
+                  <span className="max-w-[14rem] truncate">{file.name}</span>
+                  <button
+                    type="button"
+                    onClick={() => removeAttached(file.id)}
+                    disabled={running}
+                    className="flex h-4 w-4 items-center justify-center rounded-full text-sky-400 hover:bg-sky-200 hover:text-sky-700 disabled:opacity-50"
+                    aria-label={`Remove ${file.name}`}
+                  >
+                    <Icon name="x" className="h-2.5 w-2.5" />
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

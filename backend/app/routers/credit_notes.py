@@ -5,7 +5,7 @@ from typing import Any
 
 from fastapi import APIRouter, Body, Depends, Request
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.core.db import get_db
 from app.core.errors import NotFoundError
@@ -52,13 +52,21 @@ async def create_credit_note(
 @router.get("/credit-notes")
 async def list_credit_notes(request: Request, db: Session = Depends(get_db)) -> Any:
     principal = await get_current_user(request, db)
-    rows = db.query(CreditNote).filter(CreditNote.tenant_id == principal.tenant_id).order_by(CreditNote.created_at.desc()).all()
+    rows = (
+        db.query(CreditNote)
+        .options(joinedload(CreditNote.invoice), joinedload(CreditNote.client))
+        .filter(CreditNote.tenant_id == principal.tenant_id)
+        .order_by(CreditNote.created_at.desc())
+        .all()
+    )
     return [
         {
             "id": str(r.id),
             "note_number": r.note_number,
             "invoice_id": str(r.invoice_id) if r.invoice_id else None,
+            "invoice_number": r.invoice.invoice_number if r.invoice else r.invoice_id,
             "client_id": str(r.client_id),
+            "client_name": (r.client.legal_name or r.client.trade_name or str(r.client_id)) if r.client else str(r.client_id),
             "status": r.status,
             "total": r.total,
             "reason": r.reason,

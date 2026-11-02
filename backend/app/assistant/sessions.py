@@ -21,6 +21,10 @@ class ChatSession:
     last_activity: datetime = field(default_factory=datetime.utcnow)
     messages: list[dict[str, Any]] = field(default_factory=list)
     tool_results: list[dict[str, Any]] = field(default_factory=list)
+    #: Files the user uploaded this session, each reduced to extracted text
+    #: by :mod:`app.assistant.extract`. Keyed by a client-generated id so the
+    #: assistant can reference a specific file ("summarise the attached PDF").
+    uploaded_files: dict[str, dict[str, Any]] = field(default_factory=dict)
 
     def touch(self) -> None:
         self.last_activity = datetime.utcnow()
@@ -78,6 +82,28 @@ def add_message(session_id: str, message: dict[str, Any]) -> None:
     if session:
         session.messages.append(message)
         session.touch()
+
+
+def add_uploaded_file(session_id: str, file_id: str, record: dict[str, Any]) -> bool:
+    """Attach an uploaded file's extracted text to a session.
+
+    Returns ``True`` if the session exists and the file was recorded. The
+    caller is responsible for generating ``file_id`` and running the
+    extraction; this is a thin store so the chat loop can read it back.
+    """
+    session = _sessions.get(session_id)
+    if not session:
+        return False
+    session.uploaded_files[file_id] = record
+    session.touch()
+    return True
+
+
+def get_uploaded_files(session_id: str) -> dict[str, dict[str, Any]]:
+    session = _sessions.get(session_id)
+    if not session:
+        return {}
+    return dict(session.uploaded_files)
 
 
 def clear_session(session_id: str) -> None:

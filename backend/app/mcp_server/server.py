@@ -83,12 +83,30 @@ def _build_tool_definitions():
             "properties": {
                 "client_type": {"type": "string", "enum": ["individual", "legal_entity"], "description": "Type of client"},
                 "legal_name": {"type": "string", "description": "Legal name of the client"},
+                "trade_name": {"type": "string", "description": "Trade / business name"},
                 "pan": {"type": "string", "description": "PAN number"},
+                "tan": {"type": "string", "description": "TAN number"},
+                "cin": {"type": "string", "description": "CIN (company)"},
+                "gstin": {"type": "string", "description": "GSTIN"},
+                "date_of_birth": {"type": "string", "description": "Date of birth (YYYY-MM-DD)"},
+                "date_of_incorporation": {"type": "string", "description": "Date of incorporation (YYYY-MM-DD)"},
+                "address_line1": {"type": "string", "description": "Address line 1"},
+                "address_line2": {"type": "string", "description": "Address line 2"},
+                "locality": {"type": "string", "description": "Area / locality"},
                 "city": {"type": "string", "description": "City"},
                 "state": {"type": "string", "description": "State name"},
-                 "state_code": {"type": "string", "description": "State code (e.g. MH)"},
-                 "status": {"type": "string", "description": "Client status: prospect, active, inactive", "default": "prospect"},
-                 "kyc_status": {"type": "string", "description": "KYC status: not_started, in_progress, completed", "default": "not_started"},
+                "state_code": {"type": "string", "description": "State code (e.g. MH)"},
+                "pincode": {"type": "string", "description": "PIN / ZIP code"},
+                "mobile": {"type": "string", "description": "Mobile number"},
+                "phone": {"type": "string", "description": "Telephone number"},
+                "email": {"type": "string", "description": "Email ID"},
+                "father_name": {"type": "string", "description": "Father's / guardian's name"},
+                "aadhaar_no": {"type": "string", "description": "Aadhaar number"},
+                "residential_status": {"type": "string", "description": "Residential status (e.g. Resident)"},
+                "passport_no": {"type": "string", "description": "Passport number"},
+                "file_no": {"type": "string", "description": "File number"},
+                "status": {"type": "string", "description": "Client status: prospect, active, inactive", "default": "prospect"},
+                "kyc_status": {"type": "string", "description": "KYC status: not_started, in_progress, completed", "default": "not_started"},
             },
             "required": ["client_type", "legal_name"],
         },
@@ -753,6 +771,87 @@ def _build_tool_definitions():
     ))
 
     tools.append(Tool(
+        name="bulk_update_tasks",
+        description="Bulk update multiple tasks at once. Each item needs a task_id plus the fields to change.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "updates": {"type": "array", "items": {"type": "object"}, "description": "Array of {task_id, ...fields} objects"},
+            },
+            "required": ["updates"],
+        },
+    ))
+
+    tools.append(Tool(
+        name="add_task_comment",
+        description="Add a comment to a task.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "task_id": {"type": "string", "description": "The task UUID"},
+                "body": {"type": "string", "description": "Comment text"},
+                "visibility": {"type": "string", "description": "internal or client_visible", "default": "internal"},
+                "is_review_note": {"type": "boolean", "default": False},
+            },
+            "required": ["task_id", "body"],
+        },
+    ))
+
+    tools.append(Tool(
+        name="list_task_comments",
+        description="List comments on a task.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "task_id": {"type": "string", "description": "The task UUID"},
+            },
+            "required": ["task_id"],
+        },
+    ))
+
+    tools.append(Tool(
+        name="list_work_logs",
+        description="List time/work log entries for a task.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "task_id": {"type": "string", "description": "The task UUID"},
+                "limit": {"type": "integer", "default": 50},
+            },
+            "required": ["task_id"],
+        },
+    ))
+
+    tools.append(Tool(
+        name="add_work_log",
+        description="Add a time/work log entry to a task.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "task_id": {"type": "string", "description": "The task UUID"},
+                "work_date": {"type": "string", "description": "Date of work (YYYY-MM-DD)"},
+                "hours": {"type": "number", "description": "Hours worked"},
+                "description": {"type": "string", "description": "Work description"},
+                "activity_type": {"type": "string", "description": "Activity type (e.g. work, review, meeting)"},
+                "is_billable": {"type": "boolean", "default": True},
+            },
+            "required": ["task_id", "hours"],
+        },
+    ))
+
+    tools.append(Tool(
+        name="delete_task",
+        description="Soft-delete a task (requires task.delete permission).",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "task_id": {"type": "string", "description": "The task UUID"},
+            },
+            "required": ["task_id"],
+        },
+    ))
+
+    tools.append(Tool(
         name="list_roles",
         description="List all roles for the tenant with their permission counts and member counts.",
         inputSchema={"type": "object", "properties": {}},
@@ -812,6 +911,12 @@ def _build_whatsapp_tool_definitions():
             "required": ["invoice_id"],
         },
     ))
+
+    tools.append(Tool(
+        name="whatsapp_reset",
+        description="Reset the WhatsApp gateway session, clearing saved credentials and disconnecting. Use when QR scanning gets stuck.",
+        inputSchema={"type": "object", "properties": {}},
+    ))
     tools.append(Tool(
         name="add_task_step",
         description="Add a checklist step to a task.",
@@ -840,16 +945,7 @@ def _build_whatsapp_tool_definitions():
             "required": ["step_id", "status"],
         },
     ))
-    tools.append(Tool(
-        name="delete_task",
-        description="Delete a task.",
-        inputSchema={
-            "type": "object",
-            "properties": {"task_id": {"type": "string"}},
-            "required": ["task_id"],
-        },
-    ))
-
+    
     # ── document list/get/update/delete ────────────────────────────────────────
     tools.append(Tool(
         name="list_documents",
@@ -1044,6 +1140,7 @@ REQUIRED_PERMISSIONS: dict[str, str] = {
     "get_billing_settings": "billing.settings",
     "whatsapp_status": "integration.read",
     "whatsapp_qr": "integration.read",
+    "whatsapp_reset": "integration.write",
     "whatsapp_send_message": "communication.send",
     "whatsapp_send_invoice": "invoice.send",
     "list_documents": "document.read",
@@ -1059,6 +1156,12 @@ REQUIRED_PERMISSIONS: dict[str, str] = {
     "assign_user_role": "user.write",
     "bulk_create_users": "user.write",
     "bulk_create_tasks": "task.write",
+    "bulk_update_tasks": "task.write",
+    "add_task_comment": "task.write",
+    "list_task_comments": "task.read",
+    "list_work_logs": "task.read",
+    "add_work_log": "task.write",
+    "delete_task": "task.delete",
     "list_roles": "role.read",
     "generate_report": "report.read",
 }
@@ -1185,6 +1288,8 @@ async def _dispatch_tool(name: str, arguments: dict[str, Any]) -> str:
             return await _tool_whatsapp_send_message(db, arguments)
         elif name == "whatsapp_send_invoice":
             return await _tool_whatsapp_send_invoice(db, arguments)
+        elif name == "whatsapp_reset":
+            return await _tool_whatsapp_reset(db, arguments)
         elif name == "add_task_step":
             return await _tool_add_task_step(db, arguments)
         elif name == "update_task_step":
@@ -1217,6 +1322,16 @@ async def _dispatch_tool(name: str, arguments: dict[str, Any]) -> str:
             return await _tool_bulk_create_users(db, arguments)
         elif name == "bulk_create_tasks":
             return await _tool_bulk_create_tasks(db, arguments)
+        elif name == "bulk_update_tasks":
+            return await _tool_bulk_update_tasks(db, arguments)
+        elif name == "add_task_comment":
+            return await _tool_add_task_comment(db, arguments)
+        elif name == "list_task_comments":
+            return await _tool_list_task_comments(db, arguments)
+        elif name == "list_work_logs":
+            return await _tool_list_work_logs(db, arguments)
+        elif name == "add_work_log":
+            return await _tool_add_work_log(db, arguments)
         elif name == "list_roles":
             return await _tool_list_roles(db, arguments)
         elif name == "generate_report":
@@ -1289,6 +1404,18 @@ async def _tool_create_client(db, arguments: dict[str, Any]) -> str:
     from app.core.clock import today_local
     from sqlalchemy import select, func
 
+    def _parse_date(value):
+        """Accept YYYY-MM-DD or DD/MM/YYYY and return a datetime, else None."""
+        if not value:
+            return None
+        from datetime import datetime
+        for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y"):
+            try:
+                return datetime.strptime(str(value).strip(), fmt)
+            except ValueError:
+                continue
+        return None
+
     tenant_id = arguments.get("_tenant_id")
     if not tenant_id:
         return json.dumps({"error": "tenant context required"})
@@ -1318,12 +1445,31 @@ async def _tool_create_client(db, arguments: dict[str, Any]) -> str:
         client_code=code,
         client_type=client_type,
         legal_name=legal_name,
+        trade_name=arguments.get("trade_name"),
         pan=arguments.get("pan"),
+        tan=arguments.get("tan"),
+        cin=arguments.get("cin"),
+        gstin=arguments.get("gstin"),
+        llpin=arguments.get("llpin"),
+        date_of_birth=_parse_date(arguments.get("date_of_birth")),
+        date_of_incorporation=_parse_date(arguments.get("date_of_incorporation")),
+        address_line1=arguments.get("address_line1"),
+        address_line2=arguments.get("address_line2"),
+        locality=arguments.get("locality"),
         city=arguments.get("city"),
         state=arguments.get("state"),
         state_code=arguments.get("state_code"),
-         status=arguments.get("status", "prospect"),
-         kyc_status=arguments.get("kyc_status", "not_started"),
+        pincode=arguments.get("pincode"),
+        mobile=arguments.get("mobile"),
+        phone=arguments.get("phone"),
+        email=arguments.get("email"),
+        father_name=arguments.get("father_name"),
+        aadhaar_no=arguments.get("aadhaar_no"),
+        residential_status=arguments.get("residential_status"),
+        passport_no=arguments.get("passport_no"),
+        file_no=arguments.get("file_no"),
+        status=arguments.get("status", "prospect"),
+        kyc_status=arguments.get("kyc_status", "not_started"),
     )
     db.add(client)
     db.commit()
@@ -1394,7 +1540,7 @@ async def _tool_list_tasks(db, arguments: dict[str, Any]) -> str:
 
 
 async def _tool_get_task(db, arguments: dict[str, Any]) -> str:
-    from app.models import Task, TaskStep
+    from app.models import Task, TaskStep, TaskComment, TaskWorkLog, TaskStatusHistory, User
     import json
     from sqlalchemy import select
 
@@ -1432,6 +1578,68 @@ async def _tool_get_task(db, arguments: dict[str, Any]) -> str:
             "sequence": s.sequence,
         })
 
+    # Subtasks
+    subtasks_rows = db.execute(select(Task).where(Task.parent_task_id == task.id).order_by(Task.created_at.desc())).scalars().all()
+    subtasks = []
+    for st in subtasks_rows:
+        subtasks.append({
+            "id": str(st.id),
+            "task_code": st.task_code,
+            "title": st.title,
+            "status": st.status,
+        })
+
+    # Comments
+    comments_rows = db.execute(select(TaskComment).where(TaskComment.task_id == task.id).order_by(TaskComment.created_at.desc())).scalars().all()
+    comments = []
+    for c in comments_rows:
+        author_name = None
+        if c.author_user_id:
+            u = db.get(User, c.author_user_id)
+            author_name = u.full_name if u else None
+        comments.append({
+            "id": str(c.id),
+            "author_name": author_name,
+            "author_type": c.author_type or "user",
+            "body": c.body,
+            "visibility": c.visibility or "internal",
+            "is_review_note": bool(c.is_review_note),
+            "created_at": c.created_at.isoformat() if c.created_at else None,
+        })
+
+    # Work logs / time entries
+    work_logs_rows = db.execute(select(TaskWorkLog).where(TaskWorkLog.task_id == task.id).order_by(TaskWorkLog.work_date.desc())).scalars().all()
+    work_logs = []
+    for w in work_logs_rows:
+        u = db.get(User, w.user_id)
+        work_logs.append({
+            "id": str(w.id),
+            "user_name": u.full_name if u else None,
+            "work_date": w.work_date.isoformat() if hasattr(w.work_date, "isoformat") else str(w.work_date),
+            "hours": float(w.hours),
+            "description": w.description,
+            "activity_type": w.activity_type or "work",
+            "is_billable": bool(w.is_billable),
+            "created_at": w.created_at.isoformat() if w.created_at else None,
+        })
+
+    # Status history / audit trail
+    history_rows = db.execute(select(TaskStatusHistory).where(TaskStatusHistory.task_id == task.id).order_by(TaskStatusHistory.created_at.desc())).scalars().all()
+    history = []
+    for h in history_rows:
+        history.append({
+            "id": str(h.id),
+            "from_status": h.from_status,
+            "to_status": h.to_status,
+            "approval_status": h.approval_status,
+            "filing_status": h.filing_status,
+            "progress_percent": h.progress_percent,
+            "changed_by_id": str(h.changed_by_id) if h.changed_by_id else None,
+            "actor_type": h.actor_type or "user",
+            "reason": h.reason,
+            "created_at": h.created_at.isoformat() if h.created_at else None,
+        })
+
     return json.dumps({
         "id": str(task.id),
         "task_code": task.task_code,
@@ -1450,6 +1658,10 @@ async def _tool_get_task(db, arguments: dict[str, Any]) -> str:
         "updated_at": task.updated_at.isoformat() if task.updated_at else None,
         "checklist": checklist,
         "steps": checklist,
+        "subtasks": subtasks,
+        "comments": comments,
+        "work_logs": work_logs,
+        "status_history": history,
     })
 
 
@@ -3116,6 +3328,12 @@ async def _tool_whatsapp_qr(db, arguments: dict[str, Any]) -> str:
     return j.dumps(await get_whatsapp_qr())
 
 
+async def _tool_whatsapp_reset(db, arguments: dict[str, Any]) -> str:
+    import json as j
+    from app.services.whatsapp_service import reset_whatsapp
+    return j.dumps(await reset_whatsapp())
+
+
 async def _tool_whatsapp_send_message(db, arguments: dict[str, Any]) -> str:
     import json as j
     from app.services.whatsapp_service import send_whatsapp_message
@@ -4006,6 +4224,237 @@ async def _tool_bulk_create_tasks(db, arguments: dict[str, Any]) -> str:
 
     db.commit()
     return json.dumps({"created": len(results), "results": results, "errors": errors})
+
+
+async def _tool_bulk_update_tasks(db, arguments: dict[str, Any]) -> str:
+    import json
+    from app.models import Task
+    from sqlalchemy import select
+
+    tenant_id = arguments.get("_tenant_id")
+    if not tenant_id:
+        return json.dumps({"error": "tenant context required"})
+
+    updates = arguments.get("updates") or []
+    if not updates:
+        return json.dumps({"error": "updates array is required and must not be empty"})
+
+    allowed_fields = {
+        "title", "description", "status", "approval_status", "filing_status",
+        "priority", "complexity", "task_type", "category", "sub_category",
+        "progress_percent", "start_date", "internal_due_date", "statutory_due_date",
+        "deadline_verified", "estimated_hours", "actual_hours",
+        "blocked_reason", "delay_reason", "preparer_id", "reviewer_id", "approver_id",
+        "filer_id", "client_id", "service_id", "period_key", "tags", "parent_task_id",
+    }
+
+    results = []
+    errors = []
+    for i, upd in enumerate(updates):
+        try:
+            task_id = upd.get("task_id")
+            if not task_id:
+                errors.append({"index": i, "error": "task_id is required"})
+                continue
+            task = db.get(Task, task_id)
+            if task is None or str(task.tenant_id) != str(tenant_id):
+                errors.append({"index": i, "task_id": task_id, "error": "Task not found"})
+                continue
+            for key, value in upd.items():
+                if key == "task_id" or key not in allowed_fields:
+                    continue
+                if value is None:
+                    continue
+                setattr(task, key, value)
+            db.flush()
+            results.append({"id": str(task.id), "task_code": task.task_code, "status": task.status})
+        except Exception as exc:
+            db.rollback()
+            errors.append({"index": i, "task_id": upd.get("task_id"), "error": str(exc)})
+
+    db.commit()
+    return json.dumps({"updated": len(results), "results": results, "errors": errors})
+
+
+async def _tool_add_task_comment(db, arguments: dict[str, Any]) -> str:
+    import json
+    from app.models import TaskComment
+    from uuid import UUID
+
+    tenant_id = arguments.get("_tenant_id")
+    user_id = arguments.get("_user_id")
+    if not tenant_id:
+        return json.dumps({"error": "tenant context required"})
+
+    task_id = arguments.get("task_id")
+    body = arguments.get("body", "").strip()
+    if not task_id or not body:
+        return json.dumps({"error": "task_id and body are required"})
+
+    from app.models import Task
+    task = db.get(Task, task_id)
+    if task is None or str(task.tenant_id) != str(tenant_id):
+        return json.dumps({"error": f"Task {task_id} not found"})
+
+    comment = TaskComment(
+        task_id=task_id,
+        author_user_id=UUID(user_id) if user_id else None,
+        author_type="user",
+        body=body,
+        visibility=arguments.get("visibility") or "internal",
+        is_review_note=bool(arguments.get("is_review_note", False)),
+    )
+    db.add(comment)
+    db.commit()
+    db.refresh(comment)
+    return json.dumps({
+        "id": str(comment.id),
+        "task_id": str(comment.task_id),
+        "author_name": None,
+        "author_type": comment.author_type,
+        "body": comment.body,
+        "visibility": comment.visibility,
+        "is_review_note": comment.is_review_note,
+        "created_at": comment.created_at.isoformat() if comment.created_at else None,
+    })
+
+
+async def _tool_list_task_comments(db, arguments: dict[str, Any]) -> str:
+    import json
+    from app.models import TaskComment, Task, User
+    from sqlalchemy import select
+
+    tenant_id = arguments.get("_tenant_id")
+    if not tenant_id:
+        return json.dumps({"error": "tenant context required"})
+
+    task_id = arguments.get("task_id")
+    if not task_id:
+        return json.dumps({"error": "task_id is required"})
+
+    task = db.get(Task, task_id)
+    if task is None or str(task.tenant_id) != str(tenant_id):
+        return json.dumps({"error": f"Task {task_id} not found"})
+
+    rows = db.execute(
+        select(TaskComment).where(TaskComment.task_id == task_id)
+        .order_by(TaskComment.created_at.desc())
+    ).scalars().all()
+    items = []
+    for c in rows:
+        author_name = None
+        if c.author_user_id:
+            u = db.get(User, c.author_user_id)
+            author_name = u.full_name if u else None
+        items.append({
+            "id": str(c.id),
+            "task_id": str(c.task_id),
+            "author_user_id": str(c.author_user_id) if c.author_user_id else None,
+            "author_name": author_name,
+            "author_type": c.author_type or "user",
+            "body": c.body,
+            "visibility": c.visibility or "internal",
+            "is_review_note": bool(c.is_review_note),
+            "parent_comment_id": str(c.parent_comment_id) if c.parent_comment_id else None,
+            "created_at": c.created_at.isoformat() if c.created_at else None,
+            "edited_at": c.edited_at.isoformat() if c.edited_at else None,
+        })
+    return json.dumps({"items": items})
+
+
+async def _tool_list_work_logs(db, arguments: dict[str, Any]) -> str:
+    import json
+    from app.models import TaskWorkLog, Task, User
+    from sqlalchemy import select
+
+    tenant_id = arguments.get("_tenant_id")
+    if not tenant_id:
+        return json.dumps({"error": "tenant context required"})
+
+    task_id = arguments.get("task_id")
+    if not task_id:
+        return json.dumps({"error": "task_id is required"})
+
+    task = db.get(Task, task_id)
+    if task is None or str(task.tenant_id) != str(tenant_id):
+        return json.dumps({"error": f"Task {task_id} not found"})
+
+    limit = int(arguments.get("limit") or 50)
+    rows = db.execute(
+        select(TaskWorkLog).where(TaskWorkLog.task_id == task_id)
+        .order_by(TaskWorkLog.work_date.desc()).limit(limit)
+    ).scalars().all()
+    items = []
+    for r in rows:
+        u = db.get(User, r.user_id)
+        items.append({
+            "id": str(r.id),
+            "task_id": str(r.task_id),
+            "user_id": str(r.user_id),
+            "user_name": u.full_name if u else None,
+            "work_date": r.work_date.isoformat() if hasattr(r.work_date, "isoformat") else str(r.work_date),
+            "hours": float(r.hours),
+            "description": r.description,
+            "activity_type": r.activity_type or "work",
+            "is_billable": bool(r.is_billable),
+            "created_at": r.created_at.isoformat() if r.created_at else None,
+        })
+    return json.dumps({"items": items})
+
+
+async def _tool_add_work_log(db, arguments: dict[str, Any]) -> str:
+    import json
+    import uuid
+    from app.models import Task
+    from datetime import date, datetime
+    from sqlalchemy import text
+
+    tenant_id = arguments.get("_tenant_id")
+    user_id = arguments.get("_user_id")
+    if not tenant_id:
+        return json.dumps({"error": "tenant context required"})
+
+    task_id = arguments.get("task_id")
+    hours = arguments.get("hours")
+    if not task_id or hours is None:
+        return json.dumps({"error": "task_id and hours are required"})
+
+    task = db.get(Task, task_id)
+    if task is None or str(task.tenant_id) != str(tenant_id):
+        return json.dumps({"error": f"Task {task_id} not found"})
+
+    work_date = arguments.get("work_date") or datetime.utcnow().date()
+    if isinstance(work_date, str):
+        work_date = date.fromisoformat(work_date)
+
+    log_id = uuid.uuid4()
+    db.execute(text(
+        "INSERT INTO task_work_logs (id, task_id, user_id, work_date, hours, "
+        " description, activity_type, is_billable, created_at) "
+        "VALUES (:id, CAST(:task AS uuid), CAST(:user AS uuid), "
+        " :work_date, :hours, :desc, :activity, :billable, NOW())"
+    ), {
+        "id": str(log_id),
+        "task": task_id,
+        "user": user_id,
+        "work_date": work_date,
+        "hours": float(hours),
+        "desc": arguments.get("description"),
+        "activity": arguments.get("activity_type", "work"),
+        "billable": bool(arguments.get("is_billable", True)),
+    })
+    db.commit()
+    return json.dumps({
+        "id": str(log_id),
+        "task_id": task_id,
+        "user_id": user_id,
+        "work_date": work_date.isoformat() if hasattr(work_date, "isoformat") else str(work_date),
+        "hours": float(hours),
+        "description": arguments.get("description"),
+        "activity_type": arguments.get("activity_type", "work"),
+        "is_billable": bool(arguments.get("is_billable", True)),
+        "created_at": datetime.utcnow().isoformat(),
+    })
 
 
 async def _tool_list_roles(db, arguments: dict[str, Any]) -> str:

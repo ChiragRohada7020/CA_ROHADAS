@@ -95,10 +95,13 @@ class WhatsAppGatewayClient:
         return await self._get("/status")
 
     async def qr(self) -> dict[str, Any]:
-        return await self._get("/qr")
+        return await self._post_json("/qr/generate", {})
 
     async def pair(self, phone_number: str) -> dict[str, Any]:
         return await self._post_json("/pair", {"phone_number": phone_number})
+
+    async def reset(self) -> dict[str, Any]:
+        return await self._post_json("/reset", {})
 
     async def send_message(self, phone_number: str, message: str) -> dict[str, Any]:
         return await self._post_json("/send-message", {"phone_number": phone_number, "message": message})
@@ -148,6 +151,11 @@ async def get_whatsapp_qr() -> dict[str, Any]:
 async def pair_whatsapp(phone_number: str) -> dict[str, Any]:
     """Request a pairing code for the given phone number."""
     return await _gateway().pair(phone_number)
+
+
+async def reset_whatsapp() -> dict[str, Any]:
+    """Reset the WhatsApp gateway session (clears saved credentials)."""
+    return await _gateway().reset()
 
 
 async def send_whatsapp_message(phone_number: str, message: str) -> dict[str, Any]:

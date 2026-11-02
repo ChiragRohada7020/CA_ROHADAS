@@ -102,8 +102,14 @@ class MCPTransport:
         """
         base = str(request.base_url)
         parsed = urlparse(base)
+        # The MCP mount lives on this same process, which only speaks plain
+        # HTTP. Force the scheme to http so we never attempt TLS to the local
+        # server — that produces "SSL: WRONG_VERSION_NUMBER" when the
+        # inbound request arrived over HTTPS (e.g. via a public IP behind an
+        # SSL-terminating proxy).
         local = parsed._replace(
-            netloc=f"127.0.0.1:{parsed.port or 8000}"
+            scheme="http",
+            netloc=f"127.0.0.1:{parsed.port or 8000}",
         )
         return build_mcp_url(urlunparse(local))
 
