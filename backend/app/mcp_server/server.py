@@ -1346,7 +1346,7 @@ async def _tool_list_clients(db, arguments: dict[str, Any]) -> str:
     from app.models import Client
     from sqlalchemy import select, or_, func
 
-    stmt = select(Client)
+    stmt = select(Client).where(Client.deleted_at.is_(None))
     tenant_id = arguments.get("_tenant_id")
     if tenant_id:
         stmt = stmt.where(Client.tenant_id == tenant_id)
@@ -1382,6 +1382,9 @@ async def _tool_get_client(db, arguments: dict[str, Any]) -> str:
 
     client = db.get(Client, client_id)
     if client is None:
+        return json.dumps({"error": f"Client {client_id} not found"})
+
+    if client.deleted_at is not None:
         return json.dumps({"error": f"Client {client_id} not found"})
 
     tenant_id = arguments.get("_tenant_id")

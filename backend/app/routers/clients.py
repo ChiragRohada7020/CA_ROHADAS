@@ -162,7 +162,10 @@ async def list_clients(
         stmt = stmt.where(Client.kyc_status == kyc_status)
 
     total = db.execute(
-        select(func.count()).select_from(Client).where(Client.tenant_id == principal.tenant_id)
+        select(func.count()).select_from(Client).where(
+            Client.tenant_id == principal.tenant_id,
+            Client.deleted_at.is_(None),
+        )
     ).scalar() or 0
 
     rows = db.execute(stmt.limit(limit).offset(offset)).scalars().all()
@@ -250,7 +253,7 @@ async def list_clients(
             "total": total,
             "limit": limit,
             "offset": offset,
-            "has_more": len(rows) == limit,
+            "has_more": offset + len(rows) < total,
         },
     }
 
