@@ -134,7 +134,6 @@ async def list_clients(
     stmt = (
         select(Client)
         .where(Client.tenant_id == principal.tenant_id)
-        .where(Client.deleted_at.is_(None))
         .order_by(Client.legal_name)
     )
 
