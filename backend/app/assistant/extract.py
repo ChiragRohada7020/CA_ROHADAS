@@ -344,13 +344,11 @@ def extract_text(filename: str, data: bytes, mime_type: str = "") -> str:
         if not _looks_like_zip(data) and _looks_like_text(data):
             return _truncate(_spreadsheet_text(data))
 
-        # 1. Microsoft's MarkItDown — the most robust converter for valid
-        #    XLSX files (and it adds DOCX/PDF/image/audio coverage too).
-        converted = _markitdown_text(data, filename)
-        if converted:
-            return _truncate(converted)
-
-        # 2. openpyxl — handles styles, formulas and merged cells precisely.
+        # 1. openpyxl — handles styles, formulas and merged cells precisely.
+        #    Produces tab-separated values that the import column-matcher can
+        #    parse. MarkItDown is deliberately skipped here because it emits
+        #    Markdown tables (## Sheet1, | Unnamed: …) which the column matcher
+        #    cannot map to model fields.
         wb = None
         try:
             from openpyxl import load_workbook  # type: ignore
@@ -370,7 +368,7 @@ def extract_text(filename: str, data: bytes, mime_type: str = "") -> str:
                     lines.append("\t".join(cells))
             return _truncate("\n".join(lines).strip() or "[Spreadsheet contained no data]")
 
-        # 3. zipfile module — standard-library ZIP reader. More reliable than
+        # 2. zipfile module — standard-library ZIP reader. More reliable than
         #    manual header parsing for valid XLSX files, but requires an intact
         #    central directory.
         try:
@@ -443,14 +441,14 @@ def extract_text(filename: str, data: bytes, mime_type: str = "") -> str:
         except Exception:
             pass
 
-        # 4. Recover sheet XML directly from the ZIP's local file headers.
+        # 3. Recover sheet XML directly from the ZIP's local file headers.
         #    Works when openpyxl and zipfile both fail — e.g. corrupt central
         #    directory (common when a browser re-saves an XLSX).
         recovered = _read_xlsx_from_zip(data)
         if recovered is not None:
             return _truncate(recovered)
 
-        # 5. Last-ditch: maybe it is still a text table openpyxl choked on.
+        # 4. Last-ditch: maybe it is still a text table openpyxl choked on.
         if _looks_like_text(data):
             return _truncate(_spreadsheet_text(data))
         return f"[Could not read spreadsheet: openpyxl could not open the file and no sheet XML was recoverable]"
