@@ -1561,6 +1561,8 @@ export function InvoiceRowActions({
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [issuing, setIssuing] = useState(false);
+  const [whatsappSent, setWhatsappSent] = useState<boolean | null>(null);
+  const [whatsappError, setWhatsappError] = useState<string | null>(null);
   const ref = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
@@ -1601,6 +1603,23 @@ export function InvoiceRowActions({
     });
   };
 
+  const whatsappSend = useMutation({
+    mutationFn: () =>
+      api.post<{ invoice_id: string; invoice_number: string | null; recipient: string | null; status: string; detail: string }>(
+        `/whatsapp/send-invoice/${invoice.id}`,
+        { message: null },
+      ),
+    onSuccess: () => {
+      setWhatsappSent(true);
+      setWhatsappError(null);
+      void queryClient.invalidateQueries({ queryKey: ["invoices"] });
+    },
+    onError: (err: any) => {
+      setWhatsappSent(false);
+      setWhatsappError(err?.response?.data?.message || err?.message || "Failed to send via WhatsApp");
+    },
+  });
+
   return (
     <div ref={ref} className="relative inline-block text-right">
       <button
@@ -1627,6 +1646,28 @@ export function InvoiceRowActions({
               <Icon name="download" className="h-4 w-4" />
               Download PDF
             </button>
+            <button
+              type="button"
+              className={
+                whatsappSent === true
+                  ? "flex w-full items-center gap-2 px-3 py-2 text-left text-emerald-700 bg-emerald-50"
+                  : "flex w-full items-center gap-2 px-3 py-2 text-left text-slate-700 hover:bg-slate-50"
+              }
+              disabled={whatsappSend.isPending}
+              onClick={() => {
+                setOpen(false);
+                void whatsappSend.mutate();
+              }}
+            >
+              <Icon name="communications" className="h-4 w-4" />
+              {whatsappSend.isPending ? "Sending…" : "Send via WhatsApp"}
+            </button>
+            {whatsappSent !== null && whatsappError && (
+              <p className="px-3 py-1 text-xs text-rose-700">{whatsappError}</p>
+            )}
+            {whatsappSent === true && (
+              <p className="px-3 py-1 text-xs text-emerald-700">Invoice sent via WhatsApp.</p>
+            )}
             <button
               type="button"
               className="flex w-full items-center gap-2 px-3 py-2 text-left text-slate-700 hover:bg-slate-50"
