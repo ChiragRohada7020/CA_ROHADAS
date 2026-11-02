@@ -51,7 +51,6 @@ export default function SettingsPage() {
   } = useQuery<WhatsAppStatus>({
     queryKey: ["whatsapp", "status"],
     queryFn: () => api.get<WhatsAppStatus>("/whatsapp/status"),
-    refetchInterval: 5000,
     retry: 2,
   });
 
@@ -68,7 +67,6 @@ export default function SettingsPage() {
       } else {
         setWaStatus("disconnected");
       }
-      queryClient.invalidateQueries({ queryKey: ["whatsapp", "status"] });
     },
     onError: (err: any) => {
       setPairError(err?.response?.data?.message || err?.message || "Failed to generate QR code");
@@ -76,14 +74,20 @@ export default function SettingsPage() {
     },
   });
 
+  // Open modal: generate QR only if we don't already have one
   useEffect(() => {
     if (waOpen) {
-      setWaStatus("checking");
       setPairError(null);
-      void generateQRMutation.mutate();
+      if (qrData?.qr_code) {
+        setWaStatus("qr");
+      } else {
+        setWaStatus("checking");
+        void generateQRMutation.mutate();
+      }
     }
-  }, [waOpen, generateQRMutation]);
+  }, [waOpen, generateQRMutation, qrData?.qr_code]);
 
+  // Poll status while QR is shown (detect scan)
   useEffect(() => {
     if (waStatus === "qr") {
       const interval = setInterval(() => {
@@ -93,13 +97,14 @@ export default function SettingsPage() {
     }
   }, [waStatus, refetchStatus]);
 
+  // Auto-detect when QR is scanned (connection becomes open)
   useEffect(() => {
-    if (status?.connected && waStatus !== "connected") {
+    if (status?.connected && waStatus === "qr") {
       setWaStatus("connected");
       setWaOpen(false);
       setQrData(null);
     }
-  }, [status]);
+  }, [status?.connected]);
 
   const resetMutation = useMutation({
     mutationFn: () => api.post("/whatsapp/reset"),
