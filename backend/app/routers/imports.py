@@ -167,13 +167,13 @@ def _plan_from_text(
 def _find_header_row(lines: list[str]) -> int:
     """Find the row index that looks like a column header row.
 
-    Scans the first few rows and picks the one whose cells best match the
-    known column map keys (case-insensitive, punctuation stripped). Falls back
+    Scans every row and picks the one whose cells best match the known
+    column map keys (case-insensitive, punctuation stripped). Falls back
     to row 0 if nothing matches well.
     """
     best_idx = 0
     best_score = 0
-    for i in range(min(5, len(lines))):
+    for i in range(len(lines)):
         cells = [_normalize_header(c) for c in lines[i].split("\t")]
         score = sum(1 for c in cells if c in _CLIENT_COLUMN_MAP)
         if score > best_score:
