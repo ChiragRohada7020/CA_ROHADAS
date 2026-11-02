@@ -150,14 +150,25 @@ export default function SettingsPage() {
       <PageHeader title="Settings" subtitle="Firm-wide configuration and integrations." />
 
       {/* ── Appearance ── */}
-      <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex items-center gap-3 border-b border-slate-200 px-5 py-4">
-          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-sky-50 text-sky-600 ring-1 ring-inset ring-sky-100">
+      <section
+        className={cn(
+          "overflow-hidden rounded-xl shadow-sm",
+          "border border-color",
+          "bg-surface",
+        )
+      }
+      >
+        <div className={cn(
+          "flex items-center gap-3 border-b px-5 py-4",
+          "border-border-light",
+        )}
+        >
+          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-sky-50 text-sky-600 ring-1 ring-inset ring-sky-100 dark:bg-sky-900/20 dark:text-sky-400 dark:ring-sky-900">
             <Icon name="settings" className="h-5 w-5" />
           </span>
           <div>
-            <h2 className="text-sm font-semibold text-slate-900">Appearance</h2>
-            <p className="text-xs text-slate-500">
+            <h2 className="text-sm font-semibold text-text-primary">Appearance</h2>
+            <p className="text-xs text-text-secondary">
               Choose how Rohadas CA looks in this browser.
             </p>
           </div>
@@ -172,20 +183,31 @@ export default function SettingsPage() {
       </section>
 
       {/* ── MCP connection ── */}
-      <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex items-center gap-3 border-b border-slate-200 px-5 py-4">
-          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-sky-50 text-sky-600 ring-1 ring-inset ring-sky-100">
+      <section
+        className={cn(
+          "overflow-hidden rounded-xl shadow-sm",
+          "border border-color",
+          "bg-surface",
+        )
+      }
+      >
+        <div className={cn(
+          "flex items-center gap-3 border-b px-5 py-4",
+          "border-border-light",
+        )}
+        >
+          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-sky-50 text-sky-600 ring-1 ring-inset ring-sky-100 dark:bg-sky-900/20 dark:text-sky-400 dark:ring-sky-900">
             <Icon name="integrations" className="h-5 w-5" />
           </span>
           <div>
-            <h2 className="text-sm font-semibold text-slate-900">MCP connection</h2>
-            <p className="text-xs text-slate-500">
+            <h2 className="text-sm font-semibold text-text-primary">MCP connection</h2>
+            <p className="text-xs text-text-secondary">
               Connect Claude, Cursor or other MCP clients to this firm&apos;s data.
             </p>
           </div>
         </div>
         <div className="space-y-3 px-5 py-4">
-          <label className="block text-xs font-medium uppercase tracking-wide text-slate-500">
+          <label className="block text-xs font-medium uppercase tracking-wide text-text-secondary">
             Endpoint URL
           </label>
           <div className="flex gap-2">
@@ -203,8 +225,8 @@ export default function SettingsPage() {
               {copied ? "Copied" : "Copy link"}
             </Button>
           </div>
-          <p className="text-xs text-slate-500">
-            Set <code className="rounded bg-slate-100 px-1 py-0.5">NEXT_PUBLIC_MCP_URL</code> to
+          <p className="text-xs text-text-secondary">
+            Set <code className={cn("rounded", "bg-surface-2", "dark:bg-surface-3", "px-1 py-0.5")}>NEXT_PUBLIC_MCP_URL</code> to
             override (e.g. your Cloudflare tunnel URL).
           </p>
         </div>
@@ -214,8 +236,8 @@ export default function SettingsPage() {
       <Card>
         <div className="flex items-start justify-between gap-4 p-5">
           <div className="flex-1 min-w-0">
-            <h3 className="text-base font-semibold text-slate-900">WhatsApp</h3>
-            <p className="text-sm text-slate-500 mt-1 leading-relaxed">
+            <h3 className="text-base font-semibold text-text-primary">WhatsApp</h3>
+            <p className="text-sm text-text-secondary mt-1 leading-relaxed">
               Send invoices directly to your party&apos;s WhatsApp from the invoice list or detail view.
               Scan a QR code to connect your business WhatsApp number.
             </p>
@@ -224,7 +246,7 @@ export default function SettingsPage() {
             <button
               onClick={() => resetMutation.mutate()}
               title="Disconnect WhatsApp and reset auth"
-              className="text-xs px-2.5 py-1.5 rounded-lg font-medium text-red-600 hover:bg-red-600/[0.08] transition-colors"
+              className="text-xs px-2.5 py-1.5 rounded-lg font-medium text-red-600 hover:bg-red-600/[0.08] transition-colors dark:text-red-400 dark:hover:bg-red-900/20"
             >
               Disconnect
             </button>
@@ -232,19 +254,29 @@ export default function SettingsPage() {
         </div>
 
         {isConnected && (
-          <div className="mt-4 p-3 bg-emerald-50 rounded-lg border border-emerald-200 px-4 py-3">
+          <div className={cn(
+            "mt-4 p-3 rounded-lg border px-4 py-3",
+            "bg-emerald-50 border-emerald-200",
+            "dark:bg-emerald-950/40 dark:border-emerald-800",
+          )}
+          >
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-emerald-500" />
-              <span className="text-sm font-medium text-emerald-800">WhatsApp Connected</span>
+              <span className="text-sm font-medium text-emerald-800 dark:text-emerald-400">WhatsApp Connected</span>
             </div>
           </div>
         )}
 
         {!configured && (
-          <div className="mt-4 p-3 bg-rose-50 rounded-lg border border-rose-200 px-4 py-3">
+          <div className={cn(
+            "mt-4 p-3 rounded-lg border px-4 py-3",
+            "bg-rose-50 border-rose-200",
+            "dark:bg-rose-950/40 dark:border-rose-800",
+          )}
+          >
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-rose-500" />
-              <span className="text-sm font-medium text-rose-800">WhatsApp not configured</span>
+              <span className="text-sm font-medium text-rose-800 dark:text-rose-400">WhatsApp not configured</span>
             </div>
           </div>
         )}
@@ -267,17 +299,17 @@ export default function SettingsPage() {
           {waStatus === "checking" && (
             <div className="text-center py-4">
               <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-              <p className="text-xs text-slate-500">Checking WhatsApp connection…</p>
+              <p className="text-xs text-text-secondary">Checking WhatsApp connection…</p>
             </div>
           )}
 
           {waStatus === "connected" && (
             <div className="text-center py-4">
-              <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-3">
-                <Icon name="check-circle" className="h-5 w-5 text-emerald-600" />
+              <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-3 dark:bg-emerald-900/30">
+                <Icon name="check-circle" className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
               </div>
-              <p className="text-sm font-medium text-slate-900">WhatsApp Connected</p>
-              <p className="text-xs text-slate-500 mt-1">You can now send invoices via WhatsApp</p>
+              <p className="text-sm font-medium text-text-primary">WhatsApp Connected</p>
+              <p className="text-xs text-text-secondary mt-1">You can now send invoices via WhatsApp</p>
               <button
                 onClick={() => setWaOpen(false)}
                 className="mt-4 text-xs px-3 py-1.5 rounded-lg font-medium text-white bg-emerald-600 hover:bg-emerald-700 transition-colors"
@@ -289,7 +321,7 @@ export default function SettingsPage() {
 
           {waStatus === "qr" && (
             <div className="text-center">
-              <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-3">
+              <p className="text-xs font-medium text-text-secondary uppercase tracking-wide mb-3">
                 Scan QR Code
               </p>
               <div className="relative inline-block">
@@ -297,7 +329,11 @@ export default function SettingsPage() {
                   key={waKey}
                   src={qrData?.qr_code || ""}
                   alt="WhatsApp QR code"
-                  className="w-48 h-48 mx-auto rounded-lg border border-slate-200 bg-white shadow-sm"
+                  className={cn(
+                    "w-48 h-48 mx-auto rounded-lg shadow-sm",
+                    "border border-color bg-surface",
+                    "dark:border-border-light",
+                  )}
                   onError={() => {
                     setTimeout(() => {
                       setWaStatus("checking");
@@ -309,7 +345,7 @@ export default function SettingsPage() {
                   <Icon name="qrcode" className="h-10 w-10 text-white" />
                 </div>
               </div>
-              <p className="text-xs text-slate-500 mt-3">
+              <p className="text-xs text-text-secondary mt-3">
                 Open WhatsApp on your phone and scan the QR code
               </p>
               <div className="flex gap-2 mt-4">
@@ -318,7 +354,10 @@ export default function SettingsPage() {
                     setWaStatus("checking");
                     void generateQRMutation.mutate();
                   }}
-                  className="flex-1 text-xs px-2.5 py-1.5 rounded-lg font-medium text-slate-600 hover:bg-slate-100 border border-slate-200 transition-colors"
+                  className={cn(
+                    "flex-1 text-xs px-2.5 py-1.5 rounded-lg font-medium border transition-colors disabled:opacity-50",
+                    "text-text-secondary bg-surface border-border-color hover:bg-surface-2 dark:text-text-secondary dark:bg-surface-2 dark:border-border-light dark:hover:bg-surface-3",
+                  )}
                   disabled={generateQRMutation.isPending}
                 >
                   Refresh QR
@@ -328,7 +367,10 @@ export default function SettingsPage() {
                     setWaStatus("checking");
                     void resetMutation.mutate();
                   }}
-                  className="flex-1 text-xs px-2.5 py-1.5 rounded-lg font-medium text-slate-600 hover:bg-slate-100 border border-slate-200 transition-colors"
+                  className={cn(
+                    "flex-1 text-xs px-2.5 py-1.5 rounded-lg font-medium border transition-colors disabled:opacity-50",
+                    "text-text-secondary bg-surface border-border-color hover:bg-surface-2 dark:text-text-secondary dark:bg-surface-2 dark:border-border-light dark:hover:bg-surface-3",
+                  )}
                   disabled={resetMutation.isPending}
                 >
                   Reset QR
@@ -340,7 +382,7 @@ export default function SettingsPage() {
 
           {waStatus === "disconnected" && (
             <div className="text-center py-4">
-              <p className="text-xs text-slate-500 mb-3">Not connected to WhatsApp</p>
+              <p className="text-xs text-text-secondary mb-3">Not connected to WhatsApp</p>
               <button
                 onClick={() => {
                   setWaStatus("checking");
@@ -357,7 +399,11 @@ export default function SettingsPage() {
 
       {/* ── Pairing code form (inline, below card) ── */}
       {qrData?.pairing_code && waOpen && (
-        <div className="mt-4 px-5 py-3 border-t border-slate-100">
+        <div className={cn(
+          "mt-4 px-5 py-3 border-t",
+          "border-border-light",
+        )}
+        >
           <form onSubmit={handlePair} className="flex gap-2">
             <TextField
               label="Pairing code"
@@ -390,20 +436,27 @@ function ThemeOption({
 }) {
   const selected = current === value;
   return (
-    <label className="flex items-start gap-3 rounded-lg border border-slate-200 px-3 py-2 has-[:checked]:border-sky-600 has-[:checked]:ring-2 has-[:checked]:ring-sky-200/50">
-      <input
-        type="radio"
-        name="theme"
-        value={value}
-        checked={selected}
-        onChange={() => set(value)}
-        className="mt-1 h-4 w-4 shrink-0 cursor-pointer accent-sky-600"
-      />
-      <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium text-slate-900">{label}</p>
-        <p className="text-xs text-slate-500">{description}</p>
-      </div>
-    </label>
+    <label className={cn(
+      "flex items-start gap-3 rounded-lg px-3 py-2",
+      "border border-color",
+      "bg-surface",
+      "has-[:checked]:border-sky-600 has-[:checked]:ring-2 has-[:checked]:ring-sky-200/50",
+      "dark:border-border-light dark:bg-surface-2",
+    )}
+  >
+    <input
+      type="radio"
+      name="theme"
+      value={value}
+      checked={selected}
+      onChange={() => set(value)}
+      className="mt-1 h-4 w-4 shrink-0 cursor-pointer accent-sky-600"
+    />
+    <div className="min-w-0 flex-1">
+      <p className="text-sm font-medium text-text-primary">{label}</p>
+      <p className="text-xs text-text-secondary">{description}</p>
+    </div>
+  </label>
   );
 }
 
@@ -417,7 +470,7 @@ function FieldSet({
 }) {
   return (
     <fieldset className="space-y-2">
-      <legend className="text-xs font-medium uppercase tracking-wide text-slate-500">
+      <legend className="text-xs font-medium uppercase tracking-wide text-text-secondary">
         {legend}
       </legend>
       {children}
