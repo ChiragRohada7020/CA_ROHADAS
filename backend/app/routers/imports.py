@@ -64,7 +64,7 @@ def _plan_from_text(
 ) -> dict[str, Any]:
     """Build a preview plan from raw text without writing anything."""
     lines = [ln for ln in text.splitlines() if ln.strip()]
-    lines = [ln for ln in lines if not ln.startswith("--- Sheet:")]
+    lines = [ln for ln in lines if not ln.lstrip().startswith("--- Sheet:")]
     if not lines:
         return {
             "rows_read": 0,
@@ -98,6 +98,19 @@ def _plan_from_text(
         }
 
     header_idx = _find_header_row(lines)
+    if header_idx < 0:
+        return {
+            "rows_read": len(lines),
+            "would_create": 0,
+            "would_skip_existing": 0,
+            "rows_rejected": len(lines),
+            "mapping": {},
+            "unmapped_fields": [],
+            "mapping_problems": [
+                "No header row found — the file's first row must contain column names (e.g. Name, PAN, Mobile Number)."
+            ],
+            "issues": [],
+        }
     header = [_normalize_header(h) for h in lines[header_idx].split("\t")]
     column_index: dict[str, int] = {}
     for i, h in enumerate(header):
@@ -168,10 +181,11 @@ def _find_header_row(lines: list[str]) -> int:
     """Find the row index that looks like a column header row.
 
     Scans every row and picks the one whose cells best match the known
-    column map keys (case-insensitive, punctuation stripped). Falls back
-    to row 0 if nothing matches well.
+    column map keys (case-insensitive, punctuation stripped). Returns -1
+    when no row matches any known column — callers must handle that case
+    instead of mistaking a title row for a header.
     """
-    best_idx = 0
+    best_idx = -1
     best_score = 0
     for i in range(len(lines)):
         cells = [_normalize_header(c) for c in lines[i].split("\t")]
@@ -216,6 +230,20 @@ def _commit_from_text(
         }
 
     header_idx = _find_header_row(lines)
+    if header_idx < 0:
+        return {
+            "job_id": None,
+            "created": [],
+            "rejected": [
+                {
+                    "row": "file",
+                    "reason": "No header row found — the file's first row must contain column names (e.g. Name, PAN, Mobile Number).",
+                    "raw_row": {},
+                }
+            ],
+            "rows_imported": 0,
+            "rows_rejected": 1,
+        }
     header = [_normalize_header(h) for h in lines[header_idx].split("\t")]
     column_index: dict[str, int] = {}
     for i, h in enumerate(header):
