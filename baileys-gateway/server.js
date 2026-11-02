@@ -30,6 +30,7 @@ let connectionStatus = {
 let baileys = null;
 let baileysReady = false;
 let baileysError = null;
+let waVersion = null;
 
 function createLogger() {
   const baseLogger = pino({ level: "silent" });
@@ -59,8 +60,12 @@ async function loadBaileys() {
   if (baileysReady || baileysError) return;
   try {
     baileys = await import("baileys");
+    const { fetchLatestBaileysVersion } = baileys;
+    const { version } = await fetchLatestBaileysVersion();
+    waVersion = version;
     baileysReady = true;
     console.log("Baileys library loaded successfully");
+    console.log("Using WA Web version:", waVersion);
   } catch (err) {
     baileysError = err;
     console.error("Failed to load baileys:", err.message);
@@ -79,14 +84,19 @@ async function initializeSocket() {
 
   sock = makeWASocket({
     auth: state,
+    version: waVersion,
     printQRInTerminal: false,
     logger: createLogger(),
-    browser: Browsers.macOS("Desktop"),
+    browser: Browsers.ubuntu("Chrome"),
     syncFullHistory: false,
-    markOnlineOnConnect: false,
+    markOnlineOnConnect: true,
     defaultQueryTimeoutMs: 30000,
     keepAliveIntervalMs: 30000,
     getMessage: undefined,
+  });
+
+  sock.ev.on("creds.update", () => {
+    void saveCreds();
   });
 
   sock.ev.on("error", (err) => {
@@ -136,8 +146,8 @@ async function initializeSocket() {
     }
   });
 
-  sock.ev.on("messages.upsert", () => {
-    // Message receipts handled elsewhere if needed
+  sock.ev.on("messages.upsert", async (m) => {
+    console.log("Incoming messages:", JSON.stringify(m.messages.map(x => ({ id: x.key.id, from: x.key.remoteJid, type: x.message?.conversation ? "text" : "media" }))));
   });
 
   return sock;
