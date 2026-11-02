@@ -148,7 +148,24 @@ def _read_xlsx_from_zip(data: bytes) -> str | None:
         except Exception:
             shared = []
 
-    sheet_files = sorted(n for n in entries if re.match(r"xl/worksheets/sheet\d+\.xml$", n))
+    # Standard OpenXML sheet names: xl/worksheets/sheet1.xml, sheet2.xml, …
+    sheet_files = sorted(
+        n for n in entries if re.match(r"xl/worksheets/(sheet\d+\.xml|sheet\.xml)$", n)
+    )
+    if not sheet_files:
+        # Broader scan: any XML under xl/worksheets/ might be a sheet.
+        sheet_files = sorted(n for n in entries if n.startswith("xl/worksheets/") and n.endswith(".xml"))
+    if not sheet_files:
+        # Last resort: any XML entry that contains sheet/row elements.
+        for name, payload in entries.items():
+            if not name.endswith(".xml"):
+                continue
+            try:
+                if b"<sheetData>" in payload or b"<row" in payload:
+                    sheet_files.append(name)
+            except Exception:
+                continue
+        sheet_files = sorted(set(sheet_files))
     if not sheet_files:
         return None
 
