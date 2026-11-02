@@ -1,10 +1,10 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, useEffect } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { Icon } from "@/components/Icon";
-import { Badge, Button, Card, Input, PageHeader } from "@/components/ui";
+import { Button, Card, Input, PageHeader, Modal } from "@/components/ui";
 import { FormActions, TextField } from "@/components/form";
 import { cn } from "@/lib/format";
 import { api } from "@/lib/api";
@@ -29,16 +29,20 @@ interface WhatsAppQR {
   connection_info: any;
 }
 
+type WaStatus = "idle" | "checking" | "connected" | "disconnected" | "qr";
+
 export default function SettingsPage() {
   const [copied, setCopied] = useState(false);
   const { theme, setTheme } = useTheme();
   const queryClient = useQueryClient();
 
   // ── WhatsApp state ──
+  const [waOpen, setWaOpen] = useState(false);
+  const [waStatus, setWaStatus] = useState<WaStatus>("idle");
+  const [waKey, setWaKey] = useState(0);
+  const [qrData, setQrData] = useState<WhatsAppQR | null>(null);
   const [pairError, setPairError] = useState<string | null>(null);
   const [pairPhone, setPairPhone] = useState("");
-
-  const [qrData, setQrData] = useState<WhatsAppQR | null>(null);
 
   const {
     data: status,
@@ -51,28 +55,51 @@ export default function SettingsPage() {
     retry: 2,
   });
 
+  useEffect(() => {
+    if (waOpen) {
+      setWaStatus("checking");
+      void refetchStatus();
+    }
+  }, [waOpen, refetchStatus]);
+
+  useEffect(() => {
+    if (waStatus === "qr") {
+      const interval = setInterval(() => {
+        void refetchStatus();
+      }, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [waStatus, refetchStatus]);
+
   const generateQRMutation = useMutation({
     mutationFn: () => api.get<WhatsAppQR>("/whatsapp/qr"),
     onSuccess: (data) => {
       setQrData(data);
+      if (data.connected) {
+        setWaStatus("connected");
+        setWaOpen(false);
+      } else if (data.qr_code) {
+        setWaStatus("qr");
+        setWaKey((k) => k + 1);
+      } else {
+        setWaStatus("disconnected");
+      }
       queryClient.invalidateQueries({ queryKey: ["whatsapp", "status"] });
     },
     onError: (err: any) => {
       setPairError(err?.response?.data?.message || err?.message || "Failed to generate QR code");
+      setWaStatus("disconnected");
     },
   });
-
-  // Clear QR data when connected
-  if (status?.connected && qrData) {
-    setQrData(null);
-  }
 
   const resetMutation = useMutation({
     mutationFn: () => api.post("/whatsapp/reset"),
     onSuccess: () => {
       setPairError(null);
+      setQrData(null);
+      setWaStatus("disconnected");
+      setWaOpen(false);
       queryClient.invalidateQueries({ queryKey: ["whatsapp", "status"] });
-      queryClient.invalidateQueries({ queryKey: ["whatsapp", "qr"] });
     },
     onError: (err: any) => {
       setPairError(err?.response?.data?.message || err?.message || "Reset failed");
@@ -85,8 +112,8 @@ export default function SettingsPage() {
     onSuccess: () => {
       setPairError(null);
       setPairPhone("");
+      setWaStatus("checking");
       queryClient.invalidateQueries({ queryKey: ["whatsapp", "status"] });
-      queryClient.invalidateQueries({ queryKey: ["whatsapp", "qr"] });
     },
     onError: (err: any) => {
       setPairError(err?.response?.data?.message || err?.message || "Pairing failed");
@@ -94,8 +121,7 @@ export default function SettingsPage() {
   });
 
   const isConnected = status?.connected === true;
-  const isPairing = status?.status === "qr_ready" || status?.status === "pairing";
-  const isConnecting = status?.status === "initializing" || status?.status === "connecting";
+  const configured = status?.configured === true;
 
   const handlePair = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -171,149 +197,165 @@ export default function SettingsPage() {
       </section>
 
       {/* ── WhatsApp Connection ── */}
-      <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex items-center gap-3 border-b border-slate-200 px-5 py-4">
-          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-green-50 text-green-600 ring-1 ring-inset ring-green-100">
-            <Icon name="communications" className="h-5 w-5" />
-          </span>
-          <div>
-            <h2 className="text-sm font-semibold text-slate-900">WhatsApp Connection</h2>
-            <p className="text-xs text-slate-500">
-              Connect WhatsApp for sending invoices and communications.
+      <Card>
+        <div className="flex items-start justify-between gap-4 p-5">
+          <div className="flex-1 min-w-0">
+            <h3 className="text-base font-semibold text-slate-900">WhatsApp</h3>
+            <p className="text-sm text-slate-500 mt-1 leading-relaxed">
+              Send invoices directly to your party&apos;s WhatsApp from the invoice list or detail view.
+              Scan a QR code to connect your business WhatsApp number.
             </p>
           </div>
-        </div>
-
-        <div className="space-y-4 px-5 py-4">
-          {/* Status */}
-          <div className="flex items-center justify-between px-6 py-3 border-b border-slate-100">
-            <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-500">
-                <Icon name="clock" className="h-4 w-4" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-slate-900">Connection Status</p>
-                {status && (
-                  <p className="text-xs text-slate-500 mt-1">
-                    {status.configured ? "✓ Configured" : "✗ Not configured"} | Provider: {status.provider}
-                  </p>
-                )}
-              </div>
-            </div>
-            <Badge
-              tone={
-                isConnected ? "success" : isConnecting ? "info" : isPairing ? "warning" : "danger"
-              }
+          {isConnected && (
+            <button
+              onClick={() => resetMutation.mutate()}
+              title="Disconnect WhatsApp and reset auth"
+              className="text-xs px-2.5 py-1.5 rounded-lg font-medium text-red-600 hover:bg-red-600/[0.08] transition-colors"
             >
-              {isConnected ? "Connected" : isConnecting ? "Connecting…" : isPairing ? "QR required" : "Disconnected"}
-            </Badge>
+              Disconnect
+            </button>
+          )}
+        </div>
+
+        {isConnected && (
+          <div className="mt-4 p-3 bg-emerald-50 rounded-lg border border-emerald-200 px-4 py-3">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-emerald-500" />
+              <span className="text-sm font-medium text-emerald-800">WhatsApp Connected</span>
+            </div>
           </div>
+        )}
 
-          {status?.connection_info && (
-            <div className="grid grid-cols-2 gap-4 text-sm text-slate-600 px-4 py-3 border-b border-slate-100">
-              <div className="flex items-center gap-2">
-                <Icon name="clock" className="h-3 w-3" />
-                <span className="font-medium">{status.connection_info.status}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Icon name="clock" className="h-3 w-3" />
-                <span className="font-medium">{status.connection_info.last_disconnect || "—"}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Icon name="clock" className="h-3 w-3" />
-                <span className="font-medium">{status.connection_info.reconnect_count}</span>
-              </div>
+        {!configured && (
+          <div className="mt-4 p-3 bg-rose-50 rounded-lg border border-rose-200 px-4 py-3">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-rose-500" />
+              <span className="text-sm font-medium text-rose-800">WhatsApp not configured</span>
+            </div>
+          </div>
+        )}
+
+        {!isConnected && configured && (
+          <button
+            onClick={() => {
+              setWaOpen(true);
+            }}
+            className="mt-4 text-xs px-3 py-1.5 rounded-lg font-medium text-white bg-emerald-600 hover:bg-emerald-700 transition-colors"
+          >
+            Connect WhatsApp
+          </button>
+        )}
+      </Card>
+
+      {/* ── WhatsApp Connect Modal ── */}
+      <Modal open={waOpen} onClose={() => setWaOpen(false)} title="Connect WhatsApp" size="md">
+        <div className="p-4 space-y-4">
+          {waStatus === "checking" && (
+            <div className="text-center py-4">
+              <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+              <p className="text-xs text-slate-500">Checking WhatsApp connection…</p>
             </div>
           )}
 
-          {/* QR Pairing */}
-          {!isConnected && !isConnecting && !qrData && (
-            <div className="px-6 py-3">
+          {waStatus === "connected" && (
+            <div className="text-center py-4">
+              <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-3">
+                <Icon name="check-circle" className="h-5 w-5 text-emerald-600" />
+              </div>
+              <p className="text-sm font-medium text-slate-900">WhatsApp Connected</p>
+              <p className="text-xs text-slate-500 mt-1">You can now send invoices via WhatsApp</p>
               <button
-                type="button"
-                onClick={() => generateQRMutation.mutate()}
-                disabled={generateQRMutation.isPending}
-                className="w-full btn btn-ghost px-4 py-2"
+                onClick={() => setWaOpen(false)}
+                className="mt-4 text-xs px-3 py-1.5 rounded-lg font-medium text-white bg-emerald-600 hover:bg-emerald-700 transition-colors"
               >
-                <Icon name="clock" className="h-3 w-3 mr-2" />
-                {generateQRMutation.isPending ? "Generating…" : "Generate QR Code"}
+                Close
               </button>
             </div>
           )}
 
-          {qrData && (
-            <div className="px-6 py-4 border-t border-slate-100">
-              {qrData.qr_code ? (
-                <div className="flex flex-col items-center gap-3">
-                  <div className="relative group">
-                    <img
-                      src={qrData.qr_code}
-                      alt="WhatsApp QR code"
-                      className="w-48 h-48 rounded-lg border border-slate-200 bg-white shadow-sm"
-                    />
-                    <div className="absolute inset-0 bg-black/20 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                      <Icon name="qrcode" className="h-10 w-10 text-white" />
-                    </div>
-                  </div>
-                  <p className="text-sm text-slate-500 text-center">
-                    {qrData.instructions || "Scan this QR code with WhatsApp > Linked devices > Link a device"}
-                  </p>
-                  {qrData.pairing_code && (
-                    <div className="px-3 py-1 rounded-md bg-slate-100 text-xs text-slate-600 font-mono">
-                      Pairing code: {qrData.pairing_code}
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="flex flex-col items-center gap-3 p-4 rounded-lg bg-amber-50 border border-amber-200 text-amber-800">
-                  <Icon name="alert-triangle" className="h-8 w-8 text-amber-600" />
-                  <p className="text-sm text-center">
-                    {qrData.instructions || "Connecting to WhatsApp… Please wait."}
-                  </p>
-                </div>
-              )}
-              {pairError && <p className="px-2 text-xs text-rose-600">{pairError}</p>}
-            </div>
-          )}
-
-          {/* Pairing code form */}
-          {qrData?.pairing_code && (
-            <div className="px-6 py-3 border-t border-slate-100">
-              <form onSubmit={handlePair} className="flex gap-2">
-                <TextField
-                  label="Pairing code"
-                  value={pairPhone}
-                  onChange={setPairPhone}
-                  placeholder="Enter code from phone"
-                />
-                <FormActions submitLabel="Pair" />
-              </form>
-              {pairError && <p className="px-2 text-xs text-rose-600">{pairError}</p>}
-            </div>
-          )}
-
-          {/* Reset connection */}
-          {!isConnected && !isConnecting && (
-            <div className="px-6 py-3 border-t border-slate-100">
-              <button
-                type="button"
-                onClick={() => {
-                  resetMutation.mutate();
-                  setQrData(null);
-                }}
-                disabled={resetMutation.isPending}
-                className="w-full btn btn-ghost px-4 py-2 text-rose-600 hover:bg-rose-50"
-              >
-                <Icon name="clock" className="h-3 w-3 mr-2" />
-                {resetMutation.isPending ? "Resetting…" : "Reset connection"}
-              </button>
-              <p className="text-xs text-slate-500 text-center mt-2">
-                Clears saved session. Press Generate QR Code to create a new pairing code.
+          {waStatus === "qr" && (
+            <div className="text-center">
+              <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-3">
+                Scan QR Code
               </p>
+              <div className="relative inline-block">
+                <img
+                  key={waKey}
+                  src={qrData?.qr_code || ""}
+                  alt="WhatsApp QR code"
+                  className="w-48 h-48 mx-auto rounded-lg border border-slate-200 bg-white shadow-sm"
+                  onError={() => {
+                    setTimeout(() => {
+                      setWaStatus("checking");
+                      void refetchStatus();
+                    }, 1000);
+                  }}
+                />
+                <div className="absolute inset-0 bg-black/10 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <Icon name="qrcode" className="h-10 w-10 text-white" />
+                </div>
+              </div>
+              <p className="text-xs text-slate-500 mt-3">
+                Open WhatsApp on your phone and scan the QR code
+              </p>
+              <div className="flex gap-2 mt-4">
+                <button
+                  onClick={() => {
+                    setWaStatus("checking");
+                    void generateQRMutation.mutate();
+                  }}
+                  className="flex-1 text-xs px-2.5 py-1.5 rounded-lg font-medium text-slate-600 hover:bg-slate-100 border border-slate-200 transition-colors"
+                  disabled={generateQRMutation.isPending}
+                >
+                  Refresh QR
+                </button>
+                <button
+                  onClick={() => {
+                    setWaStatus("checking");
+                    void resetMutation.mutate();
+                  }}
+                  className="flex-1 text-xs px-2.5 py-1.5 rounded-lg font-medium text-slate-600 hover:bg-slate-100 border border-slate-200 transition-colors"
+                  disabled={resetMutation.isPending}
+                >
+                  Reset QR
+                </button>
+              </div>
+              {pairError && <p className="px-2 text-xs text-rose-600 mt-3">{pairError}</p>}
+            </div>
+          )}
+
+          {waStatus === "disconnected" && (
+            <div className="text-center py-4">
+              <p className="text-xs text-slate-500 mb-3">Not connected to WhatsApp</p>
+              <button
+                onClick={() => {
+                  setWaStatus("checking");
+                  void generateQRMutation.mutate();
+                }}
+                className="text-xs px-3 py-1.5 rounded-lg font-medium text-white bg-emerald-600 hover:bg-emerald-700 transition-colors"
+              >
+                Try Connecting
+              </button>
             </div>
           )}
         </div>
-      </section>
+      </Modal>
+
+      {/* ── Pairing code form (inline, below card) ── */}
+      {qrData?.pairing_code && waOpen && (
+        <div className="mt-4 px-5 py-3 border-t border-slate-100">
+          <form onSubmit={handlePair} className="flex gap-2">
+            <TextField
+              label="Pairing code"
+              value={pairPhone}
+              onChange={setPairPhone}
+              placeholder="Enter code from phone"
+            />
+            <FormActions submitLabel="Pair" />
+          </form>
+          {pairError && <p className="px-2 text-xs text-rose-600">{pairError}</p>}
+        </div>
+      )}
     </div>
   );
 }
