@@ -162,10 +162,7 @@ async def list_clients(
         stmt = stmt.where(Client.kyc_status == kyc_status)
 
     total = db.execute(
-        select(func.count()).select_from(Client).where(
-            Client.tenant_id == principal.tenant_id,
-            Client.deleted_at.is_(None),
-        )
+        select(func.count()).select_from(Client).where(Client.tenant_id == principal.tenant_id)
     ).scalar() or 0
 
     rows = db.execute(stmt.limit(limit).offset(offset)).scalars().all()
@@ -353,7 +350,6 @@ async def get_client(
     if (
         client is None
         or str(client.tenant_id) != str(principal.tenant_id)
-        or client.deleted_at is not None
     ):
         raise NotFoundError(f"Client {client_id} not found")
 
@@ -673,18 +669,17 @@ async def delete_client(
     if (
         client is None
         or str(client.tenant_id) != str(principal.tenant_id)
-        or client.deleted_at is not None
     ):
         raise NotFoundError(f"Client {client_id} not found")
 
-    client.deleted_at = datetime.utcnow()
+    db.delete(client)
     db.commit()
 
     return {
         "id": str(client.id),
         "client_code": client.client_code,
         "legal_name": client.legal_name,
-        "status": "cancelled",
+        "status": "deleted",
     }
 
 
