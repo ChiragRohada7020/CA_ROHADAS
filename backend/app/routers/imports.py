@@ -205,7 +205,7 @@ def _commit_from_text(
 ) -> dict[str, Any]:
     """Actually create clients from raw text."""
     lines = [ln for ln in text.splitlines() if ln.strip()]
-    lines = [ln for ln in lines if not ln.startswith("--- Sheet:")]
+    lines = [ln for ln in lines if not ln.lstrip().startswith("--- Sheet:")]
     if not lines:
         return {
             "job_id": None,

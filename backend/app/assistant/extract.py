@@ -370,14 +370,87 @@ def extract_text(filename: str, data: bytes, mime_type: str = "") -> str:
                     lines.append("\t".join(cells))
             return _truncate("\n".join(lines).strip() or "[Spreadsheet contained no data]")
 
-        # 3. Recover sheet XML directly from the ZIP's local file headers.
-        #    This works both when openpyxl is absent and when the central
-        #    directory is corrupt (openpyxl cannot open either).
+        # 3. zipfile module — standard-library ZIP reader. More reliable than
+        #    manual header parsing for valid XLSX files, but requires an intact
+        #    central directory.
+        try:
+            import zipfile
+
+            with zipfile.ZipFile(io.BytesIO(data)) as zf:
+                names = zf.namelist()
+                shared = ""
+                if "xl/sharedStrings.xml" in names:
+                    try:
+                        shared = zf.read("xl/sharedStrings.xml").decode("utf-8", "replace")
+                    except Exception:
+                        shared = ""
+                sheet_files = sorted(
+                    n for n in names if re.match(r"xl/worksheets/sheet\d+\.xml$", n)
+                )
+                if not sheet_files:
+                    sheet_files = sorted(
+                        n for n in names if n.startswith("xl/worksheets/") and n.endswith(".xml")
+                    )
+
+                shared_values: list[str] = []
+                if shared:
+                    try:
+                        root = ET.fromstring(shared)
+                        ns = {"s": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
+                        shared_values = [
+                            "".join(t.text or "" for t in si.findall(".//s:t", ns))
+                            for si in root.findall("s:si", ns)
+                        ]
+                    except Exception:
+                        shared_values = []
+
+                lines: list[str] = []
+                for sheet_name in sheet_files:
+                    try:
+                        xml = zf.read(sheet_name).decode("utf-8", "replace")
+                    except Exception:
+                        continue
+                    try:
+                        root = ET.fromstring(xml)
+                    except Exception:
+                        continue
+                    ns = {"s": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
+                    lines.append(f"--- Sheet: {sheet_name} ---")
+                    for row in root.findall(".//s:row", ns):
+                        cells: list[str] = []
+                        for c in row.findall("s:c", ns):
+                            t = c.get("t")
+                            v = c.find("s:v", ns)
+                            value = ""
+                            if v is not None and v.text is not None:
+                                if t == "s" and shared_values:
+                                    try:
+                                        value = shared_values[int(v.text)]
+                                    except (IndexError, ValueError):
+                                        value = v.text
+                                else:
+                                    value = v.text
+                            else:
+                                is_el = c.find("s:is", ns)
+                                if is_el is not None:
+                                    t_el = is_el.find("s:t", ns)
+                                    value = t_el.text or "" if t_el is not None else ""
+                            cells.append(value)
+                        lines.append("\t".join(cells))
+                recovered = "\n".join(lines).strip()
+                if recovered:
+                    return _truncate(recovered)
+        except Exception:
+            pass
+
+        # 4. Recover sheet XML directly from the ZIP's local file headers.
+        #    Works when openpyxl and zipfile both fail — e.g. corrupt central
+        #    directory (common when a browser re-saves an XLSX).
         recovered = _read_xlsx_from_zip(data)
         if recovered is not None:
             return _truncate(recovered)
 
-        # 4. Last-ditch: maybe it is still a text table openpyxl choked on.
+        # 5. Last-ditch: maybe it is still a text table openpyxl choked on.
         if _looks_like_text(data):
             return _truncate(_spreadsheet_text(data))
         return f"[Could not read spreadsheet: openpyxl could not open the file and no sheet XML was recoverable]"
