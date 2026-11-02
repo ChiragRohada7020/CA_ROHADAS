@@ -55,6 +55,27 @@ export default function SettingsPage() {
     retry: 2,
   });
 
+  const generateQRMutation = useMutation({
+    mutationFn: () => api.get<WhatsAppQR>("/whatsapp/qr"),
+    onSuccess: (data) => {
+      setQrData(data);
+      if (data.connected) {
+        setWaStatus("connected");
+        setWaOpen(false);
+      } else if (data.qr_code) {
+        setWaStatus("qr");
+        setWaKey((k) => k + 1);
+      } else {
+        setWaStatus("disconnected");
+      }
+      queryClient.invalidateQueries({ queryKey: ["whatsapp", "status"] });
+    },
+    onError: (err: any) => {
+      setPairError(err?.response?.data?.message || err?.message || "Failed to generate QR code");
+      setWaStatus("disconnected");
+    },
+  });
+
   useEffect(() => {
     if (waOpen) {
       setWaStatus("checking");
@@ -79,27 +100,6 @@ export default function SettingsPage() {
       setQrData(null);
     }
   }, [status]);
-
-  const generateQRMutation = useMutation({
-    mutationFn: () => api.get<WhatsAppQR>("/whatsapp/qr"),
-    onSuccess: (data) => {
-      setQrData(data);
-      if (data.connected) {
-        setWaStatus("connected");
-        setWaOpen(false);
-      } else if (data.qr_code) {
-        setWaStatus("qr");
-        setWaKey((k) => k + 1);
-      } else {
-        setWaStatus("disconnected");
-      }
-      queryClient.invalidateQueries({ queryKey: ["whatsapp", "status"] });
-    },
-    onError: (err: any) => {
-      setPairError(err?.response?.data?.message || err?.message || "Failed to generate QR code");
-      setWaStatus("disconnected");
-    },
-  });
 
   const resetMutation = useMutation({
     mutationFn: () => api.post("/whatsapp/reset"),
