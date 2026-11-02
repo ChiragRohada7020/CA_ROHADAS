@@ -77,6 +77,26 @@ def _plan_from_text(
             "issues": [],
         }
 
+    # Extraction returned an error note (e.g. openpyxl not installed and the
+    # ZIP fallback could not recover anything). Report it as a mapping problem
+    # instead of parsing the note as a header row — otherwise the UI shows
+    # "Not in this file: [Could not read spreadsheet: ...]" and "No Name column
+    # found", which hides the real problem.
+    first = lines[0]
+    if first.startswith("[") and (
+        "could not read" in first.lower() or "not installed" in first.lower()
+    ):
+        return {
+            "rows_read": 0,
+            "would_create": 0,
+            "would_skip_existing": 0,
+            "rows_rejected": 0,
+            "mapping": {},
+            "unmapped_fields": [],
+            "mapping_problems": [first],
+            "issues": [],
+        }
+
     header_idx = _find_header_row(lines)
     header = [_normalize_header(h) for h in lines[header_idx].split("\t")]
     column_index: dict[str, int] = {}
@@ -179,6 +199,20 @@ def _commit_from_text(
             "rejected": [],
             "rows_imported": 0,
             "rows_rejected": 0,
+        }
+
+    first = lines[0]
+    if first.startswith("[") and (
+        "could not read" in first.lower() or "not installed" in first.lower()
+    ):
+        return {
+            "job_id": None,
+            "created": [],
+            "rejected": [
+                {"row": "file", "reason": first, "raw_row": {}},
+            ],
+            "rows_imported": 0,
+            "rows_rejected": 1,
         }
 
     header_idx = _find_header_row(lines)
