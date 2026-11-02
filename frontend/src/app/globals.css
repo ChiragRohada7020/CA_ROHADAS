@@ -46,6 +46,51 @@
     --role-icon-bg-amber: #fef3c7;
     --role-icon-text-amber: #d97706;
   }
+  html.dark {
+    --color-bg: #0f0f0f;
+    --color-bg-elevated: #1a1a1a;
+    --color-surface: #141414;
+    --color-surface-elevated: #1e1e1e;
+    --color-border: #2a2a2a;
+    --color-border-strong: #3a3a3a;
+    --color-text-primary: #e4e4e4;
+    --color-text-secondary: #a1a1aa;
+    --color-text-tertiary: #71717a;
+    --color-accent: #d97706;
+    --color-accent-hover: #f59e0b;
+    --color-focus: #d97706;
+    --color-focus-ring: rgba(217, 119, 6, 0.25);
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.5);
+    --shadow-lg: 0 12px 24px -8px rgba(0, 0, 0, 0.6);
+
+    /* Team/Roles page design tokens */
+    --role-page-bg: #0f0f0f;
+    --role-page-card-bg: #1a1a1a;
+    --role-page-border: #2a2a2a;
+    --role-page-ink: #e4e4e4;
+    --role-page-muted: #a1a1aa;
+    --role-page-primary: #d97706;
+    --role-page-primary-hover: #f59e0b;
+    --role-page-selected-bg: #2a2a2a;
+    --role-page-selected-text: #d97706;
+    --role-page-module-bg: #141414;
+    --role-page-row-hover: #232323;
+    --role-page-row-border: #2a2a2a;
+    --role-page-disabled: #3a3a3a;
+
+    /* Role icon colours */
+    --role-icon-bg-sky: #1e3a5f;
+    --role-icon-text-sky: #93c5fd;
+    --role-icon-bg-violet: #3f1e5f;
+    --role-icon-text-violet: #c4b5fd;
+    --role-icon-bg-emerald: #0f3d2e;
+    --role-icon-text-emerald: #86efac;
+    --role-icon-bg-rose: #4f1a23;
+    --role-icon-text-rose: #fca5a5;
+    --role-icon-bg-amber: #3f2e0f;
+    --role-icon-text-amber: #fbbf24;
+  }
   html { -webkit-text-size-adjust: 100%; }
   body { background-color: var(--color-bg); color: var(--color-text-primary); @apply antialiased; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", Roboto, Oxygen, Ubuntu, Cantarell, "Helvetica Neue", Arial, sans-serif; letter-spacing: -0.011em; line-height: 1.6; }
   .tabular { font-variant-numeric: tabular-nums; }
