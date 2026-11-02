@@ -356,7 +356,7 @@ export default function SettingsPage() {
                   }}
                   className={cn(
                     "flex-1 text-xs px-2.5 py-1.5 rounded-lg font-medium border transition-colors disabled:opacity-50",
-                    "text-text-secondary bg-surface border-border-color hover:bg-surface-2 dark:text-text-secondary dark:bg-surface-2 dark:border-border-light dark:hover:bg-surface-3",
+                    "text-text-secondary bg-surface border-border hover:bg-surface-2 dark:text-text-secondary dark:bg-surface-2 dark:border-border-light dark:hover:bg-surface-3",
                   )}
                   disabled={generateQRMutation.isPending}
                 >
@@ -369,7 +369,7 @@ export default function SettingsPage() {
                   }}
                   className={cn(
                     "flex-1 text-xs px-2.5 py-1.5 rounded-lg font-medium border transition-colors disabled:opacity-50",
-                    "text-text-secondary bg-surface border-border-color hover:bg-surface-2 dark:text-text-secondary dark:bg-surface-2 dark:border-border-light dark:hover:bg-surface-3",
+                    "text-text-secondary bg-surface border-border hover:bg-surface-2 dark:text-text-secondary dark:bg-surface-2 dark:border-border-light dark:hover:bg-surface-3",
                   )}
                   disabled={resetMutation.isPending}
                 >
