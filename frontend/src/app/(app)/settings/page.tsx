@@ -58,9 +58,10 @@ export default function SettingsPage() {
   useEffect(() => {
     if (waOpen) {
       setWaStatus("checking");
-      void refetchStatus();
+      setPairError(null);
+      void generateQRMutation.mutate();
     }
-  }, [waOpen, refetchStatus]);
+  }, [waOpen, generateQRMutation]);
 
   useEffect(() => {
     if (waStatus === "qr") {
@@ -70,6 +71,14 @@ export default function SettingsPage() {
       return () => clearInterval(interval);
     }
   }, [waStatus, refetchStatus]);
+
+  useEffect(() => {
+    if (status?.connected && waStatus !== "connected") {
+      setWaStatus("connected");
+      setWaOpen(false);
+      setQrData(null);
+    }
+  }, [status]);
 
   const generateQRMutation = useMutation({
     mutationFn: () => api.get<WhatsAppQR>("/whatsapp/qr"),
