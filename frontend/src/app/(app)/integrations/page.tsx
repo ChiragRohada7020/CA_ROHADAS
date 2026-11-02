@@ -63,9 +63,9 @@ export default function IntegrationsPage() {
         title="Integrations"
         subtitle="Exchange client data with Winman and Tally, and see exactly what went wrong when it did."
         action={
-          <a className="btn btn-ghost" href="/api/exports/clients" download>
-            Export client master
-          </a>
+          <button className="btn btn-ghost">
+            Import file
+          </button>
         }
       />
 
