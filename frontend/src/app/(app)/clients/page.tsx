@@ -76,7 +76,7 @@ function tabCount(summary: ClientSummary | undefined, key: string): number {
 /** The coloured square that stands in for a client's logo. */
 function ClientAvatar({ name }: { name: string }) {
   return (
-    <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-blue-50 text-xs font-semibold text-blue-700">
+    <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-hsl(var(--secondary)) text-xs font-semibold text-hsl(var(--secondary-foreground))">
       {initials(name)}
     </span>
   );
