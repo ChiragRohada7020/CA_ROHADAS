@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 
 import { Icon, type IconName } from "@/components/Icon";
-import { Badge, EmptyState, ErrorState, LoadingState, Select } from "@/components/ui";
+import { Badge, EmptyState, ErrorState, LoadingState, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui";
 import { ApiError, api } from "@/lib/api";
 import { cn, formatBytes, formatDate, formatDateTime, humanise } from "@/lib/format";
 import { hasPermission, useSession } from "@/lib/session";
@@ -584,16 +584,19 @@ function DetailsPanel({
           </p>
         </div>
 
-        <Select
-          label="Filed under client"
-          value={clientId}
-          onChange={onClientChange}
-          placeholder="No client (firm-wide)"
-          options={(clients?.items ?? []).map((entry) => ({
-            value: entry.id,
-            label: entry.trade_name || entry.legal_name,
-          }))}
-        />
+        <label className="text-sm font-medium text-foreground mb-1 block">Filed under client</label>
+        <Select value={clientId} onValueChange={onClientChange}>
+          <SelectTrigger className="input w-full">
+            <SelectValue placeholder="Select client" />
+          </SelectTrigger>
+          <SelectContent>
+            {(clients?.items ?? []).map((entry) => (
+              <SelectItem key={entry.id} value={entry.id}>
+                {entry.trade_name || entry.legal_name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
         <div>
           <label className="label" htmlFor="doc-tags">

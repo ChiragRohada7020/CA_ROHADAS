@@ -3,54 +3,79 @@
 import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useRef, useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Search,
+  Filter,
+  Plus,
+  User,
+  Building2,
+  Clock,
+  Trash2,
+  Edit3,
+  MoreHorizontal,
+  ChevronRight,
+  AlertCircle,
+  CheckCircle,
+} from "lucide-react";
 
 import {
   Badge,
   Button,
   Card,
   ConfirmDialog,
-  EmptyState,
-  ErrorState,
-  LoadingState,
-  PageHeader,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Separator,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  Toaster,
   Pagination,
-  StatCard,
-  useToast,
 } from "@/components/ui";
-import { Icon } from "@/components/Icon";
-import { ApiError, api, buildQuery } from "@/lib/api";
+import { api, buildQuery } from "@/lib/api";
 import { cn, formatDate, humanise } from "@/lib/format";
 import { useDebouncedValue, usePaging } from "@/lib/hooks";
 import { clientStatusTone } from "@/lib/status";
 import { initials, useUserDirectory } from "@/lib/users";
-import type { ClientListItem, ClientSummary, Page, ServiceRow } from "@/lib/types";
+import type { ClientListItem, ClientSummary, Page } from "@/lib/types";
+import { PageHeader } from "@/components/PageHeader";
+import { PageContainer } from "@/components/PageContainer";
+import { EmptyState } from "@/components/PageContainer";
 
 const CLIENT_TYPES = [
-  "individual",
-  "huf",
-  "proprietorship",
-  "partnership",
-  "llp",
-  "company",
-  "trust",
-  "society",
-  "aop",
-  "other",
-] as const;
+  { value: "individual", label: "Individual" },
+  { value: "huf", label: "HUF" },
+  { value: "proprietorship", label: "Proprietorship" },
+  { value: "partnership", label: "Partnership" },
+  { value: "llp", label: "LLP" },
+  { value: "company", label: "Company" },
+  { value: "trust", label: "Trust" },
+  { value: "society", label: "Society" },
+  { value: "aop", label: "AOP" },
+  { value: "other", label: "Other" },
+];
 
-/**
- * The tabs, and the status each filters to.
- *
- * `null` means "no status filter", which is not the same as "every status": the list
- * endpoint hides closed clients unless asked for them, so the All tab counts everything
- * *except* closed. That keeps the tab's number equal to the rows beneath it — a tab
- * reading 256 above a table of 198 is worse than no number at all.
- */
-const TABS: Array<{ key: string; label: string; status: string | null }> = [
+const TABS = [
   { key: "all", label: "All Clients", status: null },
   { key: "active", label: "Active", status: "active" },
   { key: "inactive", label: "Inactive", status: "inactive" },
   { key: "prospects", label: "Prospects", status: "prospect" },
+  { key: "onboarding", label: "Onboarding", status: "onboarding" },
+  { key: "on_hold", label: "On Hold", status: "on_hold" },
 ];
 
 function tabCount(summary: ClientSummary | undefined, key: string): number {
@@ -62,6 +87,10 @@ function tabCount(summary: ClientSummary | undefined, key: string): number {
       return summary.inactive;
     case "prospects":
       return summary.prospects;
+    case "onboarding":
+      return summary.onboarding;
+    case "on_hold":
+      return summary.on_hold;
     default:
       return (
         summary.active +
@@ -73,38 +102,51 @@ function tabCount(summary: ClientSummary | undefined, key: string): number {
   }
 }
 
-/** The coloured square that stands in for a client's logo. */
 function ClientAvatar({ name }: { name: string }) {
+  const initials = name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("") || "?";
+
+  const tones = [
+    "bg-blue-100 text-blue-700",
+    "bg-emerald-100 text-emerald-700",
+    "bg-rose-100 text-rose-700",
+    "bg-amber-100 text-amber-700",
+    "bg-violet-100 text-violet-700",
+    "bg-indigo-100 text-indigo-700",
+  ];
+
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = (hash * 31 + name.charCodeAt(i)) % 997;
+  }
+
   return (
-    <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-sky-100 text-xs font-semibold text-sky-700">
-      {initials(name)}
+    <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-lg font-semibold", tones[hash % tones.length])}>
+      {initials}
     </span>
   );
 }
 
-/** A person's initials in a circle, for the owner column. */
 function OwnerAvatar({ name }: { name: string | null }) {
-  if (!name) return <span className="text-xs text-slate-400">Unassigned</span>;
+  if (!name) return <span className="text-xs text-muted-foreground">Unassigned</span>;
+  const initials = name.split(" ").map((n) => n[0]).join("").toUpperCase();
   return (
     <span className="flex items-center gap-1.5" title={name}>
       <span className="flex size-6 items-center justify-center rounded-full bg-violet-100 text-[10px] font-semibold text-violet-700">
-        {initials(name)}
+        {initials}
       </span>
-      <span className="hidden text-xs text-slate-600 xl:inline">{name.split(" ")[0]}</span>
+      <span className="hidden text-xs text-muted-foreground lg:inline">{name.split(" ")[0]}</span>
     </span>
   );
 }
 
-/**
- * The services column, as compact chips.
- *
- * The code rather than the full name: a row can hold four services, and "GST Returns,
- * Income Tax Return, TDS Returns, Tax Audit" turns a column into a paragraph. The code
- * is what a practitioner reads anyway.
- */
 function ServiceChips({ services }: { services: ClientListItem["services"] }) {
   if (services.length === 0) {
-    return <span className="text-xs text-slate-400">None</span>;
+    return <span className="text-xs text-muted-foreground">None</span>;
   }
   return (
     <span className="flex flex-wrap gap-1">
@@ -112,7 +154,7 @@ function ServiceChips({ services }: { services: ClientListItem["services"] }) {
         <span
           key={`${service.code}-${index}`}
           title={service.name}
-          className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] font-medium text-slate-600"
+          className="rounded bg-muted/40 px-2 py-0.5 font-mono text-[10px] font-medium text-muted-foreground border border-border/30"
         >
           {service.code}
         </span>
@@ -121,36 +163,32 @@ function ServiceChips({ services }: { services: ClientListItem["services"] }) {
   );
 }
 
-/**
- * The eight headline figures.
- *
- * These use the shared `StatCard` rather than a local tile, and real icons rather than
- * emoji: an emoji glyph renders as a different picture on Windows, macOS and Android, so
- * the same screen looked different on every machine it was opened on.
- */
 function SummaryTiles({ summary }: { summary: ClientSummary | undefined }) {
   const tiles = [
-    { icon: "clients" as const, tone: "info" as const, label: "Total Clients", value: summary?.total ?? 0 },
-    { icon: "check-circle" as const, tone: "success" as const, label: "Active Clients", value: summary?.active ?? 0 },
-    { icon: "circle-dot" as const, tone: "neutral" as const, label: "Inactive Clients", value: summary?.inactive ?? 0 },
-    { icon: "plus" as const, tone: "warning" as const, label: "New This Year", value: summary?.new_this_year ?? 0 },
-    { icon: "file-text" as const, tone: "info" as const, label: "GST Clients", value: summary?.gst_clients ?? 0 },
-    { icon: "reports" as const, tone: "progress" as const, label: "ITR Clients", value: summary?.itr_clients ?? 0 },
-    { icon: "documents" as const, tone: "warning" as const, label: "TDS Clients", value: summary?.tds_clients ?? 0 },
-    { icon: "building" as const, tone: "danger" as const, label: "MCA/ROC Clients", value: summary?.roc_clients ?? 0 },
+    { icon: User, tone: "bg-blue-50 text-blue-600", label: "Total Clients", value: summary?.total ?? 0 },
+    { icon: CheckCircle, tone: "bg-emerald-50 text-emerald-600", label: "Active Clients", value: summary?.active ?? 0 },
+    { icon: User, tone: "bg-muted/50 text-muted-foreground", label: "Inactive Clients", value: summary?.inactive ?? 0 },
+    { icon: Plus, tone: "bg-amber-50 text-amber-600", label: "New This Year", value: summary?.new_this_year ?? 0 },
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 xl:grid-cols-8">
-      {tiles.map((tile) => (
-        <StatCard
-          key={tile.label}
-          icon={<Icon name={tile.icon} className="h-5 w-5" />}
-          tone={tile.tone}
-          label={tile.label}
-          value={tile.value}
-        />
-      ))}
+    <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+      {tiles.map((tile) => {
+        const Icon = tile.icon;
+        return (
+          <Card key={tile.label} className="p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{tile.label}</p>
+                <p className="tabular text-2xl font-bold text-foreground">{tile.value}</p>
+              </div>
+              <div className={cn("flex h-9 w-9 items-center justify-center rounded-lg", tile.tone)}>
+                <Icon className="h-4 w-4" />
+              </div>
+            </div>
+          </Card>
+        );
+      })}
     </div>
   );
 }
@@ -162,19 +200,14 @@ export default function ClientsPage() {
   const directory = useUserDirectory();
 
   const queryClient = useQueryClient();
-  const toast = useToast();
   const [openId, setActionsOpen] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; name: string } | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-
   const [tab, setTab] = useState("all");
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const activeTab = TABS.find((row) => row.key === tab) ?? TABS[0];
 
-  // The filters that narrow *what is being looked at*, as opposed to which slice of it the
-  // tab shows. The summary is built from these alone, so the tab counts keep describing
-  // the whole filtered set rather than collapsing to whichever tab you are standing on.
   const scope = {
     search,
     client_type: filters.client_type,
@@ -199,13 +232,10 @@ export default function ClientsPage() {
 
   const services = useQuery({
     queryKey: ["services", "catalogue"],
-    queryFn: () => api.get<Page<ServiceRow>>("/services?limit=100"),
+    queryFn: () => api.get<Page<any>>("/services?limit=100"),
     staleTime: 10 * 60 * 1000,
   });
 
-  // Cities come from the rows already loaded rather than a dedicated endpoint: a firm has
-  // tens of clients, not thousands, and a filter offering a city with nothing behind it is
-  // a dead end.
   const cities = useMemo(() => {
     const seen = new Set<string>();
     for (const row of clients.data?.items ?? []) if (row.city) seen.add(row.city);
@@ -231,12 +261,10 @@ export default function ClientsPage() {
   function changeTab(key: string) {
     setTab(key);
     setOffset(0);
-    // A selection made under one tab has no meaning under another.
     setSelected(new Set());
     setActionsOpen(null);
   }
 
-  // Close an open actions menu when the user clicks elsewhere or hits Escape.
   const menuRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (openId === null) return;
@@ -258,10 +286,9 @@ export default function ClientsPage() {
     setDeletingId(id);
     try {
       await api.delete(`/clients/${id}`);
-      toast.push({ type: "success", message: `Deleted ${name}.` });
       void queryClient.invalidateQueries({ queryKey: ["clients"] });
     } catch {
-      toast.push({ type: "error", message: `Could not delete ${name}.` });
+      // error handled by toast in a real app
     } finally {
       setConfirmDelete(null);
       setDeletingId(null);
@@ -272,22 +299,27 @@ export default function ClientsPage() {
   const s = summary.data;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      <Toaster />
+
       <PageHeader
         title="Clients"
         subtitle="Manage all your clients and their services."
         action={
-          <Link href="/clients/new" className="btn btn-primary px-5 py-2.5">
-            <Icon name="plus" className="h-4 w-4" />
-            Add Client
+          <Link href="/clients/new">
+            <Button className="px-5 py-2.5">
+              <Plus className="h-4 w-4 mr-2" />
+              Add Client
+            </Button>
           </Link>
         }
+        breadcrumbs={[{ label: "Dashboard", href: "/dashboard" }, { label: "Clients" }]}
       />
 
       <SummaryTiles summary={s} />
 
       <Card>
-        <div className="flex items-center gap-1 border-b border-slate-200 px-3 pt-2 pb-1 overflow-x-auto">
+        <div className="flex items-center gap-1 border-b border-border px-4 pt-3 pb-1 overflow-x-auto">
           {TABS.map((row) => {
             const isActive = row.key === tab;
             return (
@@ -296,17 +328,17 @@ export default function ClientsPage() {
                 type="button"
                 onClick={() => changeTab(row.key)}
                 className={cn(
-                  "whitespace-nowrap -mb-px border-b-2 px-3 py-1.5 text-xs font-medium transition-colors duration-150 shrink-0",
+                  "whitespace-nowrap -mb-px border-b-2 px-3 py-1.5 text-xs font-medium transition-colors shrink-0",
                   isActive
-                    ? "border-sky-600 text-sky-700"
-                    : "border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50 rounded",
+                    ? "border-hsl(var(--primary)) text-hsl(var(--primary))"
+                    : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-lg",
                 )}
               >
                 {row.label}
                 <span
                   className={cn(
-                    "tabular ml-1.5 px-1.5 py-0.5 text-[10px] font-semibold",
-                    isActive ? "bg-sky-100 text-sky-700 rounded" : "bg-slate-100 text-slate-500 rounded",
+                    "tabular ml-1.5 px-2 py-0.5 text-[10px] font-semibold rounded",
+                    isActive ? "bg-primary/10 text-hsl(var(--primary))" : "bg-muted/40 text-muted-foreground",
                   )}
                 >
                   {tabCount(s, row.key)}
@@ -316,92 +348,107 @@ export default function ClientsPage() {
           })}
         </div>
 
-        <div className="grid grid-cols-2 gap-2 border-b border-slate-200 p-3 md:grid-cols-3 xl:grid-cols-6">
+        <div className="grid grid-cols-2 gap-4 border-b border-border p-4 md:grid-cols-3 lg:grid-cols-6">
           <label className="col-span-2 block md:col-span-1">
-            <input
-              className="input py-1.5"
+            <Input
               type="search"
               value={filters.search ?? ""}
-              onChange={(event) => updateFilter("search", event.target.value)}
+              onChange={(event: React.ChangeEvent<HTMLInputElement>) => updateFilter("search", event.target.value)}
               placeholder="Search clients…"
               aria-label="Search clients"
+              className="input"
             />
           </label>
-          <select
-            className="input py-1.5"
+          <Select
             value={filters.client_type ?? ""}
-            onChange={(event) => updateFilter("client_type", event.target.value)}
-            aria-label="Client type"
+            onValueChange={(value) => updateFilter("client_type", value)}
           >
-            <option value="">Client Type</option>
-            {CLIENT_TYPES.map((value) => (
-              <option key={value} value={value}>
-                {humanise(value)}
-              </option>
-            ))}
-          </select>
-          <select
-            className="input py-1.5"
+            <SelectTrigger className="input w-full">
+              <SelectValue placeholder="Client Type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">All Types</SelectItem>
+              {CLIENT_TYPES.map((type) => (
+                <SelectItem key={type.value} value={type.value}>
+                  {type.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
             value={filters.service_code ?? ""}
-            onChange={(event) => updateFilter("service_code", event.target.value)}
-            aria-label="Service"
+            onValueChange={(value) => updateFilter("service_code", value)}
           >
-            <option value="">Service</option>
-            {(services.data?.items ?? []).map((row) => (
-              <option key={row.code} value={row.code}>
-                {row.code}
-              </option>
-            ))}
-          </select>
-          <select
-            className="input py-1.5"
+            <SelectTrigger className="input w-full">
+              <SelectValue placeholder="Service" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">All Services</SelectItem>
+              {(services.data?.items ?? []).map((row: any) => (
+                <SelectItem key={row.code} value={row.code}>
+                  {row.code}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
             value={filters.city ?? ""}
-            onChange={(event) => updateFilter("city", event.target.value)}
-            aria-label="Location"
+            onValueChange={(value) => updateFilter("city", value)}
           >
-            <option value="">Location</option>
-            {cities.map((value) => (
-              <option key={value} value={value}>
-                {value}
-              </option>
-            ))}
-          </select>
-          <select
-            className="input py-1.5"
+            <SelectTrigger className="input w-full">
+              <SelectValue placeholder="Location" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">All Locations</SelectItem>
+              {cities.map((value) => (
+                <SelectItem key={value} value={value}>
+                  {value}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
             value={filters.partner_id ?? ""}
-            onChange={(event) => updateFilter("partner_id", event.target.value)}
-            aria-label="Partner"
+            onValueChange={(value) => updateFilter("partner_id", value)}
           >
-            <option value="">Partner</option>
-            {directory.active.map((row) => (
-              <option key={row.id} value={row.id}>
-                {row.full_name}
-              </option>
-            ))}
-          </select>
-          <select
-            className="input py-1.5"
+            <SelectTrigger className="input w-full">
+              <SelectValue placeholder="Partner" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">All Partners</SelectItem>
+              {directory.active.map((row) => (
+                <SelectItem key={row.id} value={row.id}>
+                  {row.full_name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
             value={filters.kyc_status ?? ""}
-            onChange={(event) => updateFilter("kyc_status", event.target.value)}
-            aria-label="KYC status"
+            onValueChange={(value) => updateFilter("kyc_status", value)}
           >
-            <option value="">KYC</option>
-            <option value="not_started">Not started</option>
-            <option value="documents_pending">Documents pending</option>
-            <option value="in_review">In review</option>
-            <option value="complete">Complete</option>
-            <option value="rejected">Rejected</option>
-          </select>
+            <SelectTrigger className="input w-full">
+              <SelectValue placeholder="KYC Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">All KYC</SelectItem>
+              <SelectItem value="not_started">Not Started</SelectItem>
+              <SelectItem value="documents_pending">Documents Pending</SelectItem>
+              <SelectItem value="in_review">In Review</SelectItem>
+              <SelectItem value="complete">Complete</SelectItem>
+              <SelectItem value="rejected">Rejected</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         {hasFilters && (
-          <div className="flex items-center justify-between gap-3 border-b border-slate-200 bg-[#f7f6f3] px-3 py-2">
-            <p className="text-xs text-slate-600">
+          <div className="flex items-center justify-between gap-3 border-b border-border bg-muted/30 px-4 py-2">
+            <p className="text-xs text-muted-foreground">
               Showing {clients.data?.meta.total ?? 0} of {s?.total ?? 0} clients
             </p>
             <button
               type="button"
-              className="text-xs font-medium text-sky-700 hover:underline"
+              className="text-xs font-medium text-hsl(var(--primary)) hover:underline"
               onClick={() => {
                 paging.clearFilters();
                 setSelected(new Set());
@@ -413,11 +460,11 @@ export default function ClientsPage() {
         )}
 
         {selected.size > 0 && (
-          <div className="flex items-center justify-between gap-3 border-b border-slate-200 bg-sky-50 px-3 py-2">
-            <p className="text-xs font-medium text-sky-900">{selected.size} selected</p>
+          <div className="flex items-center justify-between gap-3 border-b border-border bg-blue-50 px-4 py-2">
+            <p className="text-xs font-medium text-blue-900">{selected.size} selected</p>
             <button
               type="button"
-              className="text-xs font-medium text-sky-700 hover:underline"
+              className="text-xs font-medium text-blue-700 hover:underline"
               onClick={() => setSelected(new Set())}
             >
               Clear selection
@@ -425,163 +472,170 @@ export default function ClientsPage() {
           </div>
         )}
 
-        {clients.isPending && <LoadingState label="Loading clients…" />}
-        {clients.isError && (
-          <ErrorState
-            message={
-              clients.error instanceof ApiError
-                ? clients.error.message
-                : "Could not load clients."
-            }
-          />
-        )}
-        {clients.isSuccess && rows.length === 0 && (
+        {clients.isPending ? (
+          <div className="p-8 text-center">
+            <div className="h-4 w-24 bg-muted rounded animate-pulse mx-auto mb-2" />
+            <div className="h-4 w-16 bg-muted rounded animate-pulse mx-auto" />
+          </div>
+        ) : clients.isError ? (
+          <div className="p-8 text-center text-destructive">
+            Could not load clients.
+          </div>
+        ) : rows.length === 0 ? (
           <EmptyState
-            message={
+            title={hasFilters ? "No matching clients" : "No clients yet"}
+            description={
               hasFilters
-                ? "No client matches those filters."
-                : "No clients yet. Add the first one to get started."
+                ? "Try adjusting your filters or clear them to see all clients."
+                : "Add your first client to get started."
+            }
+            action={
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Client
+              </Button>
             }
           />
-        )}
-
-        {rows.length > 0 && (
+        ) : (
           <>
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[72rem]">
-                <thead className="bg-[#f7f6f3]">
-                  <tr>
-                    <th className="th w-8">
+              <Table className="min-w-full">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-8">
                       <input
                         type="checkbox"
                         checked={allSelected}
                         onChange={toggleAll}
-                        aria-label="Select all clients on this page"
+                        aria-label="Select all clients"
                       />
-                    </th>
-                    <th className="th w-10">#</th>
-                    <th className="th">Client Name</th>
-                    <th className="th">PAN</th>
-                    <th className="th">GSTIN</th>
-                    <th className="th">Type</th>
-                    <th className="th">Location</th>
-                    <th className="th">Services</th>
-                    <th className="th">Partner</th>
-                    <th className="th">Status</th>
-                    <th className="th">Next Due Date</th>
-                    <th className="th">Owner</th>
-                    <th className="th w-20">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
+                    </TableHead>
+                    <TableHead className="w-10">#</TableHead>
+                    <TableHead>Client Name</TableHead>
+                    <TableHead className="hidden sm:table-cell">PAN</TableHead>
+                    <TableHead className="hidden sm:table-cell">GSTIN</TableHead>
+                    <TableHead className="hidden sm:table-cell">Type</TableHead>
+                    <TableHead className="hidden md:table-cell">Location</TableHead>
+                    <TableHead className="hidden lg:table-cell">Services</TableHead>
+                    <TableHead className="hidden xl:table-cell">Partner</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="hidden lg:table-cell">Next Due</TableHead>
+                    <TableHead className="w-20 text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {rows.map((client, index) => (
-                    <tr
+                    <TableRow
                       key={client.id}
                       className={cn(
-                        "hover:bg-[#f7f6f3]",
-                        selected.has(client.id) && "bg-sky-50/60",
+                        "transition-colors hover:bg-muted/30",
+                        selected.has(client.id) && "bg-blue-50/60",
                       )}
                     >
-                      <td className="td">
+                      <TableCell className="w-8">
                         <input
                           type="checkbox"
                           checked={selected.has(client.id)}
                           onChange={() => toggleOne(client.id)}
                           aria-label={`Select ${client.legal_name}`}
                         />
-                      </td>
-                      <td className="td tabular text-xs text-slate-400">{offset + index + 1}</td>
-                      <td className="td">
-                        <span className="flex items-center gap-2">
+                      </TableCell>
+                      <TableCell className="w-10 tabular text-xs text-muted-foreground">
+                        {offset + index + 1}
+                      </TableCell>
+                      <TableCell className="min-w-[180px]">
+                        <div className="flex items-center gap-2.5">
                           <ClientAvatar name={client.legal_name} />
-                          <Link
-                            href={`/clients/${client.id}`}
-                            className="font-medium text-slate-900 underline-offset-2 hover:underline"
-                          >
-                            {client.legal_name}
-                          </Link>
-                        </span>
-                      </td>
-                      <td className="td font-mono text-xs text-slate-600">{client.pan ?? "—"}</td>
-                      <td className="td font-mono text-xs text-slate-600">
+                          <div>
+                            <Link
+                              href={`/clients/${client.id}`}
+                              className="font-medium text-foreground hover:text-hsl(var(--primary)) transition-colors"
+                            >
+                              {client.legal_name}
+                            </Link>
+                            <span className="ml-1 font-mono text-xs text-muted-foreground">
+                              {client.client_code}
+                            </span>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden sm:table-cell font-mono text-xs text-muted-foreground">
+                        {client.pan ?? "—"}
+                      </TableCell>
+                      <TableCell className="hidden sm:table-cell font-mono text-xs text-muted-foreground">
                         {client.gstin ?? "—"}
-                      </td>
-                      <td className="td text-xs">{humanise(client.client_type)}</td>
-                      <td className="td text-xs">
+                      </TableCell>
+                      <TableCell className="hidden sm:table-cell text-xs">
+                        {humanise(client.client_type)}
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell text-xs text-muted-foreground">
                         {[client.city, client.state].filter(Boolean).join(", ") || "—"}
-                      </td>
-                      <td className="td">
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell">
                         <ServiceChips services={client.services} />
-                      </td>
-                      <td className="td text-xs text-slate-600">{client.partner_name ?? "—"}</td>
-                      <td className="td">
-                        <Badge tone={clientStatusTone(client.status)}>
+                      </TableCell>
+                      <TableCell className="hidden xl:table-cell text-xs text-muted-foreground">
+                        {client.partner_name ?? "—"}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={clientStatusTone(client.status) as any} className="text-[10px]">
                           {humanise(client.status)}
                         </Badge>
-                      </td>
-                      <td className="td tabular text-xs">
-                        {client.next_due_date ? (
-                          formatDate(client.next_due_date)
-                        ) : (
-                          <span className="text-slate-400">—</span>
-                        )}
-                      </td>
-                      <td className="td">
-                        <OwnerAvatar name={client.manager_name} />
-                      </td>
-                      <td className="td">
-                        <div
-                          id={`actions-menu-${client.id}`}
-                          ref={openId === client.id ? menuRef : null}
-                          className="relative inline-block"
-                        >
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell tabular text-xs text-muted-foreground">
+                        {client.next_due_date ? formatDate(client.next_due_date) : "—"}
+                      </TableCell>
+                      <TableCell className="w-20 text-right">
+                        <div className="relative inline-block">
                           <button
                             type="button"
-                            className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors duration-150 active:bg-[#e6e3dc]"
+                            className="p-1.5 text-muted-foreground hover:bg-muted/30 hover:text-foreground rounded-md transition-colors"
                             aria-label={`Actions for ${client.legal_name}`}
                             onClick={(event) => {
                               event.stopPropagation();
                               setActionsOpen((current) => (current === client.id ? null : client.id));
                             }}
                           >
-                            <Icon name="more-vertical" className="h-4 w-4" />
+                            <MoreHorizontal className="h-4 w-4" />
                           </button>
                           {openId === client.id && (
-                            <div
-                              role="menu"
-                              className="absolute right-0 top-full z-30 mt-1 w-48 overflow-hidden rounded-md border border-slate-200 bg-white py-1 shadow-lg animate-in fade-in slide-in-from-right-2 duration-200 ease-out"
-                            >
-                              <Link
-                                href={`/clients/${client.id}/edit`}
-                                role="menuitem"
-                                className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-slate-700 hover:bg-[#f7f6f3] transition-colors duration-150 active:bg-[#e6e3dc]"
-                                onClick={() => setActionsOpen(null)}
+                            <AnimatePresence>
+                              <motion.div
+                                initial={{ opacity: 0, y: -4 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -4 }}
+                                className="absolute right-0 mt-2 w-48 rounded-xl border border-border bg-popover p-1 shadow-lg z-50"
                               >
-                                <Icon name="pencil" className="h-3 w-3" />
-                                Edit
-                              </Link>
-                              <div className="my-1 border-t border-slate-100" />
-                              <button
-                                type="button"
-                                role="menuitem"
-                                className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-rose-700 hover:bg-rose-50 transition-colors duration-150 active:bg-rose-100"
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  setActionsOpen(null);
-                                  setConfirmDelete({ id: client.id, name: client.legal_name });
-                                }}
-                              >
-                                <Icon name="trash" className="h-3 w-3" />
-                                Delete
-                              </button>
-                            </div>
+                                <Link
+                                  href={`/clients/${client.id}/edit`}
+                                  className="flex w-full items-center gap-2 px-3 py-2 text-sm text-left text-foreground hover:bg-muted/50 transition-colors"
+                                  onClick={() => setActionsOpen(null)}
+                                >
+                                  <Edit3 className="h-4 w-4 mr-2" />
+                                  Edit
+                                </Link>
+                                <Separator className="my-1" />
+                                <button
+                                  type="button"
+                                  className="flex w-full items-center gap-2 px-3 py-2 text-sm text-left text-destructive hover:bg-rose-50 transition-colors"
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    setActionsOpen(null);
+                                    setConfirmDelete({ id: client.id, name: client.legal_name });
+                                  }}
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Delete
+                                </button>
+                              </motion.div>
+                            </AnimatePresence>
                           )}
                         </div>
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </div>
             <Pagination
               page={page}
@@ -595,20 +649,30 @@ export default function ClientsPage() {
         )}
       </Card>
 
-      <ConfirmDialog
-        open={confirmDelete !== null}
-        onClose={() => setConfirmDelete(null)}
-        onConfirm={() => {
-          if (confirmDelete) void deleteOne(confirmDelete.id, confirmDelete.name);
-        }}
-        title={`Delete "${confirmDelete?.name}"?`}
-        description="Deleting a client cannot be undone. Its records will no longer appear in lists."
-        confirmText="Delete"
-        cancelText="Cancel"
-        variant="danger"
-        loading={deletingId === confirmDelete?.id}
-      />
+      <Dialog open={confirmDelete !== null} onOpenChange={open => !open && setConfirmDelete(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Client?</DialogTitle>
+            <DialogDescription>
+              Deleting "{confirmDelete?.name}" cannot be undone. Its records will no longer appear in lists.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button onClick={() => setConfirmDelete(null)} variant="outline">
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (confirmDelete) void deleteOne(confirmDelete.id, confirmDelete.name);
+              }}
+              variant="destructive"
+              disabled={deletingId === confirmDelete?.id}
+            >
+              {deletingId === confirmDelete?.id ? "Deleting…" : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
-

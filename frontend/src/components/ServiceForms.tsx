@@ -142,7 +142,7 @@ export function AddServiceForm({ onDone }: { onDone: () => void }) {
       void queryClient.invalidateQueries({ queryKey: ["services"] });
       void queryClient.invalidateQueries({ queryKey: ["task-templates"] });
       void queryClient.invalidateQueries({ queryKey: ["service", created.id] });
-      toast.push({ type: "success", message: "Service added." });
+      toast("Service added.");
       onDone();
     },
   });
@@ -438,7 +438,7 @@ export function EditServiceForm({
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["services"] });
       void queryClient.invalidateQueries({ queryKey: ["service", service.id] });
-      toast.push({ type: "success", message: "Service updated." });
+      toast("Service updated.");
     },
   });
 

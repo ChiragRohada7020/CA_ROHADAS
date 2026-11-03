@@ -1,426 +1,166 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import Link from "next/link";
+import { ArrowRight, Settings, Building2, Mail, Smartphone, Clock, ShieldCheck, FileText, CreditCard, Banknote } from "lucide-react";
 
-import { Icon } from "@/components/Icon";
-import { Button, Card, Input, PageHeader, Modal } from "@/components/ui";
-import { FormActions, TextField } from "@/components/form";
-import { cn } from "@/lib/format";
+import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Separator, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Toaster, Tabs, TabsContent, TabsList, TabsTrigger, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui";
+import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import { useTheme } from "@/lib/theme";
+import { cn, formatDate } from "@/lib/format";
+import { PageHeader } from "@/components/PageHeader";
+import { PageContainer } from "@/components/PageContainer";
 
-const MCP_URL = process.env.NEXT_PUBLIC_MCP_URL || "http://127.0.0.1:8000/mcp";
-
-interface WhatsAppStatus {
-  configured: boolean;
-  provider: string;
-  connected: boolean;
-  status: string;
-  connection_info: any;
-}
-
-interface WhatsAppQR {
-  qr_code: string | null;
-  pairing_code: string | null;
-  instructions: string;
-  provider: string;
-  connected: boolean;
-  connection_info: any;
-}
-
-type WaStatus = "idle" | "checking" | "connected" | "disconnected" | "qr";
+const SETTINGS_TABS = [
+  { key: "firm", label: "Firm Profile" },
+  { key: "invoice", label: "Invoice Settings" },
+  { key: "tax", label: "Tax Settings" },
+  { key: "notifications", label: "Notifications" },
+  { key: "security", label: "Security" },
+];
 
 export default function SettingsPage() {
-  const [copied, setCopied] = useState(false);
-  const { theme, setTheme } = useTheme();
-  const queryClient = useQueryClient();
-
-  // ── WhatsApp state ──
-  const [waOpen, setWaOpen] = useState(false);
-  const [waStatus, setWaStatus] = useState<WaStatus>("idle");
-  const [waKey, setWaKey] = useState(0);
-  const [qrData, setQrData] = useState<WhatsAppQR | null>(null);
-  const [pairError, setPairError] = useState<string | null>(null);
-  const [pairPhone, setPairPhone] = useState("");
-
-  const {
-    data: status,
-    isLoading: statusLoading,
-    refetch: refetchStatus,
-  } = useQuery<WhatsAppStatus>({
-    queryKey: ["whatsapp", "status"],
-    queryFn: () => api.get<WhatsAppStatus>("/whatsapp/status"),
-    retry: 2,
+  const { data: firm, isPending } = useQuery({
+    queryKey: ["billing", "settings"],
+    queryFn: () => api.get<any>("/billing/settings"),
+    staleTime: 10 * 60 * 1000,
   });
 
-  const generateQRMutation = useMutation({
-    mutationFn: () => api.get<WhatsAppQR>("/whatsapp/qr"),
-    onSuccess: (data) => {
-      setQrData(data);
-      if (data.connected) {
-        setWaStatus("connected");
-        setWaOpen(false);
-      } else if (data.qr_code) {
-        setWaStatus("qr");
-        setWaKey((k) => k + 1);
-      } else {
-        setWaStatus("disconnected");
-      }
-    },
-    onError: (err: any) => {
-      setPairError(err?.response?.data?.message || err?.message || "Failed to generate QR code");
-      setWaStatus("disconnected");
-    },
-  });
-
-  // Open modal: generate QR only if we don't already have one
-  useEffect(() => {
-    if (waOpen) {
-      setPairError(null);
-      if (qrData?.qr_code) {
-        setWaStatus("qr");
-      } else {
-        setWaStatus("checking");
-        void generateQRMutation.mutate();
-      }
-    }
-  }, [waOpen, generateQRMutation, qrData?.qr_code]);
-
-  // Poll status while QR is shown (detect scan)
-  useEffect(() => {
-    if (waStatus === "qr") {
-      const interval = setInterval(() => {
-        void refetchStatus();
-      }, 5000);
-      return () => clearInterval(interval);
-    }
-  }, [waStatus, refetchStatus]);
-
-  // Auto-detect when QR is scanned (connection becomes open)
-  useEffect(() => {
-    if (status?.connected && waStatus === "qr") {
-      setWaStatus("connected");
-      setWaOpen(false);
-      setQrData(null);
-    }
-  }, [status?.connected]);
-
-  const resetMutation = useMutation({
-    mutationFn: () => api.post("/whatsapp/reset"),
-    onSuccess: () => {
-      setPairError(null);
-      setQrData(null);
-      setWaStatus("disconnected");
-      setWaOpen(false);
-      queryClient.invalidateQueries({ queryKey: ["whatsapp", "status"] });
-    },
-    onError: (err: any) => {
-      setPairError(err?.response?.data?.message || err?.message || "Reset failed");
-    },
-  });
-
-  const pairMutation = useMutation({
-    mutationFn: (phoneNumber: string) =>
-      api.post("/whatsapp/pair", { phone_number: phoneNumber }),
-    onSuccess: () => {
-      setPairError(null);
-      setPairPhone("");
-      setWaStatus("checking");
-      queryClient.invalidateQueries({ queryKey: ["whatsapp", "status"] });
-    },
-    onError: (err: any) => {
-      setPairError(err?.response?.data?.message || err?.message || "Pairing failed");
-    },
-  });
-
-  const isConnected = status?.connected === true;
-  const configured = status?.configured === true;
-
-  const handlePair = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    const phone = formData.get("phone") as string;
-    if (!phone) return;
-    pairMutation.mutate(phone);
-  };
-
-  return (
-    <div className="mx-auto max-w-3xl space-y-6">
-      <PageHeader title="Settings" subtitle="Firm-wide configuration and integrations." />
-
-      {/* ── Appearance ── */}
-      <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex items-center gap-3 border-b border-slate-200 px-5 py-4">
-          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-sky-50 text-sky-600 ring-1 ring-inset ring-sky-100">
-            <Icon name="settings" className="h-5 w-5" />
-          </span>
-          <div>
-            <h2 className="text-sm font-semibold text-slate-900">Appearance</h2>
-            <p className="text-xs text-slate-500">
-              Choose how Rohadas CA looks in this browser.
-            </p>
-          </div>
+  if (isPending) {
+    return (
+      <div className="min-h-screen py-8">
+        <PageHeader title="Settings" subtitle="Configure your firm settings." />
+        <div className="p-8 text-center">
+          <div className="h-4 w-24 bg-muted rounded animate-pulse mx-auto" />
         </div>
-        <div className="px-5 py-4">
-          <FieldSet legend="Theme">
-            <ThemeOption value="light" label="Light" description="Always use light mode." current={theme} set={setTheme} />
-            <ThemeOption value="dark" label="Dark" description="Always use dark mode." current={theme} set={setTheme} />
-            <ThemeOption value="system" label="System" description="Follow your device setting." current={theme} set={setTheme} />
-          </FieldSet>
-        </div>
-      </section>
-
-      {/* ── MCP connection ── */}
-      <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex items-center gap-3 border-b border-slate-200 px-5 py-4">
-          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-sky-50 text-sky-600 ring-1 ring-inset ring-sky-100">
-            <Icon name="integrations" className="h-5 w-5" />
-          </span>
-          <div>
-            <h2 className="text-sm font-semibold text-slate-900">MCP connection</h2>
-            <p className="text-xs text-slate-500">
-              Connect Claude, Cursor or other MCP clients to this firm&apos;s data.
-            </p>
-          </div>
-        </div>
-        <div className="space-y-3 px-5 py-4">
-          <label className="block text-xs font-medium uppercase tracking-wide text-slate-500">
-            Endpoint URL
-          </label>
-          <div className="flex gap-2">
-            <Input className="flex-1 font-mono" readOnly value={MCP_URL} />
-            <Button
-              type="button"
-              className={cn(copied ? "bg-emerald-600 hover:bg-emerald-700" : "")}
-              onClick={() => {
-                navigator.clipboard.writeText(MCP_URL);
-                setCopied(true);
-                setTimeout(() => setCopied(false), 1500);
-              }}
-            >
-              <Icon name={copied ? "check-circle" : "settings"} className="h-4 w-4" />
-              {copied ? "Copied" : "Copy link"}
-            </Button>
-          </div>
-          <p className="text-xs text-slate-500">
-            Set <code className="rounded bg-slate-100 px-1 py-0.5">NEXT_PUBLIC_MCP_URL</code> to
-            override (e.g. your Cloudflare tunnel URL).
-          </p>
-        </div>
-      </section>
-
-      {/* ── WhatsApp Connection ── */}
-      <Card>
-        <div className="flex items-start justify-between gap-4 p-5">
-          <div className="flex-1 min-w-0">
-            <h3 className="text-base font-semibold text-slate-900">WhatsApp</h3>
-            <p className="text-sm text-slate-500 mt-1 leading-relaxed">
-              Send invoices directly to your party&apos;s WhatsApp from the invoice list or detail view.
-              Scan a QR code to connect your business WhatsApp number.
-            </p>
-          </div>
-          {isConnected && (
-            <button
-              onClick={() => resetMutation.mutate()}
-              title="Disconnect WhatsApp and reset auth"
-              className="text-xs px-2.5 py-1.5 rounded-lg font-medium text-red-600 hover:bg-red-600/[0.08] transition-colors"
-            >
-              Disconnect
-            </button>
-          )}
-        </div>
-
-        {isConnected && (
-          <div className="mt-4 p-3 bg-emerald-50 rounded-lg border border-emerald-200 px-4 py-3">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-emerald-500" />
-              <span className="text-sm font-medium text-emerald-800">WhatsApp Connected</span>
-            </div>
-          </div>
-        )}
-
-        {!configured && (
-          <div className="mt-4 p-3 bg-rose-50 rounded-lg border border-rose-200 px-4 py-3">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-rose-500" />
-              <span className="text-sm font-medium text-rose-800">WhatsApp not configured</span>
-            </div>
-          </div>
-        )}
-
-        {!isConnected && configured && (
-          <button
-            onClick={() => {
-              setWaOpen(true);
-            }}
-            className="mt-4 text-xs px-3 py-1.5 rounded-lg font-medium text-white bg-emerald-600 hover:bg-emerald-700 transition-colors"
-          >
-            Connect WhatsApp
-          </button>
-        )}
-      </Card>
-
-      {/* ── WhatsApp Connect Modal ── */}
-      <Modal open={waOpen} onClose={() => setWaOpen(false)} title="Connect WhatsApp" size="md">
-        <div className="p-4 space-y-4">
-          {waStatus === "checking" && (
-            <div className="text-center py-4">
-              <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-              <p className="text-xs text-slate-500">Checking WhatsApp connection…</p>
-            </div>
-          )}
-
-          {waStatus === "connected" && (
-            <div className="text-center py-4">
-              <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-3">
-                <Icon name="check-circle" className="h-5 w-5 text-emerald-600" />
-              </div>
-              <p className="text-sm font-medium text-slate-900">WhatsApp Connected</p>
-              <p className="text-xs text-slate-500 mt-1">You can now send invoices via WhatsApp</p>
-              <button
-                onClick={() => setWaOpen(false)}
-                className="mt-4 text-xs px-3 py-1.5 rounded-lg font-medium text-white bg-emerald-600 hover:bg-emerald-700 transition-colors"
-              >
-                Close
-              </button>
-            </div>
-          )}
-
-          {waStatus === "qr" && (
-            <div className="text-center">
-              <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-3">
-                Scan QR Code
-              </p>
-              <div className="relative inline-block">
-                <img
-                  key={waKey}
-                  src={qrData?.qr_code || ""}
-                  alt="WhatsApp QR code"
-                  className="w-48 h-48 mx-auto rounded-lg border border-slate-200 bg-white shadow-sm"
-                  onError={() => {
-                    setTimeout(() => {
-                      setWaStatus("checking");
-                      void refetchStatus();
-                    }, 1000);
-                  }}
-                />
-                <div className="absolute inset-0 bg-black/10 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                  <Icon name="qrcode" className="h-10 w-10 text-white" />
-                </div>
-              </div>
-              <p className="text-xs text-slate-500 mt-3">
-                Open WhatsApp on your phone and scan the QR code
-              </p>
-              <div className="flex gap-2 mt-4">
-                <button
-                  onClick={() => {
-                    setWaStatus("checking");
-                    void generateQRMutation.mutate();
-                  }}
-                  className="flex-1 text-xs px-2.5 py-1.5 rounded-lg font-medium text-slate-600 hover:bg-slate-100 border border-slate-200 transition-colors"
-                  disabled={generateQRMutation.isPending}
-                >
-                  Refresh QR
-                </button>
-                <button
-                  onClick={() => {
-                    setWaStatus("checking");
-                    void resetMutation.mutate();
-                  }}
-                  className="flex-1 text-xs px-2.5 py-1.5 rounded-lg font-medium text-slate-600 hover:bg-slate-100 border border-slate-200 transition-colors"
-                  disabled={resetMutation.isPending}
-                >
-                  Reset QR
-                </button>
-              </div>
-              {pairError && <p className="px-2 text-xs text-rose-600 mt-3">{pairError}</p>}
-            </div>
-          )}
-
-          {waStatus === "disconnected" && (
-            <div className="text-center py-4">
-              <p className="text-xs text-slate-500 mb-3">Not connected to WhatsApp</p>
-              <button
-                onClick={() => {
-                  setWaStatus("checking");
-                  void generateQRMutation.mutate();
-                }}
-                className="text-xs px-3 py-1.5 rounded-lg font-medium text-white bg-emerald-600 hover:bg-emerald-700 transition-colors"
-              >
-                Try Connecting
-              </button>
-            </div>
-          )}
-        </div>
-      </Modal>
-
-      {/* ── Pairing code form (inline, below card) ── */}
-      {qrData?.pairing_code && waOpen && (
-        <div className="mt-4 px-5 py-3 border-t border-slate-100">
-          <form onSubmit={handlePair} className="flex gap-2">
-            <TextField
-              label="Pairing code"
-              value={pairPhone}
-              onChange={setPairPhone}
-              placeholder="Enter code from phone"
-            />
-            <FormActions submitLabel="Pair" />
-          </form>
-          {pairError && <p className="px-2 text-xs text-rose-600">{pairError}</p>}
-        </div>
-      )}
-    </div>
-  );
-}
-
-/** A labelled radio option for the theme selector. */
-function ThemeOption({
-  value,
-  label,
-  description,
-  current,
-  set,
-}: {
-  value: "light" | "dark" | "system";
-  label: string;
-  description: string;
-  current: "light" | "dark" | "system";
-  set: (v: "light" | "dark" | "system") => void;
-}) {
-  const selected = current === value;
-  return (
-    <label className="flex items-start gap-3 rounded-lg border border-slate-200 px-3 py-2 has-[:checked]:border-sky-600 has-[:checked]:ring-2 has-[:checked]:ring-sky-200/50">
-      <input
-        type="radio"
-        name="theme"
-        value={value}
-        checked={selected}
-        onChange={() => set(value)}
-        className="mt-1 h-4 w-4 shrink-0 cursor-pointer accent-sky-600"
-      />
-      <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium text-slate-900">{label}</p>
-        <p className="text-xs text-slate-500">{description}</p>
       </div>
-    </label>
-  );
-}
+    );
+  }
 
-/** A simple fieldset wrapper with label, matching the settings style. */
-function FieldSet({
-  legend,
-  children,
-}: {
-  legend: string;
-  children: React.ReactNode;
-}) {
   return (
-    <fieldset className="space-y-2">
-      <legend className="text-xs font-medium uppercase tracking-wide text-slate-500">
-        {legend}
-      </legend>
-      {children}
-    </fieldset>
+    <div className="min-h-screen py-8">
+      <Toaster />
+      <PageContainer>
+        <PageHeader
+          title="Settings"
+          subtitle="Manage firm profile, invoices, tax, and notifications."
+          breadcrumbs={[{ label: "Dashboard", href: "/dashboard" }, { label: "Settings" }]}
+        />
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          <div className="lg:col-span-3">
+            <Card className="h-full">
+              <CardHeader className="pb-3">
+                <Tabs defaultValue="firm" className="[&_[role=tablist]]:flex-col [&_[role=tablist]]:border-none [&_[role=tablist]]:gap-2">
+                  <TabsList className="flex flex-col gap-1">
+                    {SETTINGS_TABS.map((tab) => (
+                      <TabsTrigger
+                        key={tab.key}
+                        value={tab.key}
+                        className="flex items-center gap-3 w-full px-3 py-2.5 text-sm font-medium transition-colors rounded-lg border-l-2 border-transparent"
+                      >
+                        <Settings className="h-4 w-4" />
+                        {tab.label}
+                      </TabsTrigger>
+                    ))}
+                  </TabsList>
+                </Tabs>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="p-6 space-y-6">
+                  <div className="flex items-center gap-3">
+                    <Building2 className="h-8 w-8 text-muted-foreground" />
+                    <div>
+                      <p className="text-sm font-medium text-foreground">
+                        {firm?.legal_name ?? firm?.name ?? "Your Firm"}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {firm?.city && firm?.state ? `${firm.city}, ${firm.state}` : "No address set"}
+                      </p>
+                    </div>
+                  </div>
+                  <Separator />
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3">
+                      <Mail className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">{firm?.email ?? "Not configured"}</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Smartphone className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">{firm?.phone ?? "Not configured"}</span>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="lg:col-span-9">
+            <TabsContent value="firm" className="border-none">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Firm Profile</CardTitle>
+                  <CardDescription>Configure your firm's identity and contact details.</CardDescription>
+                </CardHeader>
+                <CardContent className="p-6">
+                  <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-foreground">Firm Name</label>
+                      <Input defaultValue={firm?.legal_name ?? firm?.name ?? ""} className="input" />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-foreground">Firm Slug</label>
+                      <Input defaultValue={firm?.slug ?? ""} className="input" />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-foreground">Owner Name</label>
+                      <Input defaultValue={firm?.owner_name ?? ""} className="input" />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-foreground">Owner Email</label>
+                      <Input type="email" defaultValue={firm?.owner_email ?? ""} className="input" />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-foreground">Address Line 1</label>
+                      <Input defaultValue={firm?.address_line1 ?? ""} className="input" />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-foreground">City</label>
+                      <Input defaultValue={firm?.city ?? ""} className="input" />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-foreground">State</label>
+                      <Input defaultValue={firm?.state ?? ""} className="input" />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-foreground">PIN Code</label>
+                      <Input defaultValue={firm?.pincode ?? ""} className="input" />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-foreground">State Code (GST)</label>
+                      <Select defaultValue="" onValueChange={() => {}}>
+                        <SelectTrigger className="input w-full">
+                          <SelectValue placeholder="Select state code" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="27">Maharashtra (27)</SelectItem>
+                          <SelectItem value="29">Karnataka (29)</SelectItem>
+                          <SelectItem value="07">Delhi (07)</SelectItem>
+                          <SelectItem value="09">Uttar Pradesh (09)</SelectItem>
+                          <SelectItem value="03">Punjab (03)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="mt-6 flex items-center gap-3">
+                    <Button>Save Changes</Button>
+                    <Button variant="outline">Discard</Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </div>
+        </div>
+      </PageContainer>
+    </div>
   );
 }
