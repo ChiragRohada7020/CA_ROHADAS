@@ -76,7 +76,7 @@ function tabCount(summary: ClientSummary | undefined, key: string): number {
 /** The coloured square that stands in for a client's logo. */
 function ClientAvatar({ name }: { name: string }) {
   return (
-    <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-sky-100 text-xs font-semibold text-sky-700">
+    <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-blue-50 text-xs font-semibold text-blue-700">
       {initials(name)}
     </span>
   );
@@ -84,13 +84,13 @@ function ClientAvatar({ name }: { name: string }) {
 
 /** A person's initials in a circle, for the owner column. */
 function OwnerAvatar({ name }: { name: string | null }) {
-  if (!name) return <span className="text-xs text-slate-400">Unassigned</span>;
+  if (!name) return <span className="text-xs text-hsl(var(--muted-foreground))">Unassigned</span>;
   return (
     <span className="flex items-center gap-1.5" title={name}>
-      <span className="flex size-6 items-center justify-center rounded-full bg-violet-100 text-[10px] font-semibold text-violet-700">
+      <span className="flex size-6 items-center justify-center rounded-full bg-hsl(var(--secondary)) text-[10px] font-semibold text-hsl(var(--secondary-foreground))">
         {initials(name)}
       </span>
-      <span className="hidden text-xs text-slate-600 xl:inline">{name.split(" ")[0]}</span>
+      <span className="hidden text-xs text-hsl(var(--muted-foreground)) xl:inline">{name.split(" ")[0]}</span>
     </span>
   );
 }
@@ -104,7 +104,7 @@ function OwnerAvatar({ name }: { name: string | null }) {
  */
 function ServiceChips({ services }: { services: ClientListItem["services"] }) {
   if (services.length === 0) {
-    return <span className="text-xs text-slate-400">None</span>;
+    return <span className="text-xs text-hsl(var(--muted-foreground))">None</span>;
   }
   return (
     <span className="flex flex-wrap gap-1">
@@ -112,7 +112,7 @@ function ServiceChips({ services }: { services: ClientListItem["services"] }) {
         <span
           key={`${service.code}-${index}`}
           title={service.name}
-          className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] font-medium text-slate-600"
+          className="rounded bg-hsl(var(--secondary)) px-1.5 py-0.5 font-mono text-[10px] font-medium text-hsl(var(--secondary-foreground))"
         >
           {service.code}
         </span>
@@ -141,7 +141,7 @@ function SummaryTiles({ summary }: { summary: ClientSummary | undefined }) {
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 xl:grid-cols-8">
+    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4 xl:grid-cols-8">
       {tiles.map((tile) => (
         <StatCard
           key={tile.label}
@@ -287,7 +287,7 @@ export default function ClientsPage() {
       <SummaryTiles summary={s} />
 
       <Card>
-        <div className="flex items-center gap-1 border-b border-slate-200 px-3 pt-2 pb-1 overflow-x-auto">
+        <div className="flex items-center gap-1 border-b border-border px-3 pt-2 pb-1 overflow-x-auto">
           {TABS.map((row) => {
             const isActive = row.key === tab;
             return (
@@ -298,15 +298,15 @@ export default function ClientsPage() {
                 className={cn(
                   "whitespace-nowrap -mb-px border-b-2 px-3 py-1.5 text-xs font-medium transition-colors duration-150 shrink-0",
                   isActive
-                    ? "border-sky-600 text-sky-700"
-                    : "border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50 rounded",
+                    ? "border-primary text-primary-foreground"
+                    : "border-transparent text-hsl(var(--muted-foreground)) hover:text-hsl(var(--foreground)) hover:bg-hsl(var(--secondary))/50 rounded",
                 )}
               >
                 {row.label}
                 <span
                   className={cn(
                     "tabular ml-1.5 px-1.5 py-0.5 text-[10px] font-semibold",
-                    isActive ? "bg-sky-100 text-sky-700 rounded" : "bg-slate-100 text-slate-500 rounded",
+                    isActive ? "bg-primary/10 text-primary rounded" : "bg-hsl(var(--muted))/50 text-hsl(var(--muted-foreground)) rounded",
                   )}
                 >
                   {tabCount(s, row.key)}
@@ -316,7 +316,7 @@ export default function ClientsPage() {
           })}
         </div>
 
-        <div className="grid grid-cols-2 gap-2 border-b border-slate-200 p-3 md:grid-cols-3 xl:grid-cols-6">
+        <div className="grid grid-cols-2 gap-3 border-b border-border p-3 md:grid-cols-3 xl:grid-cols-6">
           <label className="col-span-2 block md:col-span-1">
             <input
               className="input py-1.5"
@@ -328,7 +328,7 @@ export default function ClientsPage() {
             />
           </label>
           <select
-            className="input py-1.5"
+            className="select py-1.5"
             value={filters.client_type ?? ""}
             onChange={(event) => updateFilter("client_type", event.target.value)}
             aria-label="Client type"
@@ -341,7 +341,7 @@ export default function ClientsPage() {
             ))}
           </select>
           <select
-            className="input py-1.5"
+            className="select py-1.5"
             value={filters.service_code ?? ""}
             onChange={(event) => updateFilter("service_code", event.target.value)}
             aria-label="Service"
@@ -354,7 +354,7 @@ export default function ClientsPage() {
             ))}
           </select>
           <select
-            className="input py-1.5"
+            className="select py-1.5"
             value={filters.city ?? ""}
             onChange={(event) => updateFilter("city", event.target.value)}
             aria-label="Location"
@@ -367,7 +367,7 @@ export default function ClientsPage() {
             ))}
           </select>
           <select
-            className="input py-1.5"
+            className="select py-1.5"
             value={filters.partner_id ?? ""}
             onChange={(event) => updateFilter("partner_id", event.target.value)}
             aria-label="Partner"
@@ -380,7 +380,7 @@ export default function ClientsPage() {
             ))}
           </select>
           <select
-            className="input py-1.5"
+            className="select py-1.5"
             value={filters.kyc_status ?? ""}
             onChange={(event) => updateFilter("kyc_status", event.target.value)}
             aria-label="KYC status"
@@ -395,13 +395,13 @@ export default function ClientsPage() {
         </div>
 
         {hasFilters && (
-          <div className="flex items-center justify-between gap-3 border-b border-slate-200 bg-[#f7f6f3] px-3 py-2">
-            <p className="text-xs text-slate-600">
+          <div className="flex items-center justify-between gap-3 border-b border-border bg-hsl(var(--secondary))/30 px-3 py-2">
+            <p className="text-xs text-hsl(var(--muted-foreground))">
               Showing {clients.data?.meta.total ?? 0} of {s?.total ?? 0} clients
             </p>
             <button
               type="button"
-              className="text-xs font-medium text-sky-700 hover:underline"
+              className="text-xs font-medium text-primary-foreground hover:underline"
               onClick={() => {
                 paging.clearFilters();
                 setSelected(new Set());
@@ -413,11 +413,13 @@ export default function ClientsPage() {
         )}
 
         {selected.size > 0 && (
-          <div className="flex items-center justify-between gap-3 border-b border-slate-200 bg-sky-50 px-3 py-2">
-            <p className="text-xs font-medium text-sky-900">{selected.size} selected</p>
+          <div className="flex items-center justify-between gap-3 border-b border-border bg-hsl(var(--secondary))/30 px-3 py-2">
+            <p className="text-xs font-medium text-hsl(var(--foreground))">
+              {selected.size} selected
+            </p>
             <button
               type="button"
-              className="text-xs font-medium text-sky-700 hover:underline"
+              className="text-xs font-medium text-hsl(var(--muted-foreground)) hover:underline"
               onClick={() => setSelected(new Set())}
             >
               Clear selection
@@ -449,9 +451,9 @@ export default function ClientsPage() {
           <>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[72rem]">
-                <thead className="bg-[#f7f6f3]">
-                  <tr>
-                    <th className="th w-8">
+                <thead className="table-header">
+                  <tr className="table-header-row">
+                    <th className="table-head w-8">
                       <input
                         type="checkbox"
                         checked={allSelected}
@@ -459,30 +461,30 @@ export default function ClientsPage() {
                         aria-label="Select all clients on this page"
                       />
                     </th>
-                    <th className="th w-10">#</th>
-                    <th className="th">Client Name</th>
-                    <th className="th">PAN</th>
-                    <th className="th">GSTIN</th>
-                    <th className="th">Type</th>
-                    <th className="th">Location</th>
-                    <th className="th">Services</th>
-                    <th className="th">Partner</th>
-                    <th className="th">Status</th>
-                    <th className="th">Next Due Date</th>
-                    <th className="th">Owner</th>
-                    <th className="th w-20">Actions</th>
+                    <th className="table-head w-10">#</th>
+                    <th className="table-head">Client Name</th>
+                    <th className="table-head">PAN</th>
+                    <th className="table-head">GSTIN</th>
+                    <th className="table-head">Type</th>
+                    <th className="table-head">Location</th>
+                    <th className="table-head">Services</th>
+                    <th className="table-head">Partner</th>
+                    <th className="table-head">Status</th>
+                    <th className="table-head">Next Due Date</th>
+                    <th className="table-head">Owner</th>
+                    <th className="table-head w-20">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="table-body">
                   {rows.map((client, index) => (
                     <tr
                       key={client.id}
                       className={cn(
-                        "hover:bg-[#f7f6f3]",
-                        selected.has(client.id) && "bg-sky-50/60",
+                        "table-row",
+                        selected.has(client.id) && "table-row-selected",
                       )}
                     >
-                      <td className="td">
+                      <td className="table-cell">
                         <input
                           type="checkbox"
                           checked={selected.has(client.id)}
@@ -490,46 +492,46 @@ export default function ClientsPage() {
                           aria-label={`Select ${client.legal_name}`}
                         />
                       </td>
-                      <td className="td tabular text-xs text-slate-400">{offset + index + 1}</td>
-                      <td className="td">
+                      <td className="table-cell tabular text-xs text-hsl(var(--muted-foreground))">{offset + index + 1}</td>
+                      <td className="table-cell">
                         <span className="flex items-center gap-2">
                           <ClientAvatar name={client.legal_name} />
                           <Link
                             href={`/clients/${client.id}`}
-                            className="font-medium text-slate-900 underline-offset-2 hover:underline"
+                            className="font-medium text-hsl(var(--foreground)) underline-offset-2 hover:underline"
                           >
                             {client.legal_name}
                           </Link>
                         </span>
                       </td>
-                      <td className="td font-mono text-xs text-slate-600">{client.pan ?? "—"}</td>
-                      <td className="td font-mono text-xs text-slate-600">
+                      <td className="table-cell font-mono text-xs text-hsl(var(--muted-foreground))">{client.pan ?? "—"}</td>
+                      <td className="table-cell font-mono text-xs text-hsl(var(--muted-foreground))">
                         {client.gstin ?? "—"}
                       </td>
-                      <td className="td text-xs">{humanise(client.client_type)}</td>
-                      <td className="td text-xs">
+                      <td className="table-cell text-xs">{humanise(client.client_type)}</td>
+                      <td className="table-cell text-xs">
                         {[client.city, client.state].filter(Boolean).join(", ") || "—"}
                       </td>
-                      <td className="td">
+                      <td className="table-cell">
                         <ServiceChips services={client.services} />
                       </td>
-                      <td className="td text-xs text-slate-600">{client.partner_name ?? "—"}</td>
-                      <td className="td">
+                      <td className="table-cell text-xs text-hsl(var(--muted-foreground))">{client.partner_name ?? "—"}</td>
+                      <td className="table-cell">
                         <Badge tone={clientStatusTone(client.status)}>
                           {humanise(client.status)}
                         </Badge>
                       </td>
-                      <td className="td tabular text-xs">
+                      <td className="table-cell tabular text-xs">
                         {client.next_due_date ? (
                           formatDate(client.next_due_date)
                         ) : (
-                          <span className="text-slate-400">—</span>
+                          <span className="text-hsl(var(--muted-foreground))">—</span>
                         )}
                       </td>
-                      <td className="td">
+                      <td className="table-cell">
                         <OwnerAvatar name={client.manager_name} />
                       </td>
-                      <td className="td">
+                      <td className="table-cell">
                         <div
                           id={`actions-menu-${client.id}`}
                           ref={openId === client.id ? menuRef : null}
@@ -537,7 +539,7 @@ export default function ClientsPage() {
                         >
                           <button
                             type="button"
-                            className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors duration-150 active:bg-[#e6e3dc]"
+                            className="btn-icon text-hsl(var(--muted-foreground)) hover:bg-hsl(var(--secondary)) hover:text-hsl(var(--foreground))"
                             aria-label={`Actions for ${client.legal_name}`}
                             onClick={(event) => {
                               event.stopPropagation();
@@ -549,22 +551,22 @@ export default function ClientsPage() {
                           {openId === client.id && (
                             <div
                               role="menu"
-                              className="absolute right-0 top-full z-30 mt-1 w-48 overflow-hidden rounded-md border border-slate-200 bg-white py-1 shadow-lg animate-in fade-in slide-in-from-right-2 duration-200 ease-out"
+                              className="absolute right-0 top-full z-30 mt-1 w-48 overflow-hidden rounded-xl border border-border bg-popover shadow-lg"
                             >
                               <Link
                                 href={`/clients/${client.id}/edit`}
                                 role="menuitem"
-                                className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-slate-700 hover:bg-[#f7f6f3] transition-colors duration-150 active:bg-[#e6e3dc]"
+                                className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-hsl(var(--foreground)) hover:bg-hsl(var(--secondary)) transition-colors"
                                 onClick={() => setActionsOpen(null)}
                               >
                                 <Icon name="pencil" className="h-3 w-3" />
                                 Edit
                               </Link>
-                              <div className="my-1 border-t border-slate-100" />
+                              <div className="my-1 separator separator-horizontal" />
                               <button
                                 type="button"
                                 role="menuitem"
-                                className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-rose-700 hover:bg-rose-50 transition-colors duration-150 active:bg-rose-100"
+                                className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-destructive hover:bg-destructive/5 transition-colors"
                                 onClick={(event) => {
                                   event.stopPropagation();
                                   setActionsOpen(null);
@@ -611,4 +613,3 @@ export default function ClientsPage() {
     </div>
   );
 }
-
