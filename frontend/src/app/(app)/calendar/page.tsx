@@ -196,9 +196,9 @@ export default function CalendarPage() {
                   return (
                     <tr
                       key={entry.task_id ?? entry.deadline_id ?? `${entry.client_id}-${index}`}
-                      className={`hover:bg-[#f7f6f3] ${isOverdue ? "bg-rose-50" : ""}`}
+                      className={`hover:bg-[#f7f6f3] ${isOverdue ? "bg-danger-light" : ""}`}
                     >
-                      <td className="td tabular text-xs font-medium text-slate-900">
+                      <td className="td tabular text-xs font-medium text-hsl(var(--foreground))">
                         {formatDate(entry.statutory_due_date)}
                       </td>
                       <td className="td">
@@ -207,13 +207,13 @@ export default function CalendarPage() {
                         </Badge>
                       </td>
                       <td className="td">
-                        <span className="font-medium text-slate-900">{entry.client_name}</span>
+                        <span className="font-medium text-hsl(var(--foreground))">{entry.client_name}</span>
                       </td>
                       <td className="td text-xs">
                         <div className="flex flex-col gap-1">
-                          <span className="text-slate-900">{entry.rule_name ?? entry.filing_type ?? "—"}</span>
+                          <span className="text-hsl(var(--foreground))">{entry.rule_name ?? entry.filing_type ?? "—"}</span>
                           {entry.authority && (
-                            <span className="text-slate-400 text-[10px]">{entry.authority}</span>
+                            <span className="text-hsl(var(--muted-foreground)) text-[10px]">{entry.authority}</span>
                           )}
                           {!entry.verified && <Badge tone="warning" className="text-[10px]">Date unconfirmed</Badge>}
                         </div>
@@ -230,7 +230,7 @@ export default function CalendarPage() {
                           {entry.task_id && (
                             <Link
                               href={`/tasks/${entry.task_id}`}
-                              className="text-xs text-slate-500 underline-offset-2 hover:underline"
+                              className="text-xs text-hsl(var(--muted-foreground)) underline-offset-2 hover:underline"
                             >
                               Open task
                             </Link>

@@ -223,7 +223,7 @@ export default function BillingPage() {
                   "relative cursor-pointer border-b-2 px-3 py-2 text-sm font-medium transition-colors",
                   isActive
                     ? "border-primary text-primary"
-                    : "border-transparent text-hsl(var(--muted-foreground)) hover:text-slate-800",
+                    : "border-transparent text-hsl(var(--muted-foreground)) hover:text-hsl(var(--foreground))",
                 )}
                 whileTap={{ scale: 0.97 }}
               >
@@ -355,7 +355,7 @@ export default function BillingPage() {
                     </td>
                     <td className="td min-w-[160px]">
                       {invoice.services.length === 0 ? (
-                        <span className="text-slate-300">—</span>
+                        <span className="text-hsl(var(--muted-foreground))">—</span>
                       ) : (
                         <div className="flex flex-wrap gap-1">
                           {invoice.services.slice(0, 2).map((svc, sidx) => (
@@ -371,7 +371,7 @@ export default function BillingPage() {
                         </div>
                       )}
                     </td>
-                    <td className="td tabular text-right text-slate-700">
+                    <td className="td tabular text-right text-hsl(var(--muted-foreground))">
                       {formatMoney(invoice.total)}
                     </td>
                     <td className="td tabular text-right text-hsl(var(--muted-foreground))">
@@ -382,13 +382,13 @@ export default function BillingPage() {
                         <span
                           className={cn(
                             "font-medium",
-                            invoice.is_overdue ? "text-rose-700" : "text-slate-800",
+                            invoice.is_overdue ? "text-rose-700" : "text-hsl(var(--foreground))",
                           )}
                         >
                           {formatMoney(invoice.outstanding)}
                         </span>
                       ) : (
-                        <span className="text-emerald-700">—</span>
+                        <span className="text-success-color">—</span>
                       )}
                     </td>
                     <td className="td">
@@ -407,7 +407,7 @@ export default function BillingPage() {
                     <td className="td text-center">
                       <button
                         type="button"
-                        className="inline-flex items-center justify-center rounded p-1 text-hsl(var(--muted-foreground)) hover:bg-success/10 hover:text-emerald-700"
+                        className="inline-flex items-center justify-center rounded p-1 text-hsl(var(--muted-foreground)) hover:bg-success/10 hover:text-success-color"
                         aria-label="Record payment"
                         title="Record payment"
                         onClick={() => {
@@ -510,10 +510,10 @@ export default function BillingPage() {
                     <td className="td text-xs text-hsl(var(--muted-foreground))">
                       {formatDate(payment.paid_on)}
                     </td>
-                    <td className="td text-xs text-slate-700">
+                    <td className="td text-xs text-hsl(var(--muted-foreground))">
                       {payment.client_name ?? "—"}
                     </td>
-                    <td className="td tabular text-right text-slate-800">
+                    <td className="td tabular text-right text-hsl(var(--foreground))">
                       {formatMoney(payment.amount)}
                     </td>
                     <td className="td text-xs text-hsl(var(--muted-foreground))">{humanise(payment.method)}</td>
@@ -626,7 +626,7 @@ function AgeingPanel({ summary }: { summary: BillingSummary | undefined }) {
             <motion.div
               className={cn(
                 "w-full rounded-t",
-                row.amount > 0 ? (AGEING_FILL[row.bucket] ?? "bg-slate-400") : "bg-hsl(var(--secondary))/50",
+                row.amount > 0 ? (AGEING_FILL[row.bucket] ?? "bg-hsl(var(--muted))") : "bg-hsl(var(--secondary))/50",
               )}
               initial={{ height: 0, opacity: 0 }}
               animate={{
