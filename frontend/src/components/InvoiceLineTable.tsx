@@ -46,7 +46,8 @@ export function lineSubtotal(lines: DraftLine[]): number {
 }
 
 // Column widths mirror hisaabo's invoice editor grid.
-const COLUMNS = "1fr 170px 70px 86px 56px 56px 82px 28px";
+// Columns: Row #, Service, Description, SAC/HSN, Qty, Rate, Discount, Tax %, Amount, Remove
+const COLUMNS = "36px 180px 1fr 72px 56px 72px 56px 36px 70px 36px";
 
 export function InvoiceLineTable({
   lines,
@@ -81,6 +82,7 @@ export function InvoiceLineTable({
           color: "var(--h-dark-text-tertiary)",
         }}
       >
+        <span className="text-center" />
         <span>Service</span>
         <span>Description</span>
         <span className="text-right">SAC / HSN</span>
