@@ -43,7 +43,7 @@ const TabsContent = React.forwardRef<
   <TabsPrimitive.Content
     ref={ref}
     className={cn(
-      "mt-2 ring-hsl(var(--ring)) text-foreground shadow-sm",
+      "mt-2 ring-ring text-foreground shadow-sm",
       className,
     )}
     {...props}

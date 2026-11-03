@@ -238,7 +238,7 @@ export default function BillingPage() {
                 className={cn(
                   "whitespace-nowrap -mb-px border-b-2 px-3 py-1.5 text-xs font-medium transition-colors shrink-0",
                   isActive
-                    ? "border-hsl(var(--primary)) text-hsl(var(--primary))"
+                    ? "border-primary text-primary"
                     : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-lg",
                 )}
               >
@@ -246,7 +246,7 @@ export default function BillingPage() {
                 <span
                   className={cn(
                     "tabular ml-1.5 px-2 py-0.5 text-[10px] font-semibold rounded",
-                    isActive ? "bg-primary/10 text-hsl(var(--primary))" : "bg-muted/40 text-muted-foreground",
+                    isActive ? "bg-primary/10 text-primary" : "bg-muted/40 text-muted-foreground",
                   )}
                 >
                   {s?.tab_counts?.[entry.key] ?? 0}
@@ -356,7 +356,7 @@ export default function BillingPage() {
                       <div className="flex flex-col">
                         <button
                           type="button"
-                          className="text-left font-medium text-foreground hover:text-hsl(var(--primary)) transition-colors"
+                          className="text-left font-medium text-foreground hover:text-primary transition-colors"
                           onClick={() => setOpenInvoiceId(invoice.id)}
                         >
                           {invoice.invoice_number ?? "(draft)"}
@@ -531,7 +531,7 @@ export default function BillingPage() {
                           row.status === "paid" ? "bg-emerald-500" :
                           row.status === "partially_paid" ? "bg-amber-500" :
                           row.status === "issued" ? "bg-blue-500" :
-                          "bg-hsl(var(--muted-foreground))",
+                          "bg-muted-foreground",
                         )}
                       />
                       <span className="text-sm text-foreground">{humanise(row.status)}</span>

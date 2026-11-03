@@ -120,7 +120,7 @@ function UserAvatar({ name, className }: UserAvatarProps) {
     .join("") || "?";
 
   const tones = [
-    "bg-primary/10 text-hsl(var(--primary))",
+    "bg-primary/10 text-primary",
     "bg-emerald-500/10 text-emerald-600",
     "bg-rose-500/10 text-rose-600",
     "bg-amber-500/10 text-amber-600",

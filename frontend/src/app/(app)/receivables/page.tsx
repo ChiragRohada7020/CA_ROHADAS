@@ -161,7 +161,7 @@ export default function ReceivablesPage() {
                         <span
                           className={cn(
                             "h-2.5 w-2.5 rounded-full",
-                            row.bucket === "current" ? "bg-hsl(var(--muted-foreground))" :
+                            row.bucket === "current" ? "bg-muted-foreground" :
                             row.bucket.startsWith("1-") ? "bg-blue-500" :
                             row.bucket.startsWith("31-") ? "bg-amber-500" :
                             "bg-rose-500",
@@ -233,7 +233,7 @@ export default function ReceivablesPage() {
               )}
             </CardContent>
             <CardFooter>
-              <Link href="/clients" className="text-sm text-hsl(var(--primary)) hover:underline flex items-center gap-1">
+              <Link href="/clients" className="text-sm text-primary hover:underline flex items-center gap-1">
                 View all clients <ArrowRight className="h-3 w-3" />
               </Link>
             </CardFooter>

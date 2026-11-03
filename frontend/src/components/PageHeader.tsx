@@ -72,7 +72,7 @@ interface StatCardProps {
 }
 
 const STAT_TONES: Record<string, string> = {
-  primary: "bg-primary/10 text-hsl(var(--primary)) border-primary/20",
+  primary: "bg-primary/10 text-primary border-primary/20",
   success: "bg-emerald-500/10 text-emerald-600 border-emerald-200/50",
   warning: "bg-amber-500/10 text-amber-600 border-amber-200/50",
   danger: "bg-rose-500/10 text-rose-600 border-rose-200/50",
@@ -183,12 +183,12 @@ export function QuickActionCard({ title, subtitle, icon: Icon, href, tone = "bg-
           </div>
         </div>
         <div>
-          <h3 className="font-semibold text-foreground group-hover:text-hsl(var(--primary)) transition-colors">
+          <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors">
             {title}
           </h3>
           <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>
         </div>
-        <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-hsl(var(--primary)) transition-colors mt-auto" />
+        <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors mt-auto" />
       </Link>
     </Card>
   );

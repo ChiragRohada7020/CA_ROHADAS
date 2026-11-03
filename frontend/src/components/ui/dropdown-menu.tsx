@@ -50,7 +50,7 @@ const DropdownMenuSubContent = React.forwardRef<
         {...props}
       >
         {children}
-      <DropdownMenuPrimitive.Separator className="-mx-1 h-px bg-hsl(var(--border)) my-1" />
+      <DropdownMenuPrimitive.Separator className="-mx-1 h-px bg-border my-1" />
       </DropdownMenuPrimitive.SubContent>
     </DropdownMenuPortal>
   );
@@ -71,7 +71,7 @@ const DropdownMenuContent = React.forwardRef<
       {...props}
     >
       {children}
-      <DropdownMenuPrimitive.Separator className="-mx-1 h-px bg-hsl(var(--border)) my-1" />
+      <DropdownMenuPrimitive.Separator className="-mx-1 h-px bg-border my-1" />
     </DropdownMenuPrimitive.Content>
   </DropdownMenuPortal>
 ));
@@ -165,7 +165,7 @@ const DropdownMenuSeparator = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DropdownMenuPrimitive.Separator
     ref={ref}
-    className={cn("-mx-1 h-px bg-hsl(var(--border)) my-1", className)}
+    className={cn("-mx-1 h-px bg-border my-1", className)}
     {...props}
   />
 ));

@@ -47,7 +47,7 @@ const SelectContent = React.forwardRef<
       {...props}
     >
       {children}
-      <SelectPrimitive.Separator className="bg-hsl(var(--border)) -mx-1 h-px my-2" />
+      <SelectPrimitive.Separator className="bg-border -mx-1 h-px my-2" />
     </SelectPrimitive.Content>
   </SelectPortal>
 ));
@@ -81,7 +81,7 @@ const SelectSeparator = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <SelectPrimitive.Separator
     ref={ref}
-    className={cn("bg-hsl(var(--border)) -mx-1 h-px my-2", className)}
+    className={cn("bg-border -mx-1 h-px my-2", className)}
     {...props}
   />
 ));

@@ -9,20 +9,20 @@ const badgeVariants = cva(
   {
     variants: {
       variant: {
-        default: "border-primary/20 bg-primary/10 text-hsl(var(--primary))",
+        default: "border-primary/20 bg-primary/10 text-primary",
         secondary:
-          "border-hsl(var(--secondary))/20 bg-secondary/10 text-secondary-foreground",
+          "border-secondary/20 bg-secondary/10 text-secondary-foreground",
         destructive:
-          "border-hsl(var(--destructive))/20 bg-destructive/10 text-destructive",
+          "border-destructive/20 bg-destructive/10 text-destructive",
         outline: "border-input text-foreground",
         success:
-          "border-hsl(var(--brand-success))/20 bg-hsl(var(--brand-success))/10 text-hsl(var(--brand-success))",
+          "border-brand-success/20 bg-brand-success/10 text-brand-success",
         warning:
-          "border-hsl(var(--brand-warning))/20 bg-hsl(var(--brand-warning))/10 text-hsl(var(--brand-warning))",
+          "border-brand-warning/20 bg-brand-warning/10 text-brand-warning",
         danger:
-          "border-hsl(var(--brand-danger))/20 bg-hsl(var(--brand-danger))/10 text-hsl(var(--brand-danger))",
+          "border-brand-danger/20 bg-brand-danger/10 text-brand-danger",
         info:
-          "border-hsl(var(--brand-info))/20 bg-hsl(var(--brand-info))/10 text-hsl(var(--brand-info))",
+          "border-brand-info/20 bg-brand-info/10 text-brand-info",
         neutral:
           "border-muted/20 bg-muted/10 text-muted-foreground",
       },

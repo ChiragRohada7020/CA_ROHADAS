@@ -465,7 +465,7 @@ function UpcomingDeadlines({ rows }: { rows: FirmDashboard["upcoming_deadlines"]
         )}
       </CardContent>
       <CardFooter>
-        <Link href="/calendar" className="text-sm text-hsl(var(--primary)) hover:underline flex items-center gap-1">
+        <Link href="/calendar" className="text-sm text-primary hover:underline flex items-center gap-1">
           View all deadlines <ArrowRight className="h-3 w-3" />
         </Link>
       </CardFooter>
@@ -715,7 +715,7 @@ function TeamWorkload({ rows }: { rows: FirmDashboard["workload"] }) {
         )}
       </CardContent>
       <CardFooter>
-        <Link href="/team" className="text-sm text-hsl(var(--primary)) hover:underline flex items-center gap-1">
+        <Link href="/team" className="text-sm text-primary hover:underline flex items-center gap-1">
           View team <ArrowRight className="h-3 w-3" />
         </Link>
       </CardFooter>
@@ -763,7 +763,7 @@ function RecentActivity({ rows }: { rows: FirmDashboard["recent_activity"] }) {
         )}
       </CardContent>
       <CardFooter>
-        <Link href="/reports" className="text-sm text-hsl(var(--primary)) hover:underline flex items-center gap-1">
+        <Link href="/reports" className="text-sm text-primary hover:underline flex items-center gap-1">
           View all activity <ArrowRight className="h-3 w-3" />
         </Link>
       </CardFooter>

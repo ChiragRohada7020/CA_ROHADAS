@@ -67,8 +67,8 @@ export function LoadingSkeleton({
   label?: string;
 }) {
   return (
-    <div className={cn("animate-pulse rounded-md bg-hsl(var(--muted))", className)}>
-      {label && <span className="text-xs text-hsl(var(--muted-foreground)) mt-2 block">{label}</span>}
+    <div className={cn("animate-pulse rounded-md bg-muted", className)}>
+      {label && <span className="text-xs text-muted-foreground mt-2 block">{label}</span>}
     </div>
   );
 }

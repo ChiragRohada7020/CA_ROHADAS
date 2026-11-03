@@ -153,14 +153,14 @@ function periodLabel(periodKey: string | null): string {
 
 function PriorityDot({ priority }: { priority: string }) {
   const colour: Record<string, string> = {
-    low: "bg-hsl(var(--muted-foreground))/30",
+    low: "bg-muted-foreground/30",
     normal: "bg-blue-500",
     high: "bg-amber-500",
     urgent: "bg-rose-500",
   };
   return (
     <span className={cn("flex items-center gap-1.5")}>
-      <span className={cn("size-1.5 rounded-full", colour[priority] ?? "bg-hsl(var(--muted-foreground))/30")} />
+      <span className={cn("size-1.5 rounded-full", colour[priority] ?? "bg-muted-foreground/30")} />
       <span className="text-xs capitalize text-muted-foreground">{priority}</span>
     </span>
   );
@@ -355,7 +355,7 @@ function ProgressBar({ percent }: { percent: number }) {
     percent >= 70 ? "bg-blue-500" :
     percent >= 30 ? "bg-amber-500" :
     percent > 0 ? "bg-rose-400" :
-    "bg-hsl(var(--muted-foreground))/20";
+    "bg-muted-foreground/20";
 
   return (
     <div className="flex items-center gap-2">
@@ -570,7 +570,7 @@ export default function TasksPage() {
                 </button>
               ))}
             </div>
-            <Link href="/tasks/generate" className="text-sm text-hsl(var(--primary)) hover:underline font-medium">
+            <Link href="/tasks/generate" className="text-sm text-primary hover:underline font-medium">
               Generate work
             </Link>
             <Button onClick={() => setCreating(true)} className="px-5 py-2.5">
@@ -596,7 +596,7 @@ export default function TasksPage() {
                 className={cn(
                   "flex items-center gap-2 rounded-xl border px-3 py-2.5 text-left transition-colors",
                   isActive
-                    ? "border-hsl(var(--primary)) bg-primary/10 shadow-sm"
+                    ? "border-primary bg-primary/10 shadow-sm"
                     : "border-border/50 bg-card hover:border-border hover:bg-muted/30",
                 )}
               >
@@ -721,7 +721,7 @@ export default function TasksPage() {
             </p>
             <button
               type="button"
-              className="text-xs font-medium text-hsl(var(--primary)) hover:underline"
+              className="text-xs font-medium text-primary hover:underline"
               onClick={() => {
                 paging.clearFilters();
                 setSelected(new Set());

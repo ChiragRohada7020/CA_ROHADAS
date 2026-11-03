@@ -101,7 +101,7 @@ export default function ClientDetailPage() {
                       className={cn(
                         "flex flex-col items-center gap-1.5 px-2 py-3 text-sm font-medium transition-colors border-b-2 border-transparent",
                         tab === t.key
-                          ? "border-hsl(var(--primary)) text-hsl(var(--primary))"
+                          ? "border-primary text-primary"
                           : "text-muted-foreground hover:text-foreground",
                       )}
                     >

@@ -330,7 +330,7 @@ export default function ClientsPage() {
                 className={cn(
                   "whitespace-nowrap -mb-px border-b-2 px-3 py-1.5 text-xs font-medium transition-colors shrink-0",
                   isActive
-                    ? "border-hsl(var(--primary)) text-hsl(var(--primary))"
+                    ? "border-primary text-primary"
                     : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-lg",
                 )}
               >
@@ -338,7 +338,7 @@ export default function ClientsPage() {
                 <span
                   className={cn(
                     "tabular ml-1.5 px-2 py-0.5 text-[10px] font-semibold rounded",
-                    isActive ? "bg-primary/10 text-hsl(var(--primary))" : "bg-muted/40 text-muted-foreground",
+                    isActive ? "bg-primary/10 text-primary" : "bg-muted/40 text-muted-foreground",
                   )}
                 >
                   {tabCount(s, row.key)}
@@ -448,7 +448,7 @@ export default function ClientsPage() {
             </p>
             <button
               type="button"
-              className="text-xs font-medium text-hsl(var(--primary)) hover:underline"
+              className="text-xs font-medium text-primary hover:underline"
               onClick={() => {
                 paging.clearFilters();
                 setSelected(new Set());
@@ -549,7 +549,7 @@ export default function ClientsPage() {
                           <div>
                             <Link
                               href={`/clients/${client.id}`}
-                              className="font-medium text-foreground hover:text-hsl(var(--primary)) transition-colors"
+                              className="font-medium text-foreground hover:text-primary transition-colors"
                             >
                               {client.legal_name}
                             </Link>
