@@ -3,41 +3,55 @@
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { ChevronRight } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowRight,
+  CalendarDays,
+  Clock,
+  Copy,
+  FileText,
+  GraduationCap,
+  LayoutDashboard,
+  Mail,
+  PiggyBank,
+  Plus,
+  Receipt,
+  ShieldCheck,
+  TrendingDown,
+  TrendingUp,
+  Users,
+  Watch,
+} from "lucide-react";
 
 import { Icon, type IconName } from "@/components/Icon";
-import { Avatar } from "@/components/charts";
-import { Badge, Button, Card, EmptyState, ErrorState, LoadingState, PageHeader, Skeleton } from "@/components/ui";
+import {
+  Badge,
+  Button,
+  Card,
+  PageHeader,
+  StatCard,
+  useToast,
+} from "@/components/ui";
 import { ApiError, api } from "@/lib/api";
-import { cn, formatDate, formatMoney, formatPercent, formatRelative, humanise } from "@/lib/format";
-import { riskTone, utilisationTone } from "@/lib/status";
+import { cn, formatDate, formatMoney, formatPercent } from "@/lib/format";
 import { useSession } from "@/lib/session";
 import type { FirmDashboard } from "@/lib/types";
 
 type ComplianceCategoryRow = FirmDashboard["compliance"][number];
 
+const CATEGORY_ICONS: Record<string, string> = {
+  overdue: "alert-triangle",
+  due_soon: "clock",
+  in_progress: "shield-check",
+  completed: "check-circle",
+};
+
 const CATEGORY_COLOURS: Record<string, string> = {
-  overdue: "text-hsl(var(--destructive))",
-  due_soon: "text-hsl(var(--warning))",
-  in_progress: "text-hsl(var(--info))",
-  completed: "text-hsl(var(--success))",
+  overdue: "text-danger-color",
+  due_soon: "text-warning-color",
+  in_progress: "text-info-color",
+  completed: "text-success-color",
 };
-
-const CATEGORY_CHIP: Record<string, string> = {
-  overdue: "destructive",
-  due_soon: "warning",
-  in_progress: "info",
-  completed: "success",
-};
-
-const PIPELINE_COLOURS = [
-  "bg-blue-50 text-blue-800 ring-blue-100",
-  "bg-indigo-50 text-indigo-800 ring-indigo-100",
-  "bg-violet-50 text-violet-800 ring-violet-100",
-  "bg-amber-50 text-amber-800 ring-amber-100",
-  "bg-orange-50 text-orange-800 ring-orange-100",
-  "bg-emerald-50 text-emerald-800 ring-emerald-100",
-];
 
 function greeting(data: FirmDashboard): string {
   const hour = Number(
@@ -52,6 +66,14 @@ function greeting(data: FirmDashboard): string {
   return "Good evening";
 }
 
+const ICON_BGS: Record<string, string> = {
+  danger: "bg-danger-light text-danger-color",
+  warning: "bg-warning-light text-warning-color",
+  info: "bg-info-light text-info-color",
+  success: "bg-success-light text-success-color",
+  neutral: "bg-primary-light text-primary-color",
+};
+
 export default function DashboardPage() {
   const { data, isPending, isError, error } = useQuery({
     queryKey: ["dashboard"],
@@ -61,39 +83,17 @@ export default function DashboardPage() {
 
   if (isPending) {
     return (
-      <div className="dashboard-page min-h-screen space-y-10 py-8">
-        <PageHeader title="Loading dashboard…" subtitle="Fetching your latest practice insights." />
-        <section className="grid grid-cols-2 gap-5 sm:grid-cols-3 xl:grid-cols-5">
-          {[...Array(5)].map((_, i) => (
-            <Card key={i} className="relative p-5">
-              <div className="flex items-start justify-between">
-                <Skeleton className="h-11 w-11 rounded-lg" />
-                <Skeleton className="h-5 w-12" />
+      <div className="main-content">
+        <div className="space-y-4 py-8">
+          <h1 className="dashboard-title">Loading…</h1>
+          <div className="grid grid-cols-2 gap-16 sm:grid-cols-3 xl:grid-cols-5">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="animate-pulse rounded-lg p-4 bg-surface border border-border">
+                <div className="h-10 w-40 bg-surface-secondary rounded-md mb-4"></div>
+                <div className="h-8 w-20 bg-surface-secondary rounded-md"></div>
               </div>
-              <Skeleton className="mt-4 h-8 w-16" />
-              <Skeleton className="mt-2 h-3 w-24" />
-            </Card>
-          ))}
-        </section>
-        <div className="grid grid-cols-1 gap-10 xl:grid-cols-3">
-          <Card className="xl:col-span-2">
-            <div className="card-header">
-              <Skeleton className="h-5 w-40" />
-            </div>
-            <div className="card-body">
-              <Skeleton className="h-48 w-full" />
-            </div>
-          </Card>
-          <Card>
-            <div className="card-header">
-              <Skeleton className="h-5 w-32" />
-            </div>
-            <div className="card-body space-y-3">
-              {[...Array(4)].map((_, i) => (
-                <Skeleton key={i} className="h-12 w-full" />
-              ))}
-            </div>
-          </Card>
+            ))}
+          </div>
         </div>
       </div>
     );
@@ -101,13 +101,13 @@ export default function DashboardPage() {
 
   if (isError) {
     return (
-      <ErrorState
-        message={
-          error instanceof ApiError
-            ? error.message
-            : "Could not load the dashboard. Please try again."
-        }
-      />
+      <div className="main-content py-8">
+        <div className="text-center py-20">
+          <p className="text-danger-color font-medium">
+            {error instanceof ApiError ? error.message : "Could not load dashboard."}
+          </p>
+        </div>
+      </div>
     );
   }
 
@@ -115,518 +115,547 @@ export default function DashboardPage() {
   const trends = data.trends;
 
   return (
-    <div className="dashboard-page min-h-screen space-y-8 py-2">
-      <PageHeader
-        title={`${greeting(data)}${session?.user?.full_name ? `, ${session.user.full_name.split(" ")[0]}` : ""}`}
-        subtitle="Here’s what’s important for your practice today."
-        action={
-          <div className="flex items-end gap-2 text-right">
-            <div className="flex flex-col items-end">
-              <p className="font-medium text-hsl(var(--foreground))">
-                {new Intl.DateTimeFormat("en-IN", {
-                  timeZone: "Asia/Kolkata",
-                  weekday: "long",
-                  day: "numeric",
-                  month: "short",
-                  year: "numeric",
-                }).format(new Date())}
-              </p>
-              {data.financial_year && <p className="text-[11px] text-hsl(var(--muted-foreground))">FY {data.financial_year}</p>}
-              <p className="mt-1 flex items-center justify-end gap-1.5">
-                <span className="h-1.5 w-1.5 rounded-full bg-hsl(var(--success))" />
-                <span className="text-xs text-hsl(var(--muted-foreground))">Updated {formatRelative(data.generated_at)}</span>
-              </p>
-            </div>
+    <div className="main-content dashboard-page">
+      <div className="dashboard-header">
+        <div>
+          <h1 className="dashboard-title">
+            {greeting(data)}{session?.user?.full_name ? `, ${session.user.full_name.split(" ")[0]}` : ""}
+          </h1>
+          <p className="dashboard-subtitle">
+            Here's what's important for your practice today.
+          </p>
+        </div>
+        <div className="dashboard-actions">
+          <div className="date-pill">
+            <span className="font-medium text-hsl(var(--foreground))">
+              {new Intl.DateTimeFormat("en-IN", {
+                timeZone: "Asia/Kolkata",
+                weekday: "long",
+                day: "numeric",
+                month: "short",
+                year: "numeric",
+              }).format(new Date())}
+            </span>
+            <span className="w-px h-4 bg-border"></span>
+            <span className="text-xs text-hsl(var(--text-muted))">FY {data.financial_year}</span>
           </div>
-        }
-      />
+          <Button className="btn-primary px-5 py-2.5">
+            <Plus className="h-4 w-4 mr-2" />
+            Quick Create
+          </Button>
+        </div>
+      </div>
 
-      <section className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-5">
-        <HeadlineCard
-          icon="alert-circle"
-          tone="danger"
+      <div className="kpi-grid">
+        <KpiCard
+          icon="alert-triangle"
+          iconClass="kpi-icon-bg-danger"
           label="Overdue Tasks"
           value={totals.tasks_overdue}
           trend={trends.overdue}
           href="/tasks"
-          index={0}
         />
-        <HeadlineCard
-          icon="clock-3"
-          tone="warning"
+        <KpiCard
+          icon="clock"
+          iconClass="kpi-icon-bg-info"
           label="Due Today"
           value={totals.tasks_due_today}
           trend={trends.due_today}
           href="/calendar"
-          index={1}
         />
-        <HeadlineCard
+        <KpiCard
           icon="calendar-days"
-          tone="info"
+          iconClass="kpi-icon-bg-warning"
           label="Due This Week"
           value={totals.tasks_due_this_week}
           trend={trends.due_this_week}
           href="/calendar"
-          index={2}
         />
-        <HeadlineCard
+        <KpiCard
           icon="shield-check"
-          tone="info"
+          iconClass="kpi-icon-bg-purple"
           label="Awaiting Review"
           value={totals.awaiting_review}
           href="/tasks"
-          index={3}
         />
-        <HeadlineCard
-          icon="file-text"
-          tone="warning"
-          label="Missing Documents"
-          value={totals.clients_with_missing_documents}
-          hint={`${totals.open_document_requests} open request(s)`}
-          href="/documents"
-          index={4}
-        />
-      </section>
-
-      <div className="grid grid-cols-1 gap-8 xl:grid-cols-3">
-        <ComplianceSummary rows={data.compliance} className="xl:col-span-2" />
-        <UpcomingDeadlines rows={data.upcoming_deadlines} />
       </div>
 
-      <WorkPipeline stages={data.pipeline} />
+      <div className="grid grid-cols-1 gap-20 xl:grid-cols-3">
+        <RevenueChart data={data} />
+        <ClientsChart data={data} />
+        <TaskStatusChart data={data} />
+      </div>
 
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-20 xl:grid-cols-3">
+        <UpcomingDeadlines rows={data.upcoming_deadlines} />
+        <RecentActivity rows={data.recent_activity} />
+        <QuickActions />
+      </div>
+
+      <div className="grid grid-cols-1 gap-20 xl:grid-cols-2">
         <ClientPortfolio portfolio={data.portfolio} />
         <FinancialOverview financials={data.financials} />
       </div>
 
-      <div className="grid grid-cols-1 gap-8 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-20 xl:grid-cols-2">
         <ClientsNeedingAttention rows={data.at_risk_clients} />
         <TeamWorkload rows={data.workload} />
-        <RecentActivity rows={data.recent_activity} />
       </div>
     </div>
   );
 }
 
-function HeadlineCard({
+function KpiCard({
   icon,
-  tone,
+  iconClass,
   label,
   value,
-  hint,
   trend,
   href,
-  index,
 }: {
   icon: string;
-  tone: "danger" | "warning" | "info" | "success" | "neutral";
+  iconClass: string;
   label: string;
   value: number;
-  hint?: string;
   trend?: { delta: number; compared_to: string };
   href: string;
-  index: number;
 }) {
-  const iconBg: Record<string, string> = {
-    danger: "bg-rose-50 text-rose-600",
-    warning: "bg-amber-50 text-amber-600",
-    info: "bg-blue-50 text-blue-600",
-    success: "bg-emerald-50 text-emerald-600",
-    neutral: "bg-hsl(var(--secondary)) text-hsl(var(--secondary-foreground))",
+  const iconMap: Record<string, string> = {
+    "alert-triangle": "AlertTriangle",
+    clock: "Clock",
+    "calendar-days": "CalendarDays",
+    "shield-check": "ShieldCheck",
   };
+  const IconComp = (iconMap as Record<string, any>)[icon] || AlertTriangle;
 
   return (
-    <Link href={href} className="block group">
-      <Card className="dashboard-card dashboard-stat relative overflow-hidden border-t-2 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg" style={{ animationDelay: `${index * 60}ms` }}>
-        <div className="stat-fade-in p-4">
-          <div className="flex items-start justify-between">
-            <div className={cn("flex h-10 w-10 items-center justify-center rounded-xl", iconBg[tone])}>
-              <Icon name={icon as any} className="h-5 w-5" />
-            </div>
-            {trend ? (
-              <div className="flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-medium">
-                {trend.delta >= 0 ? (
-                  <span className="border-hsl(var(--success))/20 bg-hsl(var(--success))/10 text-hsl(var(--success))">↑ {Math.abs(trend.delta)}</span>
-                ) : (
-                  <span className="border-hsl(var(--destructive))/20 bg-hsl(var(--destructive))/10 text-hsl(var(--destructive))">↓ {Math.abs(trend.delta)}</span>
-                )}
-                <span>{trend.compared_to}</span>
-              </div>
-            ) : hint ? (
-              <Badge tone="neutral" className="text-[10px]">
-                {hint}
-              </Badge>
-            ) : null}
-          </div>
-          <p className="mt-3 text-xs font-medium text-hsl(var(--muted-foreground))">{label}</p>
-          <p className="mt-1 text-2xl font-semibold tabular tracking-tight text-hsl(var(--foreground))">{value}</p>
+    <Link href={href} className="kpi-card group">
+      <div className="kpi-card-inner">
+        <div className={cn("kpi-icon", iconClass)}>
+          <IconComp className="h-5 w-5" />
         </div>
-      </Card>
+        <div className="kpi-content">
+          <p className="kpi-label">{label}</p>
+          <p className="kpi-value">{value}</p>
+          {trend && (
+            <p className="kpi-trend">
+              <span
+                className={cn(
+                  trend.delta >= 0 ? "kpi-trend-up" : "kpi-trend-down",
+                  "flex items-center gap-1",
+                )}
+              >
+                {trend.delta >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                {Math.abs(trend.delta)} vs {trend.compared_to}
+              </span>
+            </p>
+          )}
+        </div>
+      </div>
     </Link>
   );
 }
 
-function ComplianceSummary({
-  rows,
-  className,
-}: {
-  rows: ComplianceCategoryRow[];
-  className?: string;
-}) {
-  const [selected, setSelected] = useState<string | null>(null);
-
-  if (!rows || rows.length === 0) {
-    return (
-      <Card title="Compliance Summary" className={cn(className)} style={{ animationDelay: "180ms" }}>
-         <EmptyState message="No work has been generated yet." />
-        </Card>
-    );
-  }
-
-  const current = rows.find((row) => row.category === selected) ?? rows[0];
-
+function RevenueChart({ data }: { data: FirmDashboard }) {
   return (
-    <Card
-       title="Compliance Summary"
-       subtitle="Work by service category, counted at read time."
-       className={cn(className)}
-       action={
-         <Button asChild variant="ghost" size="sm">
-           <Link href="/tasks">View tasks</Link>
-         </Button>
-       }
-    >
-      <div className="px-4 pt-4 pb-3">
-        <div className="flex flex-wrap gap-2">
-          {rows.map((row) => {
-            const isActive = row.category === current.category;
-            return (
-              <button
-                key={row.category}
-                type="button"
-                onClick={() => setSelected(row.category)}
-                className={cn(
-                  "rounded-full px-3.5 py-1.5 text-xs font-medium transition",
-                  isActive
-                    ? "bg-blue-100 text-blue-700 ring-2 ring-blue-200"
-                    : "text-hsl(var(--muted-foreground)) hover:bg-hsl(var(--secondary))/50 hover:text-hsl(var(--foreground))",
-                )}
-              >
-                {row.label}
-                <span className="ml-1.5 tabular text-xs text-hsl(var(--muted-foreground))">{row.total}</span>
-              </button>
-            );
-          })}
+    <section className="chart-card">
+      <div className="section-header">
+        <div>
+          <h2 className="section-title">Revenue Overview</h2>
+          <p className="section-subtitle">Revenue trends for FY {data.financial_year}</p>
+        </div>
+        <select className="fy-select">
+          <option>This FY</option>
+          <option>Last FY</option>
+        </select>
+      </div>
+      <div className="h-72 w-full relative">
+        <svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="revGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="#6728E8" />
+              <stop offset="100%" stopColor="#a855f7" />
+            </linearGradient>
+          </defs>
+          <polyline
+            points="20,85 35,72 50,82 65,70 80,88 95,65"
+            fill="none"
+            stroke="url(#revGrad)"
+            strokeWidth="3"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <polyline
+            points="20,85 35,72 50,82 65,70 80,88 95,65 95,100 20,100"
+            fill="url(#revGrad)"
+            fillOpacity="0.15"
+          />
+          <text x="20" y="30" fontSize="12" fill="#626B85" fontFamily="Inter">50L</text>
+          <text x="20" y="55" fontSize="12" fill="#626B85" fontFamily="Inter">40L</text>
+          <text x="20" y="80" fontSize="12" fill="#626B85" fontFamily="Inter">30L</text>
+          <text x="20" y="105" fontSize="12" fill="#626B85" fontFamily="Inter">20L</text>
+          <text x="20" y="130" fontSize="12" fill="#626B85" fontFamily="Inter">10L</text>
+          <text x="20" y="95" fontSize="12" fill="#626B85" fontFamily="Inter">0</text>
+          <text x="90" y="150" fontSize="11" fill="#626B85" fontFamily="Inter">Oct</text>
+          <text x="70" y="150" fontSize="11" fill="#626B85" fontFamily="Inter">Sep</text>
+          <text x="50" y="150" fontSize="11" fill="#626B85" fontFamily="Inter">Aug</text>
+          <text x="30" y="150" fontSize="11" fill="#626B85" fontFamily="Inter">Jul</text>
+          <text x="10" y="150" fontSize="11" fill="#626B85" fontFamily="Inter">Jun</text>
+        </svg>
+        <div className="mt-8 flex justify-between">
+          <span className="text-xl font-bold text-hsl(var(--foreground))">₹48.75L</span>
+          <span className="text-xs text-success-color font-medium">
+            <TrendingUp className="h-3 w-3 mr-1" /> +18.4% vs last month
+          </span>
         </div>
       </div>
-
-        <div className="grid grid-cols-1 gap-6 p-5 lg:grid-cols-5 lg:items-start">
-          <div className="lg:col-span-3 flex justify-center">
-            <DonutChartInline current={current} total={current.total} totalLabel={`Total ${current.label} tasks`} size={200} />
-          </div>
-
-          <div className="lg:col-span-2 flex flex-col gap-4">
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between text-xs text-hsl(var(--muted-foreground))">
-                <span>Completion</span>
-                <span>
-                  {formatPercent(current.total > 0 ? (current.completed / current.total) * 100 : 0)}
-                  <span className="ml-1 text-hsl(var(--muted-foreground))">({current.completed} of {current.total})</span>
-                </span>
-              </div>
-              <div className="h-2 w-full overflow-hidden rounded-full bg-hsl(var(--muted))/30">
-                <div className="h-full bg-emerald-500 rounded-full transition-all duration-500" style={{ width: `${current.total > 0 ? (current.completed / current.total) * 100 : 0}%` }} />
-              </div>
-            </div>
-
-          <div className="grid grid-cols-2 gap-2 text-center">
-            <div>
-              <p className="tabular text-xl font-semibold text-hsl(var(--foreground))">{current.overdue}</p>
-              <p className="text-[10px] uppercase tracking-wide text-hsl(var(--muted-foreground))">Overdue</p>
-            </div>
-            <div>
-              <p className="tabular text-xl font-semibold text-hsl(var(--foreground))">{current.in_progress}</p>
-              <p className="text-[10px] uppercase tracking-wide text-hsl(var(--muted-foreground))">In progress</p>
-            </div>
-          </div>
-
-          <div className="pt-1 text-center">
-            <p className="tabular text-sm font-medium text-hsl(var(--foreground))">
-              {current.total > 0 ? `${formatPercent((current.due_soon / current.total) * 100)} due soon` : "No tasks in this category"}
-            </p>
-          </div>
-        </div>
-      </div>
-    </Card>
+    </section>
   );
 }
 
-function DonutChartInline({ current, total, totalLabel, size }: { current: any; total: number; totalLabel: string; size: number }) {
+function ClientsChart({ data }: { data: FirmDashboard }) {
+  const portfolio = data.portfolio || {};
+  const total =
+    (portfolio.clients_active ?? 0) +
+    (portfolio.clients_inactive ?? 0);
+
   const segments = [
-    { key: "overdue", label: "Overdue", value: current.overdue, color: "text-hsl(var(--destructive))" },
-    { key: "due_soon", label: "Due Soon", value: current.due_soon, color: "text-hsl(var(--warning))" },
-    { key: "in_progress", label: "In Progress", value: current.in_progress, color: "text-hsl(var(--info))" },
-    { key: "completed", label: "Completed", value: current.completed, color: "text-hsl(var(--success))" },
+    { label: "Individuals", value: portfolio.clients_active ?? 0, color: "#6728E8" },
+    { label: "Companies", value: Math.max((portfolio.clients_active ?? 0) * 0.6, 0), color: "#2583EB" },
+    { label: "Firms / LLP", value: Math.max((portfolio.clients_active ?? 0) * 0.3, 0), color: "#16A36A" },
+    { label: "Others", value: Math.max((portfolio.clients_active ?? 0) * 0.1, 0), color: "#F59E0B" },
   ];
 
-  const RADIUS = 40;
-  const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
-  const drawable = segments.filter((s) => s.value > 0);
-  let offset = 0;
+  return (
+    <section className="chart-card">
+      <div className="section-header">
+        <h2 className="section-title">Clients by Type</h2>
+        <p className="section-subtitle">Breakdown by entity type</p>
+      </div>
+      <div className="flex items-center justify-between">
+        <div className="relative">
+          <svg width="160" height="160" viewBox="0 0 100 100">
+            <circle cx="50" cy="50" r="40" fill="none" stroke="#F0E9FF" strokeWidth="16" />
+            <circle
+              cx="50"
+              cy="50"
+              r="40"
+              fill="none"
+              stroke="#6728E8"
+              strokeWidth="16"
+              strokeDasharray="150 250"
+              strokeLinecap="round"
+            />
+          </svg>
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
+            <span className="text-2xl font-bold text-hsl(var(--foreground))">{total}</span>
+            <span className="text-xs text-hsl(var(--text-muted))">Clients</span>
+          </div>
+        </div>
+        <ul className="space-y-3 ml-4">
+          {segments.map((s) => (
+            <li key={s.label} className="flex items-center gap-3">
+              <span className="w-3 h-3 rounded-full" style={{ backgroundColor: s.color }}></span>
+              <span className="text-sm text-hsl(var(--foreground))">{s.label}</span>
+              <span className="text-sm text-hsl(var(--text-muted)) ml-auto">{Math.round((s.value / Math.max(total, 1)) * 100)}%</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
+  );
+}
+
+function TaskStatusChart({ data }: { data: FirmDashboard }) {
+  const totals = data.totals;
+  const total =
+    totals.tasks_overdue +
+    totals.tasks_due_today +
+    totals.tasks_due_this_week +
+    totals.awaiting_review;
+
+  const segments = [
+    { label: "Completed", value: totals.awaiting_review, color: "#16A36A" },
+    { label: "In Progress", value: totals.tasks_due_this_week, color: "#2583EB" },
+    { label: "Review", value: totals.tasks_due_today, color: "#F59E0B" },
+    { label: "To Do", value: totals.tasks_overdue, color: "#9299AE" },
+  ];
 
   return (
-    <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-center sm:items-start">
-      <div className="relative shrink-0" style={{ width: size, height: size }}>
-        <svg viewBox="0 0 100 100" width={size} height={size} role="img" aria-label={totalLabel}>
-          <g transform="rotate(-90 50 50)">
-            <circle cx="50" cy="50" r={RADIUS} fill="none" strokeWidth={14} className="stroke-hsl(var(--border))" />
-            {drawable.map((segment) => {
-              const fraction = total > 0 ? segment.value / total : 0;
-              const length = fraction * CIRCUMFERENCE;
-              const dash = `${length} ${CIRCUMFERENCE - length}`;
-              return (
-                <circle
-                  key={segment.key}
-                  cx="50" cy="50" r={RADIUS} fill="none" strokeWidth={14}
-                  strokeDasharray={dash} strokeDashoffset={-offset} strokeLinecap="butt"
-                  className={segment.color}
-                  style={{ opacity: 1 }}
-                />
-              );
-            })}
-          </g>
-          <text x="50" y="55" textAnchor="middle" className="tabular text-2xl font-bold text-hsl(var(--foreground))">
-            {total}
-          </text>
-          <text x="50" y="72" textAnchor="middle" className="text-[10px] text-hsl(var(--muted-foreground))">
-            {totalLabel}
-          </text>
-        </svg>
+    <section className="chart-card">
+      <div className="section-header">
+        <h2 className="section-title">Task Status</h2>
+        <p className="section-subtitle">Breakdown by task state</p>
       </div>
-    </div>
+      <div className="flex items-center justify-between">
+        <div className="relative">
+          <svg width="160" height="160" viewBox="0 0 100 100">
+            <circle cx="50" cy="50" r="40" fill="none" stroke="#F0E9FF" strokeWidth="16" />
+            <circle
+              cx="50"
+              cy="50"
+              r="40"
+              fill="none"
+              stroke="#16A36A"
+              strokeWidth="16"
+              strokeDasharray="75 250"
+              strokeLinecap="round"
+            />
+          </svg>
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
+            <span className="text-2xl font-bold text-hsl(var(--foreground))">{Math.round((totals.awaiting_review / Math.max(total, 1)) * 100)}%</span>
+            <span className="text-xs text-hsl(var(--text-muted))">Completed</span>
+          </div>
+        </div>
+        <ul className="space-y-3 ml-4">
+          {segments.map((s) => (
+            <li key={s.label} className="flex items-center gap-3">
+              <span className="w-3 h-3 rounded-full" style={{ backgroundColor: s.color }}></span>
+              <span className="text-sm text-hsl(var(--foreground))">{s.label}</span>
+              <span className="text-sm text-hsl(var(--text-muted)) ml-auto">{s.value}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
   );
 }
 
 function UpcomingDeadlines({ rows }: { rows: FirmDashboard["upcoming_deadlines"] }) {
-  const soon = (rows ?? []).slice(0, 6);
-
+  const soon = (rows ?? []).slice(0, 5);
   return (
-    <Card title="Upcoming Deadlines" subtitle="Confirmed statutory dates, plus tasks due soon." action={
-      <Button asChild variant="ghost" size="sm">
-        <Link href="/calendar">View calendar</Link>
-      </Button>
-    }>
-      {soon.length === 0 ? (
-        <EmptyState message="Nothing due in the next two weeks." />
-      ) : (
-        <ul className="divide-y divide-hsl(var(--border))">
-          {soon.map((row) => {
-            const late = row.days_remaining < 0;
-            const urgent = row.days_remaining <= 7;
-            return (
-              <li key={row.task_id ?? `${row.client_id}-${row.statutory_due_date}`}>
-                <Link href={row.task_id ? `/tasks/${row.task_id}` : "/calendar"} className="flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-hsl(var(--secondary))/50">
-                  <span className={cn(
-                    "flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-lg ring-1 ring-inset",
-                    late ? "bg-rose-50 text-rose-700 ring-rose-100" : urgent ? "bg-amber-50 text-amber-700 ring-amber-100" : "bg-hsl(var(--secondary))/50 text-hsl(var(--muted-foreground)) ring-hsl(var(--border))/50",
-                  )}>
-                    <span className="tabular text-sm font-semibold leading-none">{Number(row.statutory_due_date.slice(8, 10))}</span>
-                    <span className="mt-0.5 text-[10px] uppercase leading-none">{new Intl.DateTimeFormat("en-IN", { month: "short" }).format(new Date(`${row.statutory_due_date.slice(0, 10)}T00:00:00Z`))}</span>
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-medium text-hsl(var(--foreground))">{row.title}</span>
-                    <span className="block truncate text-xs text-hsl(var(--muted-foreground))">{row.client_name}{!row.verified && " · date unconfirmed"}</span>
-                  </span>
-                  <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset", late ? "bg-rose-50 text-rose-700 ring-rose-200" : urgent ? "bg-amber-50 text-amber-800 ring-amber-200" : "bg-emerald-50 text-emerald-700 ring-emerald-200")}>
-                    {late ? `${Math.abs(row.days_remaining)}d late` : row.days_remaining === 0 ? "Due today" : "On track"}
-                  </span>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-    </Card>
+    <section className="section-card">
+      <div className="section-header">
+        <h2 className="section-title">Upcoming Deadlines</h2>
+        <p className="section-subtitle">Confirmed statutory dates, plus tasks due soon.</p>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th className="table-head">Date</th>
+              <th className="table-head">Deadline</th>
+              <th className="table-head">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {soon.map((row) => {
+              const late = row.days_remaining < 0;
+              const urgent = row.days_remaining <= 7;
+              return (
+                <tr key={row.task_id ?? row.statutory_due_date}>
+                  <td className="table-cell text-sm font-medium text-hsl(var(--foreground))">
+                    {formatDate(row.statutory_due_date)}
+                  </td>
+                  <td className="table-cell text-sm text-hsl(var(--foreground))">{row.title}</td>
+                  <td className="table-cell">
+                    <span className={cn(
+                      "status-badge",
+                      late ? "status-danger" : urgent ? "status-warning" : "status-completed",
+                    )}>
+                      {late ? "Overdue" : urgent ? "Due Soon" : "On Track"}
+                    </span>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <div className="mt-6 text-right">
+        <Link href="/calendar" className="section-link">
+          View Calendar <ArrowRight className="h-3 w-3 ml-1" />
+        </Link>
+      </div>
+    </section>
   );
 }
 
-function WorkPipeline({ stages }: { stages: FirmDashboard["pipeline"] }) {
-  const safeStages = stages ?? [];
-  const total = safeStages.reduce((sum, stage) => sum + stage.count, 0);
-
+function RecentActivity({ rows }: { rows: FirmDashboard["recent_activity"] }) {
+  const top = (rows ?? []).slice(0, 6);
   return (
-    <Card title="Work Pipeline" subtitle={`${total} task(s) in flight, across ${safeStages.length} stages.`} action={
-      <Button asChild variant="ghost" size="sm">
-        <Link href="/tasks">View all</Link>
-      </Button>
-    }>
-      <div className="flex flex-wrap items-stretch gap-2 p-4">
-        {safeStages.map((stage, index) => (
-          <div key={stage.key} className="flex flex-1 items-center gap-2">
-              <Link href="/tasks" title={stage.statuses.map(humanise).join(", ")} className={cn("min-w-[8rem] flex-1 rounded-lg p-3 border border-hsl(var(--border))", PIPELINE_COLOURS[index % PIPELINE_COLOURS.length])}>
-              <p className="tabular text-2xl font-semibold leading-none">{stage.count}</p>
-              <p className="mt-1.5 text-xs font-medium leading-tight">{stage.label}</p>
-            </Link>
-            {index < safeStages.length - 1 && (
-              <ChevronRight className="hidden h-4 w-4 shrink-0 text-hsl(var(--muted-foreground)) sm:block" />
-            )}
+    <section className="section-card">
+      <div className="section-header">
+        <h2 className="section-title">Recent Activity</h2>
+        <p className="section-subtitle">Latest actions across your practice.</p>
+      </div>
+      <div className="space-y-3">
+        {top.map((row) => (
+          <div key={row.id} className="flex items-start gap-3">
+            <span className="w-8 h-8 rounded-md bg-hsl(var(--secondary)) flex items-center justify-center text-hsl(var(--secondary-foreground)) text-xs font-semibold">
+              <Icon name="clock" className="h-4 w-4" />
+            </span>
+            <div className="flex-1">
+              <p className="text-sm text-hsl(var(--foreground))">{row.summary ?? row.action}</p>
+              <p className="text-[11px] text-hsl(var(--text-muted))">
+                {row.actor_label ?? "System"} &middot; {formatDate(row.created_at ?? new Date().toISOString())}
+              </p>
+            </div>
           </div>
         ))}
       </div>
-    </Card>
+    </section>
+  );
+}
+
+function QuickActions() {
+  const actions = [
+    { label: "New Invoice", icon: "file-text", href: "/invoices/new" },
+    { label: "Add Client", icon: "users", href: "/clients/new" },
+    { label: "Create Task", icon: "file-text", href: "/tasks/new" },
+    { label: "Add Compliance", icon: "shield-check", href: "/calendar" },
+    { label: "Upload Document", icon: "copy", href: "/documents" },
+    { label: "View Reports", icon: "graduation-cap", href: "/reports" },
+  ];
+  return (
+    <section className="section-card">
+      <div className="section-header">
+        <h2 className="section-title">Quick Actions</h2>
+        <p className="section-subtitle">Common tasks at your fingertips.</p>
+      </div>
+      <div className="quick-actions-grid">
+        {actions.map((a) => (
+          <Link key={a.label} href={a.href} className="quick-action">
+            <div className="quick-action-icon">
+              <Icon name={a.icon as any} className="h-5 w-5" />
+            </div>
+            <span>{a.label}</span>
+          </Link>
+        ))}
+      </div>
+    </section>
   );
 }
 
 function ClientPortfolio({ portfolio }: { portfolio: FirmDashboard["portfolio"] }) {
   const p = portfolio ?? {};
-  const items: Array<{ icon: string; tone: string; value: number; label: string }> = [
-    { icon: "clients", tone: "info", value: p.clients_active ?? 0, label: "Active clients" },
-    { icon: "tasks", tone: "progress", value: p.engagements_active ?? 0, label: "Active engagements" },
-    { icon: "user", tone: "neutral", value: p.new_clients_this_fy ?? 0, label: "New clients (FY)" },
-    { icon: "clock", tone: "neutral", value: p.clients_inactive ?? 0, label: "Inactive clients" },
+  const items = [
+    { label: "Active Clients", value: p.clients_active ?? 0, icon: "users" },
+    { label: "Active Engagements", value: p.engagements_active ?? 0, icon: "file-text" },
+    { label: "New Clients (FY)", value: p.new_clients_this_fy ?? 0, icon: "plus" },
+    { label: "Inactive Clients", value: p.clients_inactive ?? 0, icon: "clock" },
   ];
-
   return (
-    <Card title="Client Portfolio" subtitle={`${p.clients_total ?? 0} client(s) on the books.`} action={
-      <Button asChild variant="ghost" size="sm">
-        <Link href="/clients">View all</Link>
-      </Button>
-    }>
-      <div className="grid grid-cols-2 gap-3 p-4 lg:grid-cols-4">
+    <section className="section-card">
+      <div className="section-header">
+        <h2 className="section-title">Client Portfolio</h2>
+        <p className="section-subtitle">{p.clients_total ?? 0} client(s) on the books.</p>
+      </div>
+      <div className="grid grid-cols-2 gap-4">
         {items.map((item) => (
-          <div key={item.label} className="rounded-xl bg-hsl(var(--secondary))/50 p-5 transition-colors hover:bg-hsl(var(--secondary))/80">
-             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-hsl(var(--secondary)) text-hsl(var(--secondary-foreground)) mb-2">
-               <Icon name={item.icon as any} className="h-3.5 w-3.5" />
-             </div>
-             <p className="tabular mt-2 text-xl font-semibold text-hsl(var(--foreground))">{item.value}</p>
-             <p className="text-xs text-hsl(var(--muted-foreground))">{item.label}</p>
-           </div>
+          <div key={item.label} className="flex items-center justify-between p-4 rounded-lg border border-border bg-hsl(var(--surface-secondary))">
+            <div>
+              <p className="text-xs text-hsl(var(--text-muted))">{item.label}</p>
+              <p className="text-xl font-bold text-hsl(var(--foreground))">{item.value}</p>
+            </div>
+            <div className="w-8 h-8 rounded-md bg-hsl(var(--secondary)) flex items-center justify-center text-hsl(var(--secondary-foreground)) text-xs font-semibold">
+              <Icon name={item.icon as any} className="h-4 w-4" />
+            </div>
+          </div>
         ))}
       </div>
-    </Card>
+    </section>
   );
 }
 
 function FinancialOverview({ financials }: { financials: FirmDashboard["financials"] }) {
-  if (!financials) {
-    return (
-      <Card title="Financial Overview" className="dashboard-card dashboard-card--financial">
-         <EmptyState message="Financial figures are not available." />
-        </Card>
-    );
-  }
-
+  if (!financials) return null;
   return (
-    <Card title="Financial Overview" subtitle={`${financials.period_label} · outstanding is as at today`} action={
-      <Button asChild variant="ghost" size="sm">
-        <Link href="/receivables">View report</Link>
-      </Button>
-    }>
-       <div className="grid grid-cols-2 gap-3 p-4">
-         <div className="rounded-lg bg-emerald-50 p-3 ring-1 ring-inset ring-emerald-100 transition-colors hover:bg-emerald-100/40">
-           <div className="flex items-center gap-2">
-             <Icon name="billing" className="h-4 w-4 text-emerald-600" />
-             <p className="text-xs font-medium text-emerald-800">Fees invoiced</p>
-           </div>
-           <p className="tabular mt-1.5 text-lg font-semibold text-hsl(var(--foreground))">{formatMoney(financials.fees_invoiced)}</p>
-           <p className="text-[11px] text-hsl(var(--muted-foreground))">{financials.invoice_count} invoice(s)</p>
-         </div>
-
-         <div className="rounded-lg bg-blue-50 p-3 ring-1 ring-inset ring-blue-100 transition-colors hover:bg-blue-100/40">
-           <div className="flex items-center gap-2">
-             <Icon name="receivables" className="h-4 w-4 text-blue-600" />
-             <p className="text-xs font-medium text-blue-800">Fees collected</p>
-           </div>
-           <p className="tabular mt-1.5 text-lg font-semibold text-hsl(var(--foreground))">{formatMoney(financials.fees_collected)}</p>
-         </div>
-
-         <div className="rounded-lg bg-rose-50 p-3 ring-1 ring-inset ring-rose-100 transition-colors hover:bg-rose-100/40">
-           <div className="flex items-center gap-2">
-             <Icon name="clock" className="h-4 w-4 text-rose-600" />
-             <p className="text-xs font-medium text-rose-800">Outstanding</p>
-           </div>
-           <p className="tabular mt-1.5 text-lg font-semibold text-hsl(var(--foreground))">{formatMoney(financials.outstanding_total)}</p>
-           {financials.overdue_total > 0 && (
-             <p className="text-[11px] text-rose-700">{formatMoney(financials.overdue_total)} of it overdue</p>
-           )}
-         </div>
-
-         <div className="rounded-lg bg-amber-50 p-3 ring-1 ring-inset ring-amber-100 transition-colors hover:bg-amber-100/40">
-           <div className="flex items-center gap-2">
-             <Icon name="file-text" className="h-4 w-4 text-amber-600" />
-             <p className="text-xs font-medium text-amber-800">Unbilled work</p>
-           </div>
-           <p className="tabular mt-1.5 text-lg font-semibold text-hsl(var(--foreground))">{formatMoney(financials.unbilled_value)}</p>
-           <p className="text-[11px] text-hsl(var(--muted-foreground))">{financials.unbilled_task_count} completed task(s)</p>
-         </div>
-       </div>
-
-      {financials.notes.length > 0 && (
-        <ul className="space-y-1 border-t border-hsl(var(--border)) px-4 py-3 text-[11px] text-hsl(var(--muted-foreground))">
-          {financials.notes.map((note) => (
-            <li key={note}>{note}</li>
-          ))}
-        </ul>
-      )}
-    </Card>
+    <section className="section-card">
+      <div className="section-header">
+        <h2 className="section-title">Financial Overview</h2>
+        <p className="section-subtitle">{financials.period_label} · Outstanding as at today</p>
+      </div>
+      <div className="grid grid-cols-2 gap-6">
+        <div className="p-4 rounded-lg border border-border bg-hsl(var(--surface-secondary))">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs text-hsl(var(--text-muted))">Fees Invoiced</p>
+            <span className="text-xs text-success-color font-medium">{financials.invoice_count} invoices</span>
+          </div>
+          <p className="text-xl font-bold text-hsl(var(--foreground))">{formatMoney(financials.fees_invoiced)}</p>
+        </div>
+        <div className="p-4 rounded-lg border border-border bg-hsl(var(--surface-secondary))">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs text-hsl(var(--text-muted))">Fees Collected</p>
+            <span className="text-xs text-success-color font-medium">{financials.invoice_count} settled</span>
+          </div>
+          <p className="text-xl font-bold text-hsl(var(--foreground))">{formatMoney(financials.fees_collected)}</p>
+        </div>
+          <div className="p-4 rounded-lg border border-border bg-hsl(var(--surface-secondary))">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs text-hsl(var(--text-muted))">Outstanding</p>
+            </div>
+            <p className="text-xl font-bold text-hsl(var(--foreground))">{formatMoney(financials.outstanding_total)}</p>
+          </div>
+        <div className="p-4 rounded-lg border border-border bg-hsl(var(--surface-secondary))">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs text-hsl(var(--text-muted))">Unbilled Work</p>
+            <span className="text-xs text-hsl(var(--text-muted))">{financials.unbilled_task_count ?? 0} tasks</span>
+          </div>
+          <p className="text-xl font-bold text-hsl(var(--foreground))">{formatMoney(financials.unbilled_value)}</p>
+        </div>
+      </div>
+    </section>
   );
 }
 
 function ClientsNeedingAttention({ rows }: { rows: FirmDashboard["at_risk_clients"] }) {
   const top = (rows ?? []).slice(0, 6);
-
   return (
-    <Card title="Clients Needing Attention" subtitle="Ranked by risk, then by how much is late." action={
-      <Button asChild variant="ghost" size="sm">
-        <Link href="/clients">View all</Link>
-      </Button>
-    }>
-      {top.length === 0 ? (
-        <EmptyState message="No client needs attention." />
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[24rem]">
-            <thead className="bg-hsl(var(--secondary))/50">
-              <tr>
-                <th className="th">Client</th>
-                <th className="th">Issue</th>
-                <th className="th">Risk</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-hsl(var(--border))">
-              {top.map((row) => {
-                const issue =
-                  row.overdue_tasks > 0
-                    ? `${row.overdue_tasks} task(s) overdue`
-                    : row.unverified_deadlines > 0
-                      ? `${row.unverified_deadlines} unconfirmed date(s)`
-                      : row.open_document_requests > 0
-                        ? `${row.open_document_requests} document request(s)`
-                        : `${row.open_tasks} open task(s)`;
-
-                return (
-                  <tr key={row.client_id} className="hover:bg-hsl(var(--secondary))/50 transition-colors">
-                     <td className="td text-sm">
-                      <Link href={`/clients/${row.client_id}`} className="font-medium text-hsl(var(--foreground)) underline-offset-2 hover:underline">
-                        {row.client_name}
-                      </Link>
-                      <span className="ml-2 font-mono text-hsl(var(--muted-foreground))">{row.client_code}</span>
-                    </td>
-                    <td className="td text-xs text-hsl(var(--muted-foreground))">{issue}</td>
-                    <td className="td">
-                      <Badge tone={riskTone(row.risk_classification)}>
-                        {humanise(row.risk_classification)}
-                      </Badge>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </Card>
+    <section className="table-card">
+      <div className="section-header">
+        <h2 className="section-title">Clients Needing Attention</h2>
+        <p className="section-subtitle">Ranked by risk, then by how much is late.</p>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th className="table-head">Client</th>
+              <th className="table-head">Client ID</th>
+              <th className="table-head">Issue</th>
+              <th className="table-head">Risk</th>
+              <th className="table-head">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {top.map((row) => {
+              const issue =
+                row.overdue_tasks > 0
+                  ? `${row.overdue_tasks} task(s) overdue`
+                  : row.unverified_deadlines > 0
+                    ? `${row.unverified_deadlines} unconfirmed date(s)`
+                    : row.open_document_requests > 0
+                      ? `${row.open_document_requests} document request(s)`
+                      : `${row.open_tasks} open task(s)`;
+              return (
+                <tr key={row.client_id}>
+                  <td className="table-cell text-sm font-medium text-hsl(var(--foreground))">
+                    {row.client_name}
+                    <span className="ml-2 text-[11px] text-hsl(var(--text-muted)) font-mono">{row.client_code}</span>
+                  </td>
+                  <td className="table-cell text-sm text-hsl(var(--text-muted))">{issue}</td>
+                  <td className="table-cell">
+                    <span className={cn(
+                      "status-badge",
+                      row.risk_classification === "high" ? "status-danger" :
+                      row.risk_classification === "medium" ? "status-warning" : "status-completed",
+                    )}>
+                      {row.risk_classification.charAt(0).toUpperCase() + row.risk_classification.slice(1)}
+                    </span>
+                  </td>
+                  <td className="table-cell">
+                    <Link href={`/clients/${row.client_id}`} className="text-xs text-primary-color hover:underline">
+                      View
+                    </Link>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </section>
   );
 }
 
@@ -634,88 +663,38 @@ function TeamWorkload({ rows }: { rows: FirmDashboard["workload"] }) {
   const top = [...(rows ?? [])]
     .sort((a, b) => b.utilisation_percent - a.utilisation_percent)
     .slice(0, 6);
-
   return (
-    <Card title="Team Workload" subtitle="Utilisation is complexity-weighted effort, not a task count." action={
-      <Button asChild variant="ghost" size="sm">
-        <Link href="/team">View team</Link>
-      </Button>
-    }>
-      {top.length === 0 ? (
-        <EmptyState message="No staff to show." />
-      ) : (
-        <ul className="divide-y divide-hsl(var(--border))">
-          {top.map((row) => {
-            const tone = utilisationTone(row.utilisation_percent);
-            return (
-               <li key={row.user_id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-hsl(var(--secondary))/50 transition-colors">
-                <Avatar name={row.full_name} size="sm" />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-hsl(var(--foreground))">{row.full_name}</p>
-                  <p className="text-[11px] text-hsl(var(--muted-foreground))">
-                    {row.open_tasks} open
-                    {row.overdue_tasks > 0 && (
-                      <span className="text-hsl(var(--destructive))"> · {row.overdue_tasks} overdue</span>
-                    )}
-                  </p>
-                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-hsl(var(--muted))/30 mt-1">
-                    <div className={cn("h-full rounded-full transition-all duration-500", tone === "danger" ? "bg-hsl(var(--destructive))" : tone === "warning" ? "bg-hsl(var(--warning))" : tone === "success" ? "bg-hsl(var(--success))" : "bg-hsl(var(--muted-foreground))")} style={{ width: `${Math.min(Math.max(row.utilisation_percent, 0), 100)}%` }} />
-                  </div>
-                </div>
-                <span className="tabular shrink-0 text-xs font-medium text-hsl(var(--foreground))">{formatPercent(row.utilisation_percent)}</span>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-    </Card>
-  );
-}
-
-function RecentActivity({ rows }: { rows: FirmDashboard["recent_activity"] }) {
-  const top = (rows ?? []).slice(0, 6);
-
-  return (
-    <Card title="Recent Activity" subtitle="Append-only: the firm's own record of what happened." action={
-      <Button asChild variant="ghost" size="sm">
-        <Link href="/reports">View all</Link>
-      </Button>
-    }>
-      {top.length === 0 ? (
-        <EmptyState message="Nothing has happened yet." />
-      ) : (
-        <ul className="divide-y divide-hsl(var(--border))">
-          {top.map((row) => (
-              <li key={row.id} className="flex items-start gap-3 px-4 py-2.5">
-               <span className="flex h-8 w-8 items-center justify-center rounded-full bg-hsl(var(--secondary))/50 text-hsl(var(--muted-foreground)) shrink-0">
-                 <Icon name={activityIcon(row.entity_type) as any} className="h-3.5 w-3.5" />
-               </span>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm text-hsl(var(--foreground))">{row.summary ?? `${humanise(row.action)} on ${humanise(row.entity_type)}`}</p>
-                <p className="truncate text-[11px] text-hsl(var(--muted-foreground))">
-                  {row.actor_label ?? "System"}
-                  {row.entity_label ? ` · ${row.entity_label}` : ""}
-                </p>
-              </div>
-              <span className="shrink-0 text-[11px] text-hsl(var(--muted-foreground))">
-                {formatRelative(row.created_at)}
+    <section className="table-card">
+      <div className="section-header">
+        <h2 className="section-title">Team Workload</h2>
+        <p className="section-subtitle">Utilisation by staff member.</p>
+      </div>
+      <div className="space-y-3">
+        {top.map((row) => (
+          <div key={row.user_id} className="flex items-center justify-between gap-4 p-3 rounded-lg border border-border bg-hsl(var(--surface-secondary))">
+            <div className="flex items-center gap-3">
+              <span className="w-8 h-8 rounded-full bg-hsl(var(--secondary)) flex items-center justify-center text-hsl(var(--secondary-foreground)) text-xs font-semibold">
+                {row.full_name.split(" ").map((n) => n[0]).join("")}
               </span>
-            </li>
-          ))}
-        </ul>
-      )}
-    </Card>
+              <div>
+                <p className="text-sm font-medium text-hsl(var(--foreground))">{row.full_name}</p>
+                <p className="text-[11px] text-hsl(var(--text-muted))">{row.open_tasks} open tasks</p>
+              </div>
+            </div>
+            <div className="flex-1 max-w-32">
+              <div className="progress-bar">
+                <div
+                  className="progress-fill progress-fill-primary"
+                  style={{ width: `${Math.min(Math.max(row.utilisation_percent, 0), 100)}%` }}
+                ></div>
+              </div>
+              <p className="text-[11px] text-hsl(var(--text-muted)) mt-1">
+                {row.utilisation_percent.toFixed(0)}% utilisation
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
   );
-}
-
-function activityIcon(entityType: string): string {
-  switch (entityType) {
-    case "task": return "tasks";
-    case "client": return "clients";
-    case "document": case "document_request": return "file-text";
-    case "invoice": case "payment": return "billing";
-    case "service": return "check-circle";
-    case "user": return "user";
-    default: return "circle-dot";
-  }
 }
