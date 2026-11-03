@@ -1,164 +1,269 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, Calendar, Clock, FileText, ShieldCheck, AlertTriangle, CheckCircle, Users, Building2 } from "lucide-react";
-
-import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Separator, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Toaster } from "@/components/ui";
-import { api } from "@/lib/api";
-import { cn, formatDate } from "@/lib/format";
 import Link from "next/link";
-import { PageHeader } from "@/components/PageHeader";
-import { PageContainer } from "@/components/PageContainer";
-import { EmptyState } from "@/components/PageContainer";
+import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+
+import { Icon } from "@/components/Icon";
+import {
+  Badge,
+  Button,
+  Card,
+  EmptyState,
+  ErrorState,
+  LoadingState,
+  PageHeader,
+  Select,
+  StatCard,
+} from "@/components/ui";
+import { ApiError, api, buildQuery } from "@/lib/api";
+import { addDays, formatDate, humanise, todayInIST } from "@/lib/format";
+import { daysRemainingLabel, daysRemainingTone, priorityTone } from "@/lib/status";
+import type { CalendarResponse } from "@/lib/types";
+
+const WINDOWS = [
+  { value: "7", label: "Next 7 days" },
+  { value: "30", label: "Next 30 days" },
+  { value: "90", label: "Next 90 days" },
+  { value: "180", label: "Next 180 days" },
+];
+
+const CATEGORY_OPTIONS = [
+  { value: "gst", label: "GST" },
+  { value: "income_tax", label: "Income Tax" },
+  { value: "tds", label: "TDS" },
+  { value: "roc", label: "ROC/MCA" },
+  { value: "audit", label: "Audit" },
+];
+
+const STATUS_OPTIONS = [
+  { value: "open", label: "Open" },
+  { value: "filed", label: "Filed" },
+];
+
+const PRIORITY_OPTIONS = [
+  { value: "high", label: "High" },
+  { value: "medium", label: "Medium" },
+  { value: "normal", label: "Normal" },
+];
 
 export default function CalendarPage() {
-  const { data, isPending } = useQuery({
-    queryKey: ["calendar"],
-    queryFn: () => api.get<any>("/calendar?limit=100"),
-    staleTime: 5 * 60 * 1000,
+  const today = todayInIST();
+  const [windowDays, setWindowDays] = useState("30");
+  const [onlyUnverified, setOnlyUnverified] = useState("");
+  const [includeFiled, setIncludeFiled] = useState("");
+  const [category, setCategory] = useState("");
+  const [status, setStatus] = useState("");
+  const [priority, setPriority] = useState("");
+
+  const fromDate = today;
+  const toDate = addDays(today, Number(windowDays));
+
+  const calendar = useQuery({
+    queryKey: [
+      "calendar",
+      { fromDate, toDate, onlyUnverified, includeFiled, category, status, priority },
+    ],
+    queryFn: () =>
+      api.get<CalendarResponse>(
+        `/compliance/calendar${buildQuery({
+          from_date: fromDate,
+          to_date: toDate,
+          only_unverified: onlyUnverified,
+          include_filed: includeFiled,
+          category,
+          status,
+          priority,
+          limit: 500,
+        })}`,
+      ),
   });
 
-  if (isPending) {
-    return (
-      <div className="min-h-screen py-8">
-        <PageHeader title="Compliance Calendar" subtitle="Track compliance deadlines and filings." />
-        <div className="p-8 text-center">
-          <div className="h-4 w-24 bg-muted rounded animate-pulse mx-auto" />
-        </div>
-      </div>
-    );
-  }
-
-  const entries = data?.entries ?? [];
+  const data = calendar.data;
 
   return (
-    <div className="min-h-screen py-8">
-      <Toaster />
-      <PageContainer>
-        <PageHeader
-          title="Compliance Calendar"
-          subtitle="Track statutory deadlines, filings, and compliance tasks."
-          action={
-            <Button>Add Deadline</Button>
-          }
-          breadcrumbs={[{ label: "Dashboard", href: "/dashboard" }, { label: "Compliance" }]}
-        />
+    <div className="space-y-4">
+      <PageHeader
+        title="Compliance calendar"
+        subtitle={`Statutory dates from ${formatDate(fromDate)} to ${formatDate(toDate)}, reasoned in IST.`}
+      />
 
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <Card className="p-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Total Deadlines</p>
-                <p className="tabular text-2xl font-bold text-foreground">{data?.total ?? 0}</p>
-              </div>
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
-                <Calendar className="h-5 w-5" />
-              </div>
-            </div>
-          </Card>
-          <Card className="p-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Overdue</p>
-                <p className="tabular text-2xl font-bold text-destructive">{data?.overdue_count ?? 0}</p>
-              </div>
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-50 text-rose-600">
-                <AlertTriangle className="h-5 w-5" />
-              </div>
-            </div>
-          </Card>
-          <Card className="p-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Unverified</p>
-                <p className="tabular text-2xl font-bold text-foreground">{data?.unverified_count ?? 0}</p>
-              </div>
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
-                <Clock className="h-5 w-5" />
-              </div>
-            </div>
-          </Card>
-          <Card className="p-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">This Week</p>
-                <p className="tabular text-2xl font-bold text-foreground">0</p>
-              </div>
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
-                <ShieldCheck className="h-5 w-5" />
-              </div>
-            </div>
-          </Card>
+      {/* Filters bar */}
+      <Card className="border-t-4 border-sky-200 p-4 sm:p-6 relative overflow-hidden">
+        <div className="grid grid-cols-1 gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
+          <Select
+            label="Window"
+            value={windowDays}
+            onChange={setWindowDays}
+            options={WINDOWS.map((option) => ({ ...option }))}
+            placeholder="Next 30 days"
+          />
+          <Select
+            label="Verification"
+            value={onlyUnverified}
+            onChange={setOnlyUnverified}
+            options={[{ value: "true", label: "Unconfirmed dates only" }]}
+            placeholder="All dates"
+          />
+          <Select
+            label="Filed work"
+            value={includeFiled}
+            onChange={setIncludeFiled}
+            options={[{ value: "true", label: "Include filed" }]}
+            placeholder="Exclude filed"
+          />
+          <Select
+            label="Category"
+            value={category}
+            onChange={setCategory}
+            options={CATEGORY_OPTIONS}
+            placeholder="All categories"
+          />
+          <Select
+            label="Status"
+            value={status}
+            onChange={setStatus}
+            options={STATUS_OPTIONS}
+            placeholder="All statuses"
+          />
+          <Select
+            label="Priority"
+            value={priority}
+            onChange={setPriority}
+            options={PRIORITY_OPTIONS}
+            placeholder="All priorities"
+          />
         </div>
+      </Card>
 
-        <Card className="mt-8">
-          <CardHeader>
-            <CardTitle>Upcoming Deadlines</CardTitle>
-            <CardDescription>Statutory dates and compliance tasks.</CardDescription>
-          </CardHeader>
-          <CardContent className="p-0">
-            {(entries.length ?? 0) === 0 ? (
-              <div className="p-8 text-center">
-                <CheckCircle className="h-8 w-8 text-emerald-500 mb-2" />
-                <p className="text-sm text-muted-foreground">No upcoming deadlines.</p>
-              </div>
-            ) : (
-              <Table className="w-full">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="text-left">Deadline</TableHead>
-                    <TableHead className="text-left hidden sm:table-cell">Client</TableHead>
-                    <TableHead className="text-left hidden md:table-cell">Filing Type</TableHead>
-                    <TableHead className="text-center hidden lg:table-cell">Status</TableHead>
-                    <TableHead className="text-right hidden xl:table-cell">Days</TableHead>
-                    <TableHead className="w-16 text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {entries.map((entry: any) => (
-                    <TableRow key={entry.task_id ?? entry.deadline_id ?? entry.client_id} className="hover:bg-muted/30 transition-colors">
-                      <TableCell className="text-sm">
-                        <div className="flex items-center gap-2">
-                          <div className="flex size-5 items-center justify-center rounded-md bg-muted/40 text-[10px] font-semibold text-muted-foreground">
-                            {Number(entry.statutory_due_date?.slice(8, 10) ?? "1")}
-                          </div>
-                          <span className="font-medium text-foreground">{entry.title}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground hidden sm:table-cell">
-                        {entry.client_name ?? "—"}
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground hidden md:table-cell">
-                        {entry.filing_type ?? "—"}
-                      </TableCell>
-                      <TableCell className="text-center hidden lg:table-cell">
-                        <Badge variant={entry.verified ? "success" : "warning"} className="text-[10px] px-2.5 py-0.5">
-                          {entry.verified ? "Verified" : "Unverified"}
+      {/* Stats */}
+      {data && (
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4">
+          <StatCard label="Entries in window" value={data.total} />
+          <StatCard
+            label="Overdue"
+            value={data.overdue_count}
+            tone={data.overdue_count > 0 ? "danger" : "success"}
+          />
+          <StatCard
+            label="Unconfirmed dates"
+            value={data.unverified_count}
+            tone={data.unverified_count > 0 ? "warning" : "success"}
+            hint="No person has verified these"
+          />
+          <StatCard
+            label="Filed"
+            value={data.entries.filter((entry) => entry.is_filed).length}
+            tone="success"
+          />
+        </div>
+      )}
+
+      {calendar.isPending && <LoadingState label="Loading calendar…" />}
+      {calendar.isError && (
+        <ErrorState
+          message={
+            calendar.error instanceof ApiError
+              ? calendar.error.message
+              : "Could not load the calendar."
+          }
+        />
+      )}
+      {calendar.isSuccess && data && data.entries.length === 0 && (
+        <EmptyState message="Nothing falls in this window." />
+      )}
+
+      {calendar.isSuccess && data && data.entries.length > 0 && (
+        <Card className="border-t-4 border-indigo-200 p-4 sm:p-6 relative overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[58rem]">
+              <thead className="bg-[#f7f6f3]">
+                <tr>
+                  <th className="th">Statutory date</th>
+                  <th className="th">Timing</th>
+                  <th className="th">Client</th>
+                  <th className="th">Obligation</th>
+                  <th className="th">Period</th>
+                  <th className="th">Internal date</th>
+                  <th className="th">Status</th>
+                  <th className="th">Priority</th>
+                  <th className="th">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200">
+                {data.entries.map((entry, index) => {
+                  const isOverdue = entry.is_overdue;
+                  return (
+                    <tr
+                      key={entry.task_id ?? entry.deadline_id ?? `${entry.client_id}-${index}`}
+                      className={`hover:bg-[#f7f6f3] ${isOverdue ? "bg-rose-50" : ""}`}
+                    >
+                      <td className="td tabular text-xs font-medium text-slate-900">
+                        {formatDate(entry.statutory_due_date)}
+                      </td>
+                      <td className="td">
+                        <Badge tone={daysRemainingTone(entry.days_remaining)}>
+                          {daysRemainingLabel(entry.days_remaining)}
                         </Badge>
-                      </TableCell>
-                      <TableCell className="text-right hidden xl:table-cell">
-                        <span className={cn(
-                          "tabular text-xs font-medium",
-                          entry.days_remaining! < 0 ? "text-destructive" : entry.days_remaining! <= 7 ? "text-amber-600" : "text-emerald-600",
-                        )}>
-                          {entry.days_remaining! < 0 ? `${Math.abs(entry.days_remaining)}d late` : entry.days_remaining! === 0 ? "Today" : `${entry.days_remaining}d`}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-right w-16">
-                        <Link href={`/tasks/${entry.task_id}`}>
-                          <Button variant="outline" size="sm" className="w-full">
-                            <ArrowRight className="h-3 w-3" />
-                          </Button>
-                        </Link>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
+                      </td>
+                      <td className="td">
+                        <span className="font-medium text-slate-900">{entry.client_name}</span>
+                      </td>
+                      <td className="td text-xs">
+                        <div className="flex flex-col gap-1">
+                          <span className="text-slate-900">{entry.rule_name ?? entry.filing_type ?? "—"}</span>
+                          {entry.authority && (
+                            <span className="text-slate-400 text-[10px]">{entry.authority}</span>
+                          )}
+                          {!entry.verified && <Badge tone="warning" className="text-[10px]">Date unconfirmed</Badge>}
+                        </div>
+                      </td>
+                      <td className="td tabular text-xs">{entry.period_key ?? "—"}</td>
+                      <td className="td tabular text-xs">
+                        {entry.internal_due_date ? formatDate(entry.internal_due_date) : "—"}
+                      </td>
+                      <td className="td">
+                        <div className="flex flex-col gap-1">
+                          <Badge tone={entry.is_filed ? "success" : "progress"}>
+                            {entry.is_filed ? "Filed" : humanise(entry.status)}
+                          </Badge>
+                          {entry.task_id && (
+                            <Link
+                              href={`/tasks/${entry.task_id}`}
+                              className="text-xs text-slate-500 underline-offset-2 hover:underline"
+                            >
+                              Open task
+                            </Link>
+                          )}
+                          {!entry.task_id && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-xs"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                const url = `/tasks/new?client_id=${entry.client_id}&title=${encodeURIComponent(
+                                  `Compliance: ${entry.rule_name ?? entry.filing_type ?? ""} — ${entry.client_name}`
+                                )}&period_key=${encodeURIComponent(entry.period_key ?? "")}&statutory_due_date=${entry.statutory_due_date}`;
+                                window.location.href = url;
+                              }}
+                            >
+                              Create task
+                            </Button>
+                          )}
+                        </div>
+                      </td>
+                      <td className="td">
+                        <Badge tone={priorityTone(entry.priority)}>{entry.priority}</Badge>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </Card>
-      </PageContainer>
+      )}
     </div>
   );
 }

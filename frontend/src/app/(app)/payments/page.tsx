@@ -14,26 +14,7 @@ import {
   LoadingState,
   ErrorState,
 } from "@/components/ui";
-import {
-  Wallet,
-  Clock,
-  PiggyBank,
-  Banknote,
-  AlertTriangle,
-  AlertCircle,
-  CheckCircle,
-  Download,
-  Plus,
-  Receipt,
-  Search,
-  X,
-  MoreHorizontal,
-  Eye,
-  Edit2,
-  Smartphone,
-  FileText,
-  CreditCard,
-} from "lucide-react";
+import { Icon } from "@/components/Icon";
 import { TextField, TextAreaField, SelectField } from "@/components/form";
 import { api } from "@/lib/api";
 import { formatDate, formatMoney } from "@/lib/format";
@@ -112,13 +93,13 @@ const STATUS_CONFIG: Record<string, { label: string; tone: string }> = {
   failed: { label: "Failed", tone: "danger" },
 };
 
-const METHOD_ICONS: Record<string, React.ElementType> = {
-  bank_transfer: Banknote,
-  upi: Smartphone,
-  cheque: FileText,
-  cash: PiggyBank,
-  card: CreditCard,
-  other: FileText,
+const METHOD_ICONS: Record<string, string> = {
+  bank_transfer: "bank",
+  upi: "phone",
+  cheque: "file-text",
+  cash: "wallet",
+  card: "credit-card",
+  other: "file",
 };
 
 const CLIENT_COLORS = [
@@ -357,7 +338,7 @@ export default function PaymentsPage() {
                 a.click();
               }}
             >
-              <Download className="h-4 w-4" />
+              <Icon name="download" className="h-4 w-4" />
               <span className="hidden sm:inline">Export</span>
             </button>
             <button
@@ -365,7 +346,7 @@ export default function PaymentsPage() {
               className="btn-primary flex items-center gap-2"
               onClick={() => setShowRecordDrawer(true)}
             >
-              <Plus className="h-4 w-4" />
+              <Icon name="plus" className="h-4 w-4" />
               Record Payment
             </button>
           </div>
@@ -379,28 +360,28 @@ export default function PaymentsPage() {
           value={formatMoney(data.total_received)}
           hint={`${data.received_count} payments`}
           tone="success"
-          icon={Wallet}
+          icon={<Icon name="wallet" className="h-5 w-5" />}
         />
         <StatCard
           label="Outstanding"
           value={formatMoney(data.outstanding)}
           hint="Unpaid invoices"
           tone="warning"
-          icon={Clock}
+          icon={<Icon name="clock" className="h-5 w-5" />}
         />
         <StatCard
           label="Overdue"
           value={formatMoney(data.overdue)}
           hint={`${receivablesData?.by_client?.filter(c => c.overdue_outstanding > 0).length ?? 0} clients`}
           tone="danger"
-          icon={AlertCircle}
+          icon={<Icon name="alert-circle" className="h-5 w-5" />}
         />
         <StatCard
           label="Total Payments"
           value={data.total_payments}
           hint="All time"
           tone="neutral"
-          icon={Receipt}
+          icon={<Icon name="receipt" className="h-5 w-5" />}
         />
       </div>
 
@@ -429,7 +410,7 @@ export default function PaymentsPage() {
         <div className="p-3 space-y-2">
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-5">
             <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+              <Icon name="search" className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
               <TextField
                 label=""
                 placeholder="Search..."
@@ -483,7 +464,7 @@ export default function PaymentsPage() {
                 setDateTo("");
               }}
             >
-              <X className="h-3 w-3" />
+              <Icon name="x" className="h-3 w-3" />
               Clear
             </button>
           </div>
@@ -561,7 +542,7 @@ export default function PaymentsPage() {
                       <td className="td">
                         <div className="flex items-center gap-2">
                           <div className="h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-medium bg-slate-100 text-slate-600">
-                            {(() => { const MethodIcon = METHOD_ICONS[p.method]; return <MethodIcon className="h-3 w-3" />; })()}
+                            <Icon name={METHOD_ICONS[p.method] as any} className="h-3 w-3" />
                           </div>
                           <span className="text-xs text-slate-600 capitalize">
                             {p.method.replace("_", " ")}
@@ -589,7 +570,7 @@ export default function PaymentsPage() {
                             className="text-slate-400 hover:text-sky-600"
                             aria-label="More actions"
                           >
-                            <MoreHorizontal className="h-4 w-4" />
+                            <Icon name="more-vertical" className="h-4 w-4" />
                           </button>
                           {openActionId === p.id && (
                             <div className="absolute right-0 mt-2 w-48 rounded-lg border border-slate-200 bg-white shadow-lg py-2 z-50">
@@ -601,7 +582,7 @@ export default function PaymentsPage() {
                                 }}
                                 className="flex w-full items-center gap-3 px-3 py-2 text-sm text-slate-700 hover:bg-[#f7f6f3]"
                               >
-                                <Eye className="h-4 w-4" />
+                                <Icon name="eye" className="h-4 w-4" />
                                 View Invoice
                               </button>
                               <button
@@ -617,7 +598,7 @@ export default function PaymentsPage() {
                                 }}
                                 className="flex w-full items-center gap-3 px-3 py-2 text-sm text-slate-700 hover:bg-[#f7f6f3]"
                               >
-                                <Download className="h-4 w-4" />
+                                <Icon name="download" className="h-4 w-4" />
                                 Download Receipt
                               </button>
                               <button
@@ -628,7 +609,7 @@ export default function PaymentsPage() {
                                 }}
                                 className="flex w-full items-center gap-3 px-3 py-2 text-sm text-slate-700 hover:bg-[#f7f6f3]"
                               >
-                                <Edit2 className="h-4 w-4" />
+                                <Icon name="pencil" className="h-4 w-4" />
                                 Edit
                               </button>
                             </div>
