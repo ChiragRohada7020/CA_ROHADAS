@@ -100,7 +100,7 @@ export default function ReceivablesPage() {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[52rem]">
-              <thead className="bg-hsl(var(--muted))/30">
+              <thead className="bg-[#f7f6f3]">
                 <tr>
                   <th className="th">Client</th>
                   <th className="th">Invoices</th>
@@ -111,17 +111,17 @@ export default function ReceivablesPage() {
                   <th className="th">Worst</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border">
+              <tbody className="divide-y divide-slate-100">
                 {data.by_client.map((row) => (
                   <tr key={row.client_id}>
                     <td className="td text-xs">
                       <Link
                         href={`/invoices?client=${row.client_id}`}
-                        className="font-medium text-hsl(var(--foreground)) underline-offset-2 hover:underline"
+                        className="font-medium text-slate-900 underline-offset-2 hover:underline"
                       >
                         {row.client_name ?? "Unknown client"}
                       </Link>
-                      <span className="ml-2 font-mono text-hsl(var(--muted-foreground))">{row.client_code}</span>
+                      <span className="ml-2 font-mono text-slate-400">{row.client_code}</span>
                     </td>
                     <td className="td tabular text-xs">{row.invoice_count}</td>
                     <td className="td tabular text-xs">{formatMoney(row.billed)}</td>
@@ -131,18 +131,18 @@ export default function ReceivablesPage() {
                     </td>
                     <td className="td tabular text-xs">
                       {row.overdue_outstanding > 0 ? (
-                        <span className="font-medium text-destructive">
+                        <span className="font-medium text-rose-700">
                           {formatMoney(row.overdue_outstanding)}
                         </span>
                       ) : (
-                        <span className="text-hsl(var(--muted-foreground))">—</span>
+                        <span className="text-slate-400">—</span>
                       )}
                     </td>
                     <td className="td text-xs">
                       {row.worst_days_overdue > 0 ? (
                         <Badge tone="danger">{row.worst_days_overdue}d late</Badge>
                       ) : (
-                        <span className="text-hsl(var(--muted-foreground))">On time</span>
+                        <span className="text-slate-400">On time</span>
                       )}
                     </td>
                   </tr>
@@ -160,11 +160,11 @@ export default function ReceivablesPage() {
               <Icon name="alert-triangle" className="h-5 w-5" />
             </IconChip>
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-hsl(var(--foreground))">
+              <p className="text-sm font-semibold text-slate-900">
                 {data.oldest_overdue.invoice_number ?? "Invoice"} ·{" "}
                 {data.oldest_overdue.client_name ?? "Unknown client"}
               </p>
-              <p className="mt-0.5 text-xs text-hsl(var(--muted-foreground))">
+              <p className="mt-0.5 text-xs text-slate-600">
                 {formatMoney(data.oldest_overdue.outstanding)} outstanding, due{" "}
                 {formatDate(data.oldest_overdue.due_date)} — {data.oldest_overdue.days_overdue}{" "}
                 days late.
@@ -182,7 +182,7 @@ export default function ReceivablesPage() {
 
       {data.notes.length > 0 && (
         <Card title="Notes">
-          <ul className="list-disc space-y-1 px-8 py-4 text-xs text-hsl(var(--muted-foreground))">
+          <ul className="list-disc space-y-1 px-8 py-4 text-xs text-slate-600">
             {data.notes.map((note) => (
               <li key={note}>{note}</li>
             ))}

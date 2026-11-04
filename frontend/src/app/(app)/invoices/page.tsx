@@ -211,7 +211,7 @@ export default function BillingPage() {
         />
       )}
       <Card>
-        <div className="flex flex-wrap items-center gap-1 border-b border-border px-3 pt-2">
+        <div className="flex flex-wrap items-center gap-1 border-b border-slate-200 px-3 pt-2">
           {TABS.map((entry) => {
             const isActive = entry.key === tab;
             return (
@@ -222,8 +222,8 @@ export default function BillingPage() {
                 className={cn(
                   "relative cursor-pointer border-b-2 px-3 py-2 text-sm font-medium transition-colors",
                   isActive
-                    ? "border-primary text-primary"
-                    : "border-transparent text-hsl(var(--muted-foreground)) hover:text-hsl(var(--foreground))",
+                    ? "border-sky-600 text-sky-700"
+                    : "border-transparent text-slate-500 hover:text-slate-800",
                 )}
                 whileTap={{ scale: 0.97 }}
               >
@@ -231,7 +231,7 @@ export default function BillingPage() {
                 <motion.span
                   className={cn(
                     "tabular ml-1.5 rounded px-1.5 py-0.5 text-[10px]",
-                    isActive ? "bg-primary/10 text-primary" : "bg-hsl(var(--secondary))/50 text-hsl(var(--muted-foreground))",
+                    isActive ? "bg-sky-100 text-sky-700" : "bg-slate-100 text-slate-500",
                   )}
                   initial={{ scale: 0.8, opacity: 0.5 }}
                   animate={{ scale: 1, opacity: 1 }}
@@ -244,7 +244,7 @@ export default function BillingPage() {
           })}
         </div>
 
-        <div className="grid grid-cols-2 gap-2 border-b border-border p-3 md:grid-cols-5">
+        <div className="grid grid-cols-2 gap-2 border-b border-slate-200 p-3 md:grid-cols-5">
           <label className="col-span-2 block">
             <input
               className="input py-1.5"
@@ -314,7 +314,7 @@ export default function BillingPage() {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[72rem]">
-              <thead className="bg-hsl(var(--muted))/30">
+              <thead className="bg-[#f7f6f3]">
                 <tr>
                   <th className="th w-10">#</th>
                   <th className="th">Invoice</th>
@@ -338,43 +338,43 @@ export default function BillingPage() {
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.15, ease: "easeOut", delay: index * 0.03 }}
                   >
-                    <td className="td tabular text-center text-xs text-hsl(var(--muted-foreground))">
+                    <td className="td tabular text-center text-xs text-slate-400">
                       {offset + index + 1}
                     </td>
                     <td className="td min-w-[200px]">
                       <div className="flex flex-col">
                         <button
                           type="button"
-                          className="text-left font-medium text-hsl(var(--foreground)) underline-offset-2 hover:text-primary hover:underline"
+                          className="text-left font-medium text-slate-900 underline-offset-2 hover:text-sky-700 hover:underline"
                           onClick={() => setOpenInvoiceId(invoice.id)}
                         >
                           {invoice.invoice_number ?? "(draft)"}
                         </button>
-                        <span className="mt-0.5 text-xs text-hsl(var(--muted-foreground))">{invoice.client_name ?? "—"}</span>
+                        <span className="mt-0.5 text-xs text-slate-600">{invoice.client_name ?? "—"}</span>
                       </div>
                     </td>
                     <td className="td min-w-[160px]">
                       {invoice.services.length === 0 ? (
-                        <span className="text-hsl(var(--muted-foreground))">—</span>
+                        <span className="text-slate-300">—</span>
                       ) : (
                         <div className="flex flex-wrap gap-1">
                           {invoice.services.slice(0, 2).map((svc, sidx) => (
-                            <span key={sidx} className="inline-flex items-center rounded bg-hsl(var(--secondary))/50 px-1.5 py-0.5 text-[10px] font-medium text-hsl(var(--muted-foreground))">
+                            <span key={sidx} className="inline-flex items-center rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600">
                               {svc}
                             </span>
                           ))}
                           {invoice.services.length > 2 && (
-                            <span className="inline-flex items-center rounded bg-hsl(var(--secondary))/50 px-1.5 py-0.5 text-[10px] font-medium text-hsl(var(--muted-foreground))">
+                            <span className="inline-flex items-center rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500">
                               +{invoice.services.length - 2}
                             </span>
                           )}
                         </div>
                       )}
                     </td>
-                    <td className="td tabular text-right text-hsl(var(--muted-foreground))">
+                    <td className="td tabular text-right text-slate-700">
                       {formatMoney(invoice.total)}
                     </td>
-                    <td className="td tabular text-right text-hsl(var(--muted-foreground))">
+                    <td className="td tabular text-right text-slate-600">
                       {formatMoney(invoice.amount_paid)}
                     </td>
                     <td className="td tabular text-right">
@@ -382,13 +382,13 @@ export default function BillingPage() {
                         <span
                           className={cn(
                             "font-medium",
-                            invoice.is_overdue ? "text-rose-700" : "text-hsl(var(--foreground))",
+                            invoice.is_overdue ? "text-rose-700" : "text-slate-800",
                           )}
                         >
                           {formatMoney(invoice.outstanding)}
                         </span>
                       ) : (
-                        <span className="text-success-color">—</span>
+                        <span className="text-emerald-700">—</span>
                       )}
                     </td>
                     <td className="td">
@@ -399,7 +399,7 @@ export default function BillingPage() {
                     <td
                       className={cn(
                         "td text-xs",
-                        invoice.is_overdue ? "text-rose-700" : "text-hsl(var(--muted-foreground))",
+                        invoice.is_overdue ? "text-rose-700" : "text-slate-600",
                       )}
                     >
                       {formatDate(invoice.due_date)}
@@ -407,7 +407,7 @@ export default function BillingPage() {
                     <td className="td text-center">
                       <button
                         type="button"
-                        className="inline-flex items-center justify-center rounded p-1 text-hsl(var(--muted-foreground)) hover:bg-success/10 hover:text-success-color"
+                        className="inline-flex items-center justify-center rounded p-1 text-slate-400 hover:bg-emerald-50 hover:text-emerald-700"
                         aria-label="Record payment"
                         title="Record payment"
                         onClick={() => {
@@ -480,7 +480,7 @@ export default function BillingPage() {
           action={
             <Link
               href="/receivables"
-              className="text-xs font-medium text-primary hover:underline"
+              className="text-xs font-medium text-sky-700 hover:underline"
             >
               View All
             </Link>
@@ -490,7 +490,7 @@ export default function BillingPage() {
             <EmptyState message="No receipts have been recorded yet." />
           ) : (
             <table className="w-full">
-              <thead className="bg-hsl(var(--muted))/30">
+              <thead className="bg-[#f7f6f3]">
                 <tr>
                   <th className="th">Date</th>
                   <th className="th">Client</th>
@@ -507,16 +507,16 @@ export default function BillingPage() {
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ duration: 0.3, ease: "easeOut", delay: 0.1 + index * 0.03 }}
                   >
-                    <td className="td text-xs text-hsl(var(--muted-foreground))">
+                    <td className="td text-xs text-slate-600">
                       {formatDate(payment.paid_on)}
                     </td>
-                    <td className="td text-xs text-hsl(var(--muted-foreground))">
+                    <td className="td text-xs text-slate-700">
                       {payment.client_name ?? "—"}
                     </td>
-                    <td className="td tabular text-right text-hsl(var(--foreground))">
+                    <td className="td tabular text-right text-slate-800">
                       {formatMoney(payment.amount)}
                     </td>
-                    <td className="td text-xs text-hsl(var(--muted-foreground))">{humanise(payment.method)}</td>
+                    <td className="td text-xs text-slate-500">{humanise(payment.method)}</td>
                   </motion.tr>
                 ))}
               </tbody>
@@ -620,13 +620,13 @@ function AgeingPanel({ summary }: { summary: BillingSummary | undefined }) {
       <div className="flex h-40 items-end gap-3">
         {buckets.map((row) => (
           <div key={row.bucket} className="flex min-w-0 flex-1 flex-col items-center gap-1">
-            <span className="tabular text-[11px] font-medium text-hsl(var(--muted-foreground))">
+            <span className="tabular text-[11px] font-medium text-slate-600">
               {row.amount > 0 ? formatMoney(row.amount) : "—"}
             </span>
             <motion.div
               className={cn(
                 "w-full rounded-t",
-                row.amount > 0 ? (AGEING_FILL[row.bucket] ?? "bg-hsl(var(--muted))") : "bg-hsl(var(--secondary))/50",
+                row.amount > 0 ? (AGEING_FILL[row.bucket] ?? "bg-slate-400") : "bg-slate-100",
               )}
               initial={{ height: 0, opacity: 0 }}
               animate={{
@@ -642,8 +642,8 @@ function AgeingPanel({ summary }: { summary: BillingSummary | undefined }) {
       <div className="mt-2 flex gap-3 border-t border-slate-100 pt-2">
         {buckets.map((row) => (
           <div key={row.bucket} className="min-w-0 flex-1 text-center">
-            <p className="truncate text-[10px] text-hsl(var(--muted-foreground))">{row.label}</p>
-            <p className="tabular text-[10px] text-hsl(var(--muted-foreground))">{row.count}</p>
+            <p className="truncate text-[10px] text-slate-500">{row.label}</p>
+            <p className="tabular text-[10px] text-slate-400">{row.count}</p>
           </div>
         ))}
       </div>

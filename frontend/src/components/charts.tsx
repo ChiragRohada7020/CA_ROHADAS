@@ -167,11 +167,11 @@ function dotClass(strokeClass: string): string {
 const CHIP_TONES: Record<string, string> = {
   danger: "bg-rose-50 text-rose-600 ring-rose-100",
   warning: "bg-amber-50 text-amber-600 ring-amber-100",
-  info: "bg-blue-50 text-blue-600 ring-blue-100",
-  progress: "bg-hsl(var(--secondary)) text-hsl(var(--secondary-foreground)) ring-hsl(var(--border))/50",
+  info: "bg-sky-50 text-sky-600 ring-sky-100",
+  progress: "bg-indigo-50 text-indigo-600 ring-indigo-100",
   success: "bg-emerald-50 text-emerald-600 ring-emerald-100",
-  neutral: "bg-hsl(var(--secondary))/50 text-hsl(var(--muted-foreground)) ring-hsl(var(--border))/50",
-  violet: "bg-hsl(var(--secondary))/50 text-hsl(var(--secondary-foreground)) ring-hsl(var(--border))/50",
+  neutral: "bg-slate-100 text-slate-600 ring-slate-200",
+  violet: "bg-violet-50 text-violet-600 ring-violet-100",
 } as const;
 
 export type ChipTone = keyof typeof CHIP_TONES;

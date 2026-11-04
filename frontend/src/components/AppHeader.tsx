@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { Bell, Menu, Search, User } from "lucide-react";
+import { Bell, HelpCircle, Menu, Search, User } from "lucide-react";
 
 import { Icon } from "@/components/Icon";
 import { ApiError, api } from "@/lib/api";
@@ -36,6 +36,7 @@ export function AppHeader({
   const { data: session, error, isPending } = useSession();
   const signOut = useSignOut();
   const [addOpen, setAddOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const firm = useQuery({
     queryKey: ["billing", "settings"],
@@ -69,56 +70,67 @@ export function AppHeader({
   if (isPending) return null;
 
   return (
-    <header className="top-bar">
-      <button
-        type="button"
-        onClick={onMobileMenu}
-        className="flex h-9 w-9 items-center justify-center rounded-lg border border-hsl(var(--border)) bg-hsl(var(--card)) text-hsl(var(--foreground)) hover:bg-hsl(var(--secondary)) md:hidden"
-        aria-label="Open navigation menu"
-      >
-        <Menu className="h-5 w-5" />
-      </button>
+    <header className="top-nav">
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={onMobileMenu}
+          className="flex h-9 w-9 items-center justify-center rounded-lg border border-hsl(var(--border)) bg-hsl(var(--card)) text-hsl(var(--foreground)) hover:bg-hsl(var(--secondary)) md:hidden"
+          aria-label="Open navigation menu"
+        >
+          <Menu className="h-5 w-5" />
+        </button>
 
-      <div className="flex items-center gap-1.5">
-        <Link href="/dashboard" className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-primary via-primary/90 to-accent text-sm font-bold text-white">
-            RC
-          </div>
-          <span className="hidden sm:inline text-sm font-semibold text-hsl(var(--foreground)) tracking-tight">
-            Rohadas CA
+        <div className="relative search-bar">
+          <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-hsl(var(--text-muted))" />
+          <input
+            type="search"
+            placeholder="Search clients, invoices, tasks..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-9 pr-4 h-full bg-hsl(var(--surface)) border border-hsl(var(--border)) rounded-lg text-sm text-hsl(var(--foreground)) focus:outline-none focus:ring-2 focus:ring-hsl(var(--primary))"
+            aria-label="Search clients, invoices, tasks..."
+          />
+          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-medium text-hsl(var(--text-muted))">
+            Ctrl K
           </span>
-        </Link>
+        </div>
       </div>
 
       <div className="ml-auto flex items-center gap-3">
-        <div className="hidden sm:flex items-center gap-4">
-          <button
-            type="button"
-            className="text-hsl(var(--foreground))/60 hover:text-hsl(var(--foreground)) transition-colors"
-            aria-label="Search"
+        <div className="relative">
+          <select
+            className="fy-select w-32"
+            defaultValue={activeYear?.label || "FY 2025-26"}
+            aria-label="Financial year"
           >
-            <Search className="h-4 w-4" />
-          </button>
+            <option>FY 2025-26</option>
+            <option>FY 2026-27</option>
+          </select>
+        </div>
+
+        <div className="header-actions">
           <button
             type="button"
-            className="text-hsl(var(--foreground))/60 hover:text-hsl(var(--foreground)) transition-colors"
+            className="header-icon"
             aria-label="Notifications"
           >
             <Bell className="h-4 w-4" />
+            <span className="absolute top-1 right-1 h-1.5 w-1.5 bg-hsl(var(--danger)) rounded-full border-2 border-hsl(var(--surface))"></span>
           </button>
-        </div>
 
-        <div className="flex items-center gap-2 border-l border-hsl(var(--border)) pl-4">
-          <div className="hidden md:flex flex-col min-w-0">
-            <p className="text-sm font-semibold text-hsl(var(--foreground)) truncate">
-              {session?.user?.full_name ?? fullName}
-            </p>
-            <p className="text-[11px] text-hsl(var(--muted-foreground)) truncate">
-              {session?.user?.designation ?? designation ?? "Staff"}
-            </p>
-          </div>
-          <div className="flex h-9 w-9 items-center justify-center rounded-full border border-hsl(var(--border)) bg-hsl(var(--card)) text-hsl(var(--foreground)) hover:bg-hsl(var(--secondary)) transition-colors">
-            <User className="h-4 w-4" />
+          <button
+            type="button"
+            className="header-icon"
+            aria-label="Help"
+          >
+            <HelpCircle className="h-4 w-4" />
+          </button>
+
+          <div className="relative">
+            <div className="profile-avatar cursor-pointer">
+              {session?.user?.full_name?.charAt(0) ?? fullName.charAt(0)}
+            </div>
           </div>
         </div>
       </div>
