@@ -32,6 +32,11 @@ export type IconName =
   | "chevron-right"
   | "chevron-left"
   | "arrow-right"
+  | "arrow-left"
+  | "map-pin"
+  | "file-badge"
+  | "clipboard-list"
+  | "user-round-pen"
   | "clock"
   | "check-circle"
   | "circle-dot"
@@ -541,6 +546,40 @@ const PATHS: Record<IconName, React.ReactNode> = {
   bookmark: (
     <>
       <path d="M19 21l-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+    </>
+  ),
+  "arrow-left": (
+    <>
+      <line x1="19" y1="12" x2="5" y2="12" />
+      <polyline points="12 19 5 12 12 5" />
+    </>
+  ),
+  "map-pin": (
+    <>
+      <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0" />
+      <circle cx="12" cy="16" r="3" />
+    </>
+  ),
+  "file-badge": (
+    <>
+      <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
+      <polyline points="13 2 13 9 20 9" />
+    </>
+  ),
+  "clipboard-list": (
+    <>
+      <path d="M8 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2H8z" />
+      <path d="M16 8h3" />
+      <path d="M16 12h3" />
+      <path d="M16 16h3" />
+    </>
+  ),
+  "user-round-pen": (
+    <>
+      <path d="M18 8a3 3 0 0 0-3-3" />
+      <path d="M11 21a9 9 0 0 1-9-9" />
+      <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 2 2 0 0 1-2 2" />
+      <path d="M20.5 14H14" />
     </>
   ),
 };

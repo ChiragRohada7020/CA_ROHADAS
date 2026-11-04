@@ -1,0 +1,542 @@
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
+
+import { Icon, type IconName } from "@/components/Icon";
+import {
+  Avatar,
+  DonutChart,
+  IconChip,
+  MiniBar,
+  TrendPill,
+  type ChipTone,
+  type DonutSegment,
+} from "@/components/charts";
+import { Badge, Button, Card, EmptyState, ErrorState, LoadingState, PageHeader, Skeleton } from "@/components/ui";
+import { ApiError, api } from "@/lib/api";
+import { cn, formatMoney, formatPercent, formatRelative, humanise } from "@/lib/format";
+import { riskTone, utilisationTone } from "@/lib/status";
+import { useSession } from "@/lib/session";
+import type { FirmDashboard } from "@/lib/types";
+
+type ComplianceCategoryRow = FirmDashboard["compliance"][number];
+
+const CATEGORY_COLOURS: Record<string, string> = {
+  overdue: "stroke-rose-500",
+  due_soon: "stroke-amber-400",
+  in_progress: "stroke-sky-500",
+  completed: "stroke-emerald-500",
+};
+
+function greeting(data: FirmDashboard): string {
+  const hour = Number(
+    new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Asia/Kolkata",
+      hour: "2-digit",
+      hour12: false,
+    }).format(new Date()),
+  );
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  return "Good evening";
+}
+
+function toneStyles(tone: ChipTone) {
+  const map: Record<ChipTone, { border: string; bg: string; text: string }> = {
+    danger: { border: "border-rose-200", bg: "bg-rose-50", text: "text-rose-600" },
+    warning: { border: "border-amber-200", bg: "bg-amber-50", text: "text-amber-600" },
+    info: { border: "border-sky-200", bg: "bg-sky-50", text: "text-sky-600" },
+    success: { border: "border-emerald-200", bg: "bg-emerald-50", text: "text-emerald-600" },
+    violet: { border: "border-violet-200", bg: "bg-violet-50", text: "text-violet-600" },
+    progress: { border: "border-indigo-200", bg: "bg-indigo-50", text: "text-indigo-600" },
+    neutral: { border: "border-slate-200", bg: "bg-slate-50", text: "text-slate-600" },
+  };
+  return map[tone] || map.neutral;
+}
+
+export default function DashboardPage() {
+  const { data, isPending, isError, error } = useQuery({
+    queryKey: ["dashboard"],
+    queryFn: () => api.get<FirmDashboard>("/reports/dashboard"),
+  });
+  const { data: session } = useSession();
+
+  if (isPending) {
+    return (
+      <div className="min-h-screen space-y-8 p-6 bg-slate-50">
+      <PageHeader title="Loading dashboard..." subtitle="Fetching your latest practice insights." />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          {[...Array(5)].map((_, i) => (
+            <Card key={i}>
+              <div className="p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <Skeleton className="h-10 w-10 rounded-lg" />
+                  <Skeleton className="h-5 w-12" />
+                </div>
+                <Skeleton className="h-7 w-16" />
+                <Skeleton className="h-4 w-24" />
+              </div>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="p-6">
+        <ErrorState message={error instanceof ApiError ? error.message : "Could not load the dashboard. Please try again."} />
+      </div>
+    );
+  }
+
+  const totals = data.totals;
+  const trends = data.trends;
+
+  return (
+    <div className="bg-slate-50">
+      <div className="mx-auto max-w-[1400px] space-y-8 p-6">
+      <PageHeader
+        title={`${greeting(data)}${session?.user?.full_name ? `, ${session.user.full_name.split(" ")[0]}` : ""}`}
+        subtitle="Here's what's important for your practice today."
+        action={
+          <div className="text-right">
+            <p className="text-sm font-medium text-slate-900">
+              {new Intl.DateTimeFormat("en-IN", {
+                timeZone: "Asia/Kolkata",
+                weekday: "long",
+                day: "numeric",
+                month: "short",
+                year: "numeric",
+              }).format(new Date())}
+            </p>
+            {data.financial_year && <p className="text-xs text-slate-500">FY {data.financial_year}</p>}
+            <p className="text-xs text-slate-500">{data.scope === "firm" ? "Firm-wide" : `Scoped to your ${data.scope}`}</p>
+            <p className="mt-1 flex items-center justify-end gap-1.5 text-xs text-slate-500">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              Updated {formatRelative(data.generated_at)}
+            </p>
+          </div>
+        }
+      />
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <HeadlineCard icon="clock" tone="danger" label="Overdue" value={totals.tasks_overdue} trend={trends.overdue} href="/tasks" />
+        <HeadlineCard icon="calendar" tone="warning" label="Due Today" value={totals.tasks_due_today} trend={trends.due_today} href="/calendar" />
+        <HeadlineCard icon="calendar" tone="info" label="Due This Week" value={totals.tasks_due_this_week} trend={trends.due_this_week} href="/calendar" />
+        <HeadlineCard icon="check-circle" tone="violet" label="Awaiting Review" value={totals.awaiting_review} href="/tasks" />
+        <HeadlineCard icon="file-text" tone="success" label="Missing Documents" value={totals.clients_with_missing_documents} hint={`${totals.open_document_requests} open`} href="/documents" />
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+        <div className="xl:col-span-2">
+          <ComplianceSummary rows={data.compliance} />
+        </div>
+        <UpcomingDeadlines rows={data.upcoming_deadlines} />
+      </div>
+
+      <WorkPipeline stages={data.pipeline} />
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <ClientPortfolio portfolio={data.portfolio} />
+        <FinancialOverview financials={data.financials} />
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+        <ClientsNeedingAttention rows={data.at_risk_clients} />
+        <TeamWorkload rows={data.workload} />
+        <RecentActivity rows={data.recent_activity} />
+      </div>
+    </div>
+  );
+}
+
+function HeadlineCard({
+  icon,
+  tone,
+  label,
+  value,
+  hint,
+  trend,
+  href,
+}: {
+  icon: IconName;
+  tone: ChipTone;
+  label: string;
+  value: number;
+  hint?: string;
+  trend?: { delta: number; compared_to: string };
+  href: string;
+}) {
+  const styles = toneStyles(tone);
+  return (
+    <Link href={href} className="group">
+      <Card className="h-full transition-all hover:shadow-md hover:-translate-y-0.5">
+        <div className="p-4">
+          <div className="flex items-start justify-between">
+            <div className={cn("flex h-10 w-10 items-center justify-center rounded-lg", styles.bg, styles.text)}>
+              <Icon name={icon} className="h-5 w-5" />
+            </div>
+            {trend ? <TrendPill delta={trend.delta} comparedTo={trend.compared_to} /> : hint ? <Badge tone="neutral">{hint}</Badge> : null}
+          </div>
+          <p className="mt-3 text-sm text-slate-600">{label}</p>
+          <p className="mt-1 text-2xl font-semibold tracking-tight text-slate-900">{value}</p>
+        </div>
+      </Card>
+    </Link>
+  );
+}
+
+function ComplianceSummary({ rows }: { rows: ComplianceCategoryRow[] }) {
+  const [selected, setSelected] = useState<string | null>(null);
+  if (!rows || rows.length === 0) {
+    return (
+      <Card>
+        <div className="border-b border-slate-200 px-6 py-4">
+          <h3 className="text-base font-semibold text-slate-900">Compliance Summary</h3>
+          <p className="text-sm text-slate-500">Work by service category</p>
+        </div>
+        <EmptyState message="No work has been generated yet." />
+      </Card>
+    );
+  }
+  const current = rows.find((row) => row.category === selected) ?? rows[0];
+  const segments: DonutSegment[] = [
+    { key: "overdue", label: "Overdue", value: current.overdue, className: CATEGORY_COLOURS.overdue },
+    { key: "due_soon", label: "Due Soon", value: current.due_soon, className: CATEGORY_COLOURS.due_soon },
+    { key: "in_progress", label: "In Progress", value: current.in_progress, className: CATEGORY_COLOURS.in_progress },
+    { key: "completed", label: "Completed", value: current.completed, className: CATEGORY_COLOURS.completed },
+  ];
+  return (
+    <Card>
+      <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+        <div>
+          <h3 className="text-base font-semibold text-slate-900">Compliance Summary</h3>
+          <p className="text-sm text-slate-500">Work by service category</p>
+        </div>
+        <Button asChild variant="ghost" size="sm">
+          <Link href="/tasks">View tasks</Link>
+        </Button>
+      </div>
+      <div className="px-6 pt-4">
+        <div className="flex flex-wrap gap-2">
+          {rows.map((row) => {
+            const isActive = row.category === current.category;
+            return (
+              <button
+                key={row.category}
+                onClick={() => setSelected(row.category)}
+                className={cn(
+                  "rounded-full px-3 py-1 text-sm font-medium transition-colors",
+                  isActive ? "bg-sky-100 text-sky-700" : "text-slate-600 hover:bg-slate-100",
+                )}
+              >
+                {row.label}
+                <span className="ml-1.5 text-xs text-slate-400">{row.total}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+      <div className="grid grid-cols-1 gap-6 p-6 lg:grid-cols-2">
+        <div className="flex items-center justify-center">
+          <DonutChart segments={segments} total={current.total} totalLabel={`Total ${current.label}`} size={200} />
+        </div>
+        <div className="space-y-4">
+          <div>
+            <div className="mb-2 flex justify-between text-sm">
+              <span className="text-slate-600">Completion</span>
+              <span className="font-medium text-slate-900">
+                {formatPercent(current.total > 0 ? (current.completed / current.total) * 100 : 0)} ({current.completed}/{current.total})
+              </span>
+            </div>
+            <div className="h-2 w-full rounded-full bg-slate-100">
+              <div className="h-2 rounded-full bg-emerald-500" style={{ width: `${current.total > 0 ? (current.completed / current.total) * 100 : 0}%` }} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="rounded-lg border border-slate-200 p-3 text-center">
+              <p className="text-xl font-semibold text-slate-900">{current.overdue}</p>
+              <p className="text-xs text-slate-500">Overdue</p>
+            </div>
+            <div className="rounded-lg border border-slate-200 p-3 text-center">
+              <p className="text-xl font-semibold text-slate-900">{current.in_progress}</p>
+              <p className="text-xs text-slate-500">In Progress</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+function UpcomingDeadlines({ rows }: { rows: FirmDashboard["upcoming_deadlines"] }) {
+  const soon = (rows ?? []).slice(0, 6);
+  return (
+    <Card className="h-full">
+      <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+        <div>
+          <h3 className="text-base font-semibold text-slate-900">Upcoming Deadlines</h3>
+          <p className="text-sm text-slate-500">Statutory dates & due tasks</p>
+        </div>
+        <Button asChild variant="ghost" size="sm">
+          <Link href="/calendar">View calendar</Link>
+        </Button>
+      </div>
+      {soon.length === 0 ? (
+        <EmptyState message="Nothing due in the next two weeks." />
+      ) : (
+        <div className="divide-y divide-slate-100">
+          {soon.map((row) => {
+            const late = row.days_remaining < 0;
+            const urgent = row.days_remaining <= 7;
+            return (
+              <Link
+                key={row.task_id ?? `${row.client_id}-${row.statutory_due_date}`}
+                href={row.task_id ? `/tasks/${row.task_id}` : "/calendar"}
+                className="flex items-center gap-3 px-6 py-3 hover:bg-slate-50"
+              >
+                <div className={cn("flex h-10 w-10 flex-col items-center justify-center rounded-lg border",
+                  late ? "border-rose-200 bg-rose-50 text-rose-700" : urgent ? "border-amber-200 bg-amber-50 text-amber-700" : "border-slate-200 bg-slate-50 text-slate-700"
+                )}>
+                  <span className="text-sm font-semibold">{Number(row.statutory_due_date.slice(8,10))}</span>
+                  <span className="text-[10px] uppercase">{new Intl.DateTimeFormat("en-IN",{month:"short"}).format(new Date(`${row.statutory_due_date.slice(0,10)}T00:00:00Z`))}</span>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-slate-900">{row.title}</p>
+                  <p className="truncate text-xs text-slate-500">{row.client_name}{!row.verified && " · unconfirmed"}</p>
+                </div>
+                <Badge tone={late ? "danger" : urgent ? "warning" : "success"}>
+                  {late ? `${Math.abs(row.days_remaining)}d late` : row.days_remaining === 0 ? "Due today" : "On track"}
+                </Badge>
+              </Link>
+            );
+          })}
+        </div>
+      )}
+    </Card>
+  );
+}
+
+const PIPELINE_COLORS = ["bg-sky-50 text-sky-700 border-sky-200", "bg-indigo-50 text-indigo-700 border-indigo-200", "bg-violet-50 text-violet-700 border-violet-200", "bg-amber-50 text-amber-700 border-amber-200", "bg-orange-50 text-orange-700 border-orange-200", "bg-emerald-50 text-emerald-700 border-emerald-200"];
+
+function WorkPipeline({ stages }: { stages: FirmDashboard["pipeline"] }) {
+  const safeStages = stages ?? [];
+  const total = safeStages.reduce((sum, s) => sum + s.count, 0);
+  return (
+    <Card>
+      <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+        <div>
+          <h3 className="text-base font-semibold text-slate-900">Work Pipeline</h3>
+          <p className="text-sm text-slate-500">{total} task(s) in flight across {safeStages.length} stages</p>
+        </div>
+        <Button asChild variant="ghost" size="sm">
+          <Link href="/tasks">View all</Link>
+        </Button>
+      </div>
+      <div className="flex flex-wrap items-center gap-2 p-6">
+        {safeStages.map((stage, idx) => (
+          <div key={stage.key} className="flex flex-1 items-center gap-2 min-w-[140px]">
+            <Link href="/tasks" className={cn("flex-1 rounded-lg border px-4 py-3", PIPELINE_COLORS[idx % PIPELINE_COLORS.length])}>
+              <p className="text-2xl font-semibold">{stage.count}</p>
+              <p className="mt-1 text-sm font-medium">{stage.label}</p>
+            </Link>
+            {idx < safeStages.length - 1 && <Icon name="chevron-right" className="h-4 w-4 text-slate-300" />}
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
+function ClientPortfolio({ portfolio }: { portfolio: FirmDashboard["portfolio"] }) {
+  const p = portfolio ?? {};
+  const items = [
+    { icon: "clients" as IconName, tone: "info" as ChipTone, value: p.clients_active ?? 0, label: "Active clients" },
+    { icon: "tasks" as IconName, tone: "progress" as ChipTone, value: p.engagements_active ?? 0, label: "Active engagements" },
+    { icon: "user" as IconName, tone: "violet" as ChipTone, value: p.new_clients_this_fy ?? 0, label: "New clients (FY)" },
+    { icon: "clock" as IconName, tone: "neutral" as ChipTone, value: p.clients_inactive ?? 0, label: "Inactive clients" },
+  ];
+  return (
+    <Card className="h-full">
+      <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+        <div>
+          <h3 className="text-base font-semibold text-slate-900">Client Portfolio</h3>
+          <p className="text-sm text-slate-500">{p.clients_total ?? 0} client(s) on the books</p>
+        </div>
+        <Button asChild variant="ghost" size="sm">
+          <Link href="/clients">View all</Link>
+        </Button>
+      </div>
+      <div className="grid grid-cols-2 gap-3 p-6 lg:grid-cols-4">
+        {items.map((item) => (
+          <div key={item.label} className="rounded-lg border border-slate-200 p-4 hover:bg-slate-50 transition-colors">
+            <IconChip tone={item.tone} size="sm"><Icon name={item.icon} className="h-3.5 w-3.5" /></IconChip>
+            <p className="mt-2 text-xl font-semibold text-slate-900">{item.value}</p>
+            <p className="text-xs text-slate-600">{item.label}</p>
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
+function FinancialOverview({ financials }: { financials: FirmDashboard["financials"] }) {
+  if (!financials) {
+    return <Card className="h-full"><div className="border-b border-slate-200 px-6 py-4"><h3 className="text-base font-semibold text-slate-900">Financial Overview</h3></div><EmptyState message="Financial figures are not available." /></Card>;
+  }
+  return (
+    <Card className="h-full">
+      <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+        <div>
+          <h3 className="text-base font-semibold text-slate-900">Financial Overview</h3>
+          <p className="text-sm text-slate-500">{financials.period_label} · outstanding as at today</p>
+        </div>
+        <Button asChild variant="ghost" size="sm">
+          <Link href="/receivables">View report</Link>
+        </Button>
+      </div>
+      <div className="grid grid-cols-2 gap-3 p-6">
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3">
+          <div className="flex items-center gap-2"><Icon name="billing" className="h-4 w-4 text-emerald-600" /><p className="text-xs font-medium text-emerald-800">Fees invoiced</p></div>
+          <p className="mt-1 text-lg font-semibold text-slate-900">{formatMoney(financials.fees_invoiced)}</p>
+          <p className="text-xs text-slate-500">{financials.invoice_count} invoice(s)</p>
+        </div>
+        <div className="rounded-lg border border-sky-200 bg-sky-50 p-3">
+          <div className="flex items-center gap-2"><Icon name="receivables" className="h-4 w-4 text-sky-600" /><p className="text-xs font-medium text-sky-800">Fees collected</p></div>
+          <p className="mt-1 text-lg font-semibold text-slate-900">{formatMoney(financials.fees_collected)}</p>
+        </div>
+        <div className="rounded-lg border border-rose-200 bg-rose-50 p-3">
+          <div className="flex items-center gap-2"><Icon name="clock" className="h-4 w-4 text-rose-600" /><p className="text-xs font-medium text-rose-800">Outstanding</p></div>
+          <p className="mt-1 text-lg font-semibold text-slate-900">{formatMoney(financials.outstanding_total)}</p>
+          {financials.overdue_total > 0 && <p className="text-xs text-rose-700">{formatMoney(financials.overdue_total)} overdue</p>}
+        </div>
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+          <div className="flex items-center gap-2"><Icon name="file-text" className="h-4 w-4 text-amber-600" /><p className="text-xs font-medium text-amber-800">Unbilled work</p></div>
+          <p className="mt-1 text-lg font-semibold text-slate-900">{formatMoney(financials.unbilled_value)}</p>
+          <p className="text-xs text-slate-500">{financials.unbilled_task_count} task(s)</p>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+function ClientsNeedingAttention({ rows }: { rows: FirmDashboard["at_risk_clients"] }) {
+  const top = (rows ?? []).slice(0, 6);
+  return (
+    <Card className="h-full">
+      <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+        <div>
+          <h3 className="text-base font-semibold text-slate-900">Clients Needing Attention</h3>
+          <p className="text-sm text-slate-500">Ranked by risk</p>
+        </div>
+        <Button asChild variant="ghost" size="sm">
+          <Link href="/clients">View all</Link>
+        </Button>
+      </div>
+      {top.length === 0 ? <EmptyState message="No client needs attention." /> : (
+        <div className="divide-y divide-slate-100">
+          {top.map((row) => {
+            const issue = row.overdue_tasks > 0 ? `${row.overdue_tasks} task(s) overdue` : row.unverified_deadlines > 0 ? `${row.unverified_deadlines} unconfirmed date(s)` : row.open_document_requests > 0 ? `${row.open_document_requests} document request(s)` : `${row.open_tasks} open task(s)`;
+            return (
+              <Link key={row.client_id} href={`/clients/${row.client_id}`} className="flex items-center justify-between px-6 py-3 hover:bg-slate-50">
+                <div>
+                  <p className="text-sm font-medium text-slate-900">{row.client_name}</p>
+                  <p className="text-xs text-slate-500">{issue} · {row.client_code}</p>
+                </div>
+                <Badge tone={riskTone(row.risk_classification)}>{humanise(row.risk_classification)}</Badge>
+              </Link>
+            );
+          })}
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function TeamWorkload({ rows }: { rows: FirmDashboard["workload"] }) {
+  const top = [...(rows ?? [])].sort((a,b) => b.utilisation_percent - a.utilisation_percent).slice(0,6);
+  return (
+    <Card className="h-full">
+      <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+        <div>
+          <h3 className="text-base font-semibold text-slate-900">Team Workload</h3>
+          <p className="text-sm text-slate-500">Utilisation overview</p>
+        </div>
+        <Button asChild variant="ghost" size="sm">
+          <Link href="/team">View team</Link>
+        </Button>
+      </div>
+      {top.length === 0 ? <EmptyState message="No staff to show." /> : (
+        <div className="divide-y divide-slate-100">
+          {top.map((row) => {
+            const tone = utilisationTone(row.utilisation_percent);
+            return (
+              <div key={row.user_id} className="flex items-center gap-3 px-6 py-3">
+                <Avatar name={row.full_name} size="sm" />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-slate-900">{row.full_name}</p>
+                  <p className="text-xs text-slate-500">{row.open_tasks} open{row.overdue_tasks>0 && ` · ${row.overdue_tasks} overdue`}</p>
+                  <div className="mt-1 h-1.5 w-full rounded-full bg-slate-100">
+                    <div className={cn("h-1.5 rounded-full", tone === "danger" ? "bg-rose-500" : tone === "warning" ? "bg-amber-500" : tone === "success" ? "bg-emerald-500" : "bg-slate-400")} style={{ width: `${Math.min(100, row.utilisation_percent)}%` }} />
+                  </div>
+                </div>
+                <span className="text-sm font-medium text-slate-700">{formatPercent(row.utilisation_percent)}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function RecentActivity({ rows }: { rows: FirmDashboard["recent_activity"] }) {
+  const top = (rows ?? []).slice(0,6);
+  return (
+    <Card className="h-full">
+      <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+        <div>
+          <h3 className="text-base font-semibold text-slate-900">Recent Activity</h3>
+          <p className="text-sm text-slate-500">Latest updates</p>
+        </div>
+        <Button asChild variant="ghost" size="sm">
+          <Link href="/reports">View all</Link>
+        </Button>
+      </div>
+      {top.length === 0 ? <EmptyState message="Nothing has happened yet." /> : (
+        <div className="divide-y divide-slate-100">
+          {top.map((row) => (
+            <div key={row.id} className="flex items-start gap-3 px-6 py-3">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-600">
+                <Icon name={activityIcon(row.entity_type)} className="h-4 w-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm text-slate-900">{row.summary ?? `${humanise(row.action)} on ${humanise(row.entity_type)}`}</p>
+                <p className="truncate text-xs text-slate-500">{row.actor_label ?? "System"}{row.entity_label ? ` · ${row.entity_label}` : ""}</p>
+              </div>
+              <span className="text-xs text-slate-400">{formatRelative(row.created_at)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function activityIcon(entityType: string): IconName {
+  switch (entityType) {
+    case "task": return "tasks";
+    case "client": return "clients";
+    case "document":
+    case "document_request": return "file-text";
+    case "invoice":
+    case "payment": return "billing";
+    case "service": return "check-circle";
+    case "user": return "user";
+    default: return "circle-dot";
+  }
+}

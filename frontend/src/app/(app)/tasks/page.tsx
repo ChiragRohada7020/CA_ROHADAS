@@ -52,15 +52,15 @@ const TABS: Array<{ key: string; label: string; countKey: keyof TaskSummary }> =
 
 /** Icons and dot colours for each summary card. */
 const SUMMARY_META: Record<string, { icon: IconName; dot: string }> = {
-  all: { icon: "tasks", dot: "bg-[#1677FF]" },
-  mine: { icon: "user", dot: "bg-[#0F1B3D]" },
-  review: { icon: "shield-check", dot: "bg-[#F59E0B]" },
-  approval: { icon: "shield-check", dot: "bg-[#8B5CF6]" },
-  "my-blocked": { icon: "alert-triangle", dot: "bg-[#DC2626]" },
-  overdue: { icon: "alert-triangle", dot: "bg-[#DC2626]" },
-  week: { icon: "calendar", dot: "bg-[#F59E0B]" },
-  completed: { icon: "check-circle", dot: "bg-[#15803D]" },
-  waiting: { icon: "clock", dot: "bg-[#8B5CF6]" },
+  all: { icon: "tasks", dot: "bg-[#EAF3FF] text-[#3478D4]" },
+  mine: { icon: "user", dot: "bg-[#FFF1E8] text-[#D97736]" },
+  review: { icon: "shield-check", dot: "bg-[#F1EAFF] text-[#7543E9]" },
+  approval: { icon: "shield-check", dot: "bg-[#E8F8EF] text-[#22965A]" },
+  "my-blocked": { icon: "alert-triangle", dot: "bg-[#FFF0F3] text-[#D84C72]" },
+  overdue: { icon: "alert-triangle", dot: "bg-[#FFF0F3] text-[#D84C72]" },
+  week: { icon: "calendar", dot: "bg-[#FEF3C7] text-[#F59E0B]" },
+  completed: { icon: "check-circle", dot: "bg-[#DCFCE7] text-[#16A34A]" },
+  waiting: { icon: "clock", dot: "bg-[#F3EFFF] text-[#6D3AE8]" },
 };
 
 /** Today plus seven days, as `YYYY-MM-DD`, in the browser's own timezone. */
@@ -545,13 +545,23 @@ export default function TasksPage() {
   const hasFilters = Object.values(filters).some(Boolean);
 
   return (
-    <div className="min-h-full bg-[#f7f6f3] space-y-4">
-      <PageHeader
-        title="Tasks"
-        subtitle="Track and manage all compliance and client work."
-          action={
+    <div className="min-h-full space-y-5 bg-[#F6F7FC] p-3 sm:p-4 lg:p-6">
+      <div className="overflow-hidden rounded-2xl border border-[#E7E2F5] bg-white shadow-[0_8px_30px_rgba(43,32,91,.06)]">
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#EEEAF8] bg-gradient-to-r from-[#FBF9FF] via-white to-[#F5F0FF] px-4 py-5 sm:px-6">
+          <div>
+            <div>
+              <div className="mb-1 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[.16em] text-[#8B78C5]">
+                <span className="size-1.5 rounded-full bg-[#7543E9]" />
+                Work management
+              </div>
+              <PageHeader
+                title="Tasks & Compliance"
+                subtitle="Plan, assign and monitor your firm's client work."
+              />
+            </div>
+          </div>
           <div className="flex flex-wrap items-center gap-2">
-            <div className="flex rounded-md border border-[#E2E8F0] bg-white p-0.5">
+            <div className="flex rounded-xl border border-[#E9E5F3] bg-[#F5F3FA] p-1">
               {(
                 [
                   ["list", "List"],
@@ -564,10 +574,10 @@ export default function TasksPage() {
                   type="button"
                   onClick={() => setView(key)}
                   className={cn(
-                    "cursor-pointer rounded px-2.5 py-1 text-xs font-medium transition-colors",
+                    "cursor-pointer rounded-lg px-3 py-2 text-xs font-semibold transition-all",
                     view === key
-                      ? "bg-[#1677FF] text-white"
-                      : "text-[#64748B] hover:bg-[#f7f6f3]",
+                      ? "bg-white text-[#6336D6] shadow-sm ring-1 ring-[#E8E0FA]"
+                      : "text-[#747B95] hover:bg-white/70 hover:text-[#6032D4]",
                   )}
                   aria-pressed={view === key}
                 >
@@ -575,23 +585,22 @@ export default function TasksPage() {
                 </button>
               ))}
             </div>
-            <Link href="/tasks/generate" className="btn btn-ghost px-5 py-2.5">
+            <Link href="/tasks/generate" className="rounded-xl border border-[#E5DDF8] bg-white px-3 py-2 text-xs font-semibold text-[#6D3AE8] shadow-sm transition hover:bg-[#F7F3FF]">
               Generate work
             </Link>
             <button
               type="button"
-              className="btn btn-primary px-5 py-2.5"
+              className="inline-flex items-center rounded-xl bg-gradient-to-r from-[#7543E9] to-[#5D32D2] px-4 py-2.5 text-xs font-semibold text-white shadow-[0_5px_14px_rgba(109,58,232,.22)] transition hover:-translate-y-0.5 hover:shadow-lg"
               onClick={() => setCreating(true)}
             >
-              <Icon name="plus" className="h-4 w-4" />
+              <Icon name="plus" className="h-3 w-3 mr-1" />
               New task
             </button>
           </div>
-        }
-      />
+        </div>
 
-      <Card>
-        <div className="grid grid-cols-2 gap-2 p-3 sm:grid-cols-3 md:grid-cols-6">
+        {/* Summary Cards */}
+        <div className="grid grid-cols-2 gap-3 px-4 py-4 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-9 sm:px-6">
           {TABS.map((entry) => {
             const isActive = entry.key === tab;
             const meta = SUMMARY_META[entry.key];
@@ -601,25 +610,18 @@ export default function TasksPage() {
                 type="button"
                 onClick={() => changeTab(entry.key)}
                 className={cn(
-                  "flex items-center gap-2 rounded-lg border px-3 py-2 text-left transition-colors",
+                  "group flex min-h-[108px] flex-col items-start justify-between gap-3 rounded-2xl border p-3.5 text-left transition-all duration-200",
                   isActive
-                    ? "border-[#1677FF] bg-[#F0F9FF]"
-                    : "border-[#E2E8F0] bg-white hover:border-[#1677FF]",
+                    ? "border-[#BDA8F4] bg-gradient-to-br from-[#F5F0FF] to-white shadow-[0_5px_16px_rgba(109,58,232,.10)] ring-1 ring-[#E9E0FF]"
+                    : "border-[#ECEAF2] bg-white hover:-translate-y-0.5 hover:border-[#D3C4F7] hover:shadow-[0_8px_18px_rgba(55,43,100,.07)]",
                 )}
               >
-                {meta && (
-                  <span
-                    className={cn(
-                      "flex size-7 items-center justify-center rounded-full",
-                      meta.dot,
-                    )}
-                  >
-                    <Icon name={meta.icon} className="h-4 w-4 text-white" />
-                  </span>
-                )}
+                <div className={cn("flex size-9 shrink-0 items-center justify-center rounded-xl", meta.dot)}>
+                  <Icon name={meta.icon} className="h-4 w-4" />
+                </div>
                 <div className="flex flex-col">
-                  <span className="text-xs text-[#64748B]">{entry.label}</span>
-                  <span className="tabular-nums text-base font-semibold text-[#101B3D]">
+                  <span className="text-xs font-medium text-[#171A32]">{entry.label}</span>
+                  <span className="tabular-nums text-xl font-bold tracking-tight text-[#171A32]">
                     {summary.data?.[entry.countKey] ?? 0}
                   </span>
                 </div>
@@ -628,99 +630,116 @@ export default function TasksPage() {
           })}
         </div>
 
-        <div className="grid grid-cols-2 gap-2 border-t border-[#E2E8F0] p-3 md:grid-cols-3 xl:grid-cols-5">
-          <label className="col-span-2 block md:col-span-1">
+        {/* Filters */}
+        <div className="grid grid-cols-1 gap-3 border-t border-[#F0EDF6] bg-[#FCFBFE] px-4 py-4 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-6 sm:px-6">
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-[#737A96]">Search</label>
             <input
-              className="input py-1.5"
+              className="input min-h-10 rounded-xl border border-[#E7E4EF] bg-white px-3 py-2 text-sm shadow-[0_1px_2px_rgba(30,25,70,.025)] outline-none transition placeholder:text-[#A4A8B8] focus:border-[#A78BFA] focus:ring-4 focus:ring-[#7543E9]/10"
               type="search"
               value={filters.search ?? ""}
               onChange={(event) => updateFilter("search", event.target.value)}
               placeholder="Search tasks by title, code…"
               aria-label="Search tasks"
             />
-          </label>
-          <select
-            className="input py-1.5"
-            value={filters.status ?? ""}
-            onChange={(event) => updateFilter("status", event.target.value)}
-            aria-label="Status"
-          >
-            <option value="">Status</option>
-            <option value="not_started">Not Started</option>
-            <option value="assigned">Assigned</option>
-            <option value="in_progress">In Progress</option>
-            <option value="waiting_for_client">Waiting for Client</option>
-            <option value="ready_for_review">In Review</option>
-            <option value="changes_requested">Changes Requested</option>
-            <option value="ready_for_approval">Awaiting Approval</option>
-            <option value="approved">Approved</option>
-            <option value="ready_to_file">Ready to File</option>
-            <option value="filed">Filed</option>
-            <option value="delivered">Delivered</option>
-            <option value="completed">Completed</option>
-            <option value="cancelled">Cancelled</option>
-          </select>
-          <select
-            className="input py-1.5"
-            value={filters.service_id ?? ""}
-            onChange={(event) => updateFilter("service_id", event.target.value)}
-            aria-label="Service"
-          >
-            <option value="">Service</option>
-            {(services.data?.items ?? []).map((row) => (
-              <option key={row.id} value={row.id}>
-                {row.code}
-              </option>
-            ))}
-          </select>
-          <select
-            className="input py-1.5"
-            value={filters.preparer_id ?? ""}
-            onChange={(event) => updateFilter("preparer_id", event.target.value)}
-            aria-label="Assignee"
-          >
-            <option value="">Assignee</option>
-            {directory.active.map((row) => (
-              <option key={row.id} value={row.id}>
-                {row.full_name}
-              </option>
-            ))}
-          </select>
-          <select
-            className="input py-1.5"
-            value={filters.client_id ?? ""}
-            onChange={(event) => updateFilter("client_id", event.target.value)}
-            aria-label="Client"
-          >
-            <option value="">Client</option>
-            {(clients.data?.items ?? []).map((row) => (
-              <option key={row.id} value={row.id}>
-                {row.legal_name}
-              </option>
-            ))}
-          </select>
-          <select
-            className="input py-1.5"
-            value={filters.priority ?? ""}
-            onChange={(event) => updateFilter("priority", event.target.value)}
-            aria-label="Priority"
-          >
-            <option value="">Priority</option>
-            <option value="urgent">Urgent</option>
-            <option value="high">High</option>
-            <option value="normal">Normal</option>
-            <option value="low">Low</option>
-          </select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-[#737A96]">Status</label>
+            <select
+              className="input min-h-10 rounded-xl border border-[#E7E4EF] bg-white px-3 py-2 text-sm shadow-[0_1px_2px_rgba(30,25,70,.025)] outline-none transition placeholder:text-[#A4A8B8] focus:border-[#A78BFA] focus:ring-4 focus:ring-[#7543E9]/10"
+              value={filters.status ?? ""}
+              onChange={(event) => updateFilter("status", event.target.value)}
+              aria-label="Status"
+            >
+              <option value="">Status</option>
+              <option value="not_started">Not Started</option>
+              <option value="assigned">Assigned</option>
+              <option value="in_progress">In Progress</option>
+              <option value="waiting_for_client">Waiting for Client</option>
+              <option value="ready_for_review">In Review</option>
+              <option value="changes_requested">Changes Requested</option>
+              <option value="ready_for_approval">Awaiting Approval</option>
+              <option value="approved">Approved</option>
+              <option value="ready_to_file">Ready to File</option>
+              <option value="filed">Filed</option>
+              <option value="delivered">Delivered</option>
+              <option value="completed">Completed</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-[#737A96]">Service</label>
+            <select
+              className="input min-h-10 rounded-xl border border-[#E7E4EF] bg-white px-3 py-2 text-sm shadow-[0_1px_2px_rgba(30,25,70,.025)] outline-none transition placeholder:text-[#A4A8B8] focus:border-[#A78BFA] focus:ring-4 focus:ring-[#7543E9]/10"
+              value={filters.service_id ?? ""}
+              onChange={(event) => updateFilter("service_id", event.target.value)}
+              aria-label="Service"
+            >
+              <option value="">Service</option>
+              {(services.data?.items ?? []).map((row) => (
+                <option key={row.id} value={row.id}>
+                  {row.code}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-[#737A96]">Assignee</label>
+            <select
+              className="input min-h-10 rounded-xl border border-[#E7E4EF] bg-white px-3 py-2 text-sm shadow-[0_1px_2px_rgba(30,25,70,.025)] outline-none transition placeholder:text-[#A4A8B8] focus:border-[#A78BFA] focus:ring-4 focus:ring-[#7543E9]/10"
+              value={filters.preparer_id ?? ""}
+              onChange={(event) => updateFilter("preparer_id", event.target.value)}
+              aria-label="Assignee"
+            >
+              <option value="">Assignee</option>
+              {directory.active.map((row) => (
+                <option key={row.id} value={row.id}>
+                  {row.full_name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-[#737A96]">Client</label>
+            <select
+              className="input min-h-10 rounded-xl border border-[#E7E4EF] bg-white px-3 py-2 text-sm shadow-[0_1px_2px_rgba(30,25,70,.025)] outline-none transition placeholder:text-[#A4A8B8] focus:border-[#A78BFA] focus:ring-4 focus:ring-[#7543E9]/10"
+              value={filters.client_id ?? ""}
+              onChange={(event) => updateFilter("client_id", event.target.value)}
+              aria-label="Client"
+            >
+              <option value="">Client</option>
+              {(clients.data?.items ?? []).map((row) => (
+                <option key={row.id} value={row.id}>
+                  {row.legal_name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-[#737A96]">Priority</label>
+            <select
+              className="input min-h-10 rounded-xl border border-[#E7E4EF] bg-white px-3 py-2 text-sm shadow-[0_1px_2px_rgba(30,25,70,.025)] outline-none transition placeholder:text-[#A4A8B8] focus:border-[#A78BFA] focus:ring-4 focus:ring-[#7543E9]/10"
+              value={filters.priority ?? ""}
+              onChange={(event) => updateFilter("priority", event.target.value)}
+              aria-label="Priority"
+            >
+              <option value="">Priority</option>
+              <option value="urgent">Urgent</option>
+              <option value="high">High</option>
+              <option value="normal">Normal</option>
+              <option value="low">Low</option>
+            </select>
+          </div>
         </div>
 
         {hasFilters && (
-          <div className="flex items-center justify-between gap-3 border-b border-[#E2E8F0] bg-[#f7f6f3] px-3 py-2">
+          <div className="flex items-center justify-between gap-3 border-t border-[#E2E8F0] bg-[#F7F8FC] px-3 py-2 mt-3">
             <p className="text-xs text-[#64748B]">
               Showing {tasks.data?.meta.total ?? 0} of {summary.data?.all_tasks ?? 0} open tasks
             </p>
             <button
               type="button"
-              className="text-xs font-medium text-[#1677FF] hover:underline"
+              className="text-xs font-medium text-[#7543E9] hover:underline"
               onClick={() => {
                 paging.clearFilters();
                 setSelected(new Set());
@@ -752,9 +771,9 @@ export default function TasksPage() {
             )}
             {rows.length > 0 && (
               <>
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto rounded-2xl border border-[#ECEAF2] bg-white">
                   <table className="w-full min-w-[68rem]">
-                    <thead className="bg-[#f7f6f3]">
+                    <thead className="bg-[#F8F6FC]">
                       <tr>
                         <th className="th w-8">
                           <input
@@ -777,13 +796,13 @@ export default function TasksPage() {
                         <th className="th w-10" />
                       </tr>
                     </thead>
-                       <tbody className="divide-y divide-[#E2E8F0]">
+                    <tbody className="divide-y divide-[#F0EEF5]">
                       {rows.map((task, index) => (
                         <tr
                           key={task.id}
                           className={cn(
-                            "cursor-pointer hover:bg-[#f7f6f3]",
-                            selected.has(task.id) && "bg-[#F0F9FF]",
+                            "cursor-pointer transition-colors hover:bg-[#FAF8FF]",
+                            selected.has(task.id) && "bg-[#F1EAFF]",
                           )}
                           onClick={() => setOpenTaskId(task.id)}
                         >
@@ -799,7 +818,7 @@ export default function TasksPage() {
                             {offset + index + 1}
                           </td>
                           <td className="td">
-                            <span className="font-medium text-[#101B3D]">{task.title}</span>
+                            <span className="font-medium text-[#171A3D]">{task.title}</span>
                             <span className="ml-2 font-mono text-[10px] text-[#94A3B8]">
                               {task.task_code}
                             </span>
@@ -807,7 +826,7 @@ export default function TasksPage() {
                           <td className="td text-xs text-[#64748B]">{task.client_name ?? "—"}</td>
                           <td className="td">
                             {task.service_code ? (
-                              <span className="rounded bg-[#f7f6f3] px-1.5 py-0.5 font-mono text-[10px] text-[#64748B]">
+                              <span className="rounded bg-[#F7F3FF] px-1.5 py-0.5 font-mono text-[10px] text-[#737A96]">
                                 {task.service_code}
                               </span>
                             ) : (
@@ -875,12 +894,12 @@ export default function TasksPage() {
                     (task) => task.status === column.status,
                   );
                   return (
-                       <div key={column.status} className="rounded-lg bg-[#f7f6f3] p-2">
+                    <div key={column.status} className="rounded-2xl border border-[#ECEAF2] bg-[#F8F7FB] p-3">
                       <div className="mb-2 flex items-center justify-between px-1">
-                        <span className="text-xs font-semibold text-[#101B3D]">
+                        <span className="text-xs font-semibold text-[#171A32]">
                           {column.label}
                         </span>
-                        <span className="tabular rounded bg-white px-1.5 py-0.5 text-[10px] text-[#64748B]">
+                        <span className="tabular rounded bg-white px-1.5 py-0.5 text-[10px] font-bold text-[#64748B] border border-[#E2E8F0]">
                           {cards.length}
                         </span>
                       </div>
@@ -890,10 +909,10 @@ export default function TasksPage() {
                             <button
                               type="button"
                               onClick={() => setOpenTaskId(task.id)}
-                              className="w-full rounded-md border border-[#E2E8F0] bg-white p-2 text-left hover:border-[#1677FF] hover:shadow-sm"
+                              className="w-full rounded-xl border border-[#ECEAF2] bg-white p-3.5 text-left shadow-[0_2px_8px_rgba(40,35,90,.025)] transition-all hover:-translate-y-0.5 hover:border-[#CBBBF4] hover:shadow-[0_8px_18px_rgba(65,48,130,.08)]"
                             >
-                              <p className="text-xs font-medium text-[#101B3D]">{task.title}</p>
-                              <p className="mt-0.5 truncate text-[10px] text-[#64748B]">
+                              <p className="text-sm font-medium text-[#171A32]">{task.title}</p>
+                              <p className="mt-0.5 truncate text-[10px] text-[#737A96]">
                                 {task.client_name ?? "—"}
                               </p>
                               <div className="mt-1.5 flex items-center justify-between">
@@ -940,7 +959,7 @@ export default function TasksPage() {
             )}
           </div>
         )}
-      </Card>
+      </div>
 
       <TaskDetailsPopup taskId={openTaskId} onClose={() => setOpenTaskId(null)} />
 
@@ -994,12 +1013,12 @@ function CalendarView({
 
   return (
     <div>
-        <p className="mb-2 text-sm font-semibold text-[#101B3D]">
+      <p className="mb-2 text-sm font-semibold text-[#171A32]">
         {MONTHS[month]} {year}
       </p>
       <div className="grid grid-cols-7 gap-1">
         {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => (
-          <div key={day} className="px-1 py-1 text-center text-[10px] font-medium text-slate-500">
+          <div key={day} className="px-1 py-1 text-center text-[10px] font-medium text-[#737A96]">
             {day}
           </div>
         ))}
@@ -1015,13 +1034,13 @@ function CalendarView({
               key={day}
               className={cn(
                 "min-h-[4.5rem] rounded border p-1",
-                isToday ? "border-[#1677FF] bg-[#F0F9FF]" : "border-[#E2E8F0] bg-white",
+                isToday ? "border-[#7543E9] bg-[#F1EAFF]" : "border-[#E2E8F0] bg-white",
               )}
             >
               <span
                 className={cn(
                   "tabular text-[10px]",
-                  isToday ? "font-semibold text-[#1677FF]" : "text-[#94A3B8]",
+                  isToday ? "font-semibold text-[#7543E9]" : "text-[#94A3B8]",
                 )}
               >
                 {day}
@@ -1037,7 +1056,7 @@ function CalendarView({
                         "w-full truncate rounded px-1 py-0.5 text-left text-[9px]",
                         task.is_overdue
                           ? "bg-[#FEE2E2] text-[#991A1A]"
-                          : "bg-[#F0F9FF] text-[#0369A1]",
+                          : "bg-[#F1EAFF] text-[#7543E9]",
                       )}
                     >
                       {task.service_code ?? task.title}
@@ -1055,5 +1074,3 @@ function CalendarView({
     </div>
   );
 }
-
-

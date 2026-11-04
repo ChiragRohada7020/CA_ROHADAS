@@ -1,65 +1,71 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 
 import { Icon, type IconName } from "@/components/Icon";
-import {
-  Avatar,
-  DonutChart,
-  IconChip,
-  MiniBar,
-  TrendPill,
-  type ChipTone,
-  type DonutSegment,
-} from "@/components/charts";
-import { Badge, Button, Card, EmptyState, ErrorState, LoadingState, PageHeader, Skeleton } from "@/components/ui";
+import { Avatar, DonutChart, type DonutSegment } from "@/components/charts";
+import { Badge, EmptyState, ErrorState, Skeleton } from "@/components/ui";
 import { ApiError, api } from "@/lib/api";
-import { cn, formatMoney, formatPercent, formatRelative, humanise } from "@/lib/format";
-import { riskTone, utilisationTone } from "@/lib/status";
+import { formatMoney, formatPercent, formatRelative, humanise } from "@/lib/format";
+import { riskTone } from "@/lib/status";
 import { useSession } from "@/lib/session";
 import type { FirmDashboard } from "@/lib/types";
 
-type ComplianceCategoryRow = FirmDashboard["compliance"][number];
+type ComplianceRow = FirmDashboard["compliance"][number];
 
-/**
- * The partner's home screen.
- *
- * Every figure comes from `GET /reports/dashboard`, which computes all of it at read
- * time. Nothing here is a stored counter, and nothing is invented to fill a space:
- *
- * * The trend arrows appear only where the API could compute an honest comparison. Two
- *   of the five cards have none, so they simply show no arrow — which is why `TrendPill`
- *   is only rendered when the delta is present.
- * * The compliance ring's segments always sum to the figure in its centre, because the
- *   API derives the fourth bucket as the remainder rather than counting it separately.
- */
+const card =
+  "rounded-2xl border border-[#E3E5F4] bg-white shadow-[0_3px_12px_rgba(40,42,90,.045)]";
+const title = "text-[15px] font-bold tracking-[-.025em] text-[#171A32]";
+const sub = "text-[11px] text-[#747B98]";
 
-const CATEGORY_COLOURS: Record<string, string> = {
-  overdue: "stroke-rose-500",
-  due_soon: "stroke-amber-400",
-  in_progress: "stroke-sky-500",
-  completed: "stroke-emerald-500",
-};
+function SectionTitle({
+  icon,
+  name,
+  description,
+  href,
+  action = "View all",
+}: {
+  icon: IconName;
+  name: string;
+  description?: string;
+  href?: string;
+  action?: string;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3 border-b border-[#EEF0F7] p-4">
+      <div className="flex min-w-0 items-center gap-3">
+        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[#F1ECFF] text-[#6D3AE8]">
+          <Icon name={icon} />
+        </span>
+        <div className="min-w-0">
+          <h2 className={title}>{name}</h2>
+          {description && <p className={`mt-0.5 truncate ${sub}`}>{description}</p>}
+        </div>
+      </div>
+      {href && (
+        <Link
+          href={href}
+          className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-[#E3E2F2] px-2.5 py-1.5 text-[10px] font-semibold text-[#303653] transition hover:border-[#C9B9FA] hover:bg-[#F8F5FF]"
+        >
+          {action} <Icon name="chevron-right" />
+        </Link>
+      )}
+    </div>
+  );
+}
 
-const CATEGORY_CHIP: Record<string, ChipTone> = {
-  overdue: "danger",
-  due_soon: "warning",
-  in_progress: "info",
-  completed: "success",
-};
+function dateLabel() {
+  return new Intl.DateTimeFormat("en-IN", {
+    timeZone: "Asia/Kolkata",
+    weekday: "long",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(new Date());
+}
 
-const PIPELINE_COLOURS = [
-  "bg-sky-50 text-sky-800 ring-sky-100",
-  "bg-indigo-50 text-indigo-800 ring-indigo-100",
-  "bg-violet-50 text-violet-800 ring-violet-100",
-  "bg-amber-50 text-amber-800 ring-amber-100",
-  "bg-orange-50 text-orange-800 ring-orange-100",
-  "bg-emerald-50 text-emerald-800 ring-emerald-100",
-];
-
-function greeting(data: FirmDashboard): string {
+function greeting() {
   const hour = Number(
     new Intl.DateTimeFormat("en-GB", {
       timeZone: "Asia/Kolkata",
@@ -67,9 +73,295 @@ function greeting(data: FirmDashboard): string {
       hour12: false,
     }).format(new Date()),
   );
-  if (hour < 12) return "Good morning";
-  if (hour < 17) return "Good afternoon";
-  return "Good evening";
+  return hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+}
+
+function StatCard({
+  icon,
+  label,
+  value,
+  hint,
+  href,
+  colour,
+}: {
+  icon: IconName;
+  label: string;
+  value: number;
+  hint?: string;
+  href: string;
+  colour: "rose" | "orange" | "blue" | "violet" | "green";
+}) {
+  const styles = {
+    rose: { icon: "bg-rose-100 text-rose-600", line: "#F28BBF", tint: "from-rose-50/80" },
+    orange: { icon: "bg-orange-100 text-orange-600", line: "#FFB66D", tint: "from-orange-50/80" },
+    blue: { icon: "bg-blue-100 text-blue-600", line: "#70B5FF", tint: "from-blue-50/80" },
+    violet: { icon: "bg-violet-100 text-violet-600", line: "#B69AFF", tint: "from-violet-50/80" },
+    green: { icon: "bg-emerald-100 text-emerald-600", line: "#67D6C8", tint: "from-emerald-50/80" },
+  }[colour];
+
+  return (
+    <Link
+      href={href}
+      className={`relative min-h-[104px] overflow-hidden rounded-2xl border border-[#E6E6F2] bg-gradient-to-br ${styles.tint} to-white p-4 shadow-[0_3px_10px_rgba(40,42,90,.035)] transition hover:-translate-y-0.5 hover:shadow-md`}
+    >
+      <div className="relative z-10 flex items-start gap-3">
+        <span className={`grid h-12 w-12 shrink-0 place-items-center rounded-xl ${styles.icon}`}>
+          <Icon name={icon} />
+        </span>
+        <div className="min-w-0 pt-1">
+          <p className="text-xs font-semibold text-[#343A58]">{label}</p>
+          <p className="mt-1 text-[27px] font-bold leading-none tracking-[-.04em] text-[#11162F]">
+            {value.toLocaleString("en-IN")}
+          </p>
+          {hint && <p className="mt-1 text-[9px] text-[#737A96]">{hint}</p>}
+        </div>
+      </div>
+      <svg className="absolute -bottom-1 right-2 h-9 w-28 opacity-80" viewBox="0 0 112 36" fill="none" aria-hidden="true">
+        <path d="M1 29 C15 30 17 17 30 20 S48 27 61 17 S78 22 91 11 S103 12 111 4" stroke={styles.line} strokeWidth="2" strokeLinecap="round" />
+      </svg>
+    </Link>
+  );
+}
+
+function MiniBarChart({ stages }: { stages: FirmDashboard["pipeline"] }) {
+  const values = (stages ?? []).slice(0, 7);
+  const max = Math.max(1, ...values.map((v) => v.count));
+  return (
+    <div className="flex h-[155px] items-end justify-around gap-3 p-4">
+      {values.map((stage, index) => (
+        <Link key={stage.key} href="/tasks" className="group flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-2">
+          <span className="text-[10px] font-semibold text-[#59617D]">{stage.count}</span>
+          <div className="flex h-[105px] w-full items-end justify-center">
+            <div
+              className={`w-full max-w-10 rounded-t-md transition-all group-hover:brightness-95 ${
+                index === 1 ? "bg-gradient-to-t from-[#6D3AE8] to-[#9D7CF6]" : "bg-[#DCD3FF]"
+              }`}
+              style={{ height: `${Math.max(stage.count > 0 ? 12 : 3, (stage.count / max) * 100)}%` }}
+            />
+          </div>
+          <span className="max-w-full truncate text-[9px] text-[#737A96]">{stage.label}</span>
+        </Link>
+      ))}
+    </div>
+  );
+}
+
+function TaskStatusBars({ rows }: { rows: ComplianceRow[] }) {
+  const totals = rows.reduce(
+    (acc, row) => {
+      acc.overdue += row.overdue;
+      acc.dueSoon += row.due_soon;
+      acc.inProgress += row.in_progress;
+      acc.completed += row.completed;
+      return acc;
+    },
+    { overdue: 0, dueSoon: 0, inProgress: 0, completed: 0 },
+  );
+  const all = totals.overdue + totals.dueSoon + totals.inProgress + totals.completed;
+  const entries = [
+    { label: "In Progress", value: totals.inProgress, colour: "bg-blue-500", dot: "bg-blue-500" },
+    { label: "Due Soon", value: totals.dueSoon, colour: "bg-amber-400", dot: "bg-amber-400" },
+    { label: "Overdue", value: totals.overdue, colour: "bg-rose-500", dot: "bg-rose-500" },
+    { label: "Completed", value: totals.completed, colour: "bg-emerald-500", dot: "bg-emerald-500" },
+  ];
+  return (
+    <div className="space-y-4 p-4">
+      {entries.map((entry) => {
+        const pct = all ? (entry.value / all) * 100 : 0;
+        return (
+          <div key={entry.label} className="grid grid-cols-[minmax(90px,1fr)_28px_minmax(70px,1fr)_32px] items-center gap-2">
+            <span className="flex items-center gap-2 text-[11px] font-medium text-[#303653]">
+              <i className={`h-2.5 w-2.5 rounded-full ${entry.dot}`} />
+              {entry.label}
+            </span>
+            <span className="text-right text-[11px] font-bold text-[#252B47]">{entry.value}</span>
+            <div className="h-2 overflow-hidden rounded-full bg-[#E9EAF3]">
+              <div className={`h-full rounded-full ${entry.colour}`} style={{ width: `${pct}%` }} />
+            </div>
+            <span className="text-right text-[10px] text-[#737A96]">{Math.round(pct)}%</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function CompliancePanel({ rows }: { rows: ComplianceRow[] }) {
+  const first = rows?.[0];
+  if (!rows?.length || !first) {
+    return <section className={`${card} p-4`}><h2 className={title}>Compliance Summary</h2><EmptyState message="No work has been generated yet." /></section>;
+  }
+
+  const segments: DonutSegment[] = [
+    { key: "overdue", label: "Overdue", value: first.overdue, className: "stroke-rose-500" },
+    { key: "due_soon", label: "Due Soon", value: first.due_soon, className: "stroke-amber-400" },
+    { key: "in_progress", label: "In Progress", value: first.in_progress, className: "stroke-sky-500" },
+    { key: "completed", label: "Completed", value: first.completed, className: "stroke-emerald-500" },
+  ];
+  const completion = first.total ? (first.completed / first.total) * 100 : 0;
+
+  return (
+    <section className={`${card} p-4`}>
+      <SectionTitle icon="documents" name="Compliance Summary" description="Work by service category, counted at read time." href="/tasks" action="View tasks" />
+      <div className="flex flex-wrap gap-2 mb-4">
+        {rows.map((row, index) => (
+          <span key={row.category} className={`rounded-full px-3 py-1 text-[11px] font-semibold ${index === 0 ? "bg-gradient-to-r from-[#7948EC] to-[#6031DA] text-white shadow-sm" : "bg-[#F3F3FA] text-[#343A58]"}`}>
+            {row.label} <b className="ml-1">{row.total}</b>
+          </span>
+        ))}
+      </div>
+      <div className="flex justify-center min-w-[200px]">
+        <DonutChart segments={segments} total={first.total} totalLabel={`Total ${first.label} tasks`} size={160} />
+      </div>
+    </section>
+  );
+}
+
+function DeadlinesPanel({ rows }: { rows: FirmDashboard["upcoming_deadlines"] }) {
+  const soon = (rows ?? []).slice(0, 5);
+  return (
+    <section className={`${card} p-4`}>
+      <SectionTitle icon="calendar" name="Upcoming Deadlines" description="Confirmed statutory dates, plus tasks due soon." href="/calendar" action="View calendar" />
+      <div className="mt-2">
+        {soon.length === 0 ? <EmptyState message="Nothing due in the next two weeks." /> : soon.map((row) => {
+          const late = row.days_remaining < 0;
+          return (
+            <Link key={row.task_id ?? `${row.client_id}-${row.statutory_due_date}`} href={row.task_id ? `/tasks/${row.task_id}` : "/calendar"} className="flex items-center gap-3 border-b border-[#EEF0F6] py-2.5 last:border-0">
+              <span className="grid h-10 w-11 shrink-0 place-content-center rounded-lg bg-[#F0ECFF] text-center text-[#5130C4]">
+                <b className="text-sm leading-none">{Number(row.statutory_due_date.slice(8, 10))}</b>
+                <small className="mt-1 text-[8px] font-bold uppercase">{new Intl.DateTimeFormat("en-IN", { month: "short" }).format(new Date(`${row.statutory_due_date.slice(0, 10)}T00:00:00Z`))}</small>
+              </span>
+              <span className="min-w-0 flex-1">
+                <b className="block truncate text-[11px] text-[#252B47]">{row.title}</b>
+                <small className="mt-0.5 block truncate text-[10px] text-[#7C829B]">{row.client_name}{!row.verified && " · date unconfirmed"}</small>
+              </span>
+              <Badge tone={late ? "danger" : row.days_remaining <= 7 ? "warning" : "success"}>{late ? `${Math.abs(row.days_remaining)}d late` : row.days_remaining === 0 ? "Due today" : "On track"}</Badge>
+            </Link>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function TasksOverview({ stages }: { stages: FirmDashboard["pipeline"] }) {
+  return (
+    <section className={`${card} p-4`}>
+      <SectionTitle icon="check-circle" name="Tasks Overview" description="Task status across your practice" href="/tasks" action="View tasks" />
+      <div className="mt-2"><MiniBarChart stages={stages} /></div>
+    </section>
+  );
+}
+
+function WorkPipelinePanel({ rows }: { rows: ComplianceRow[] }) {
+  return (
+    <section className={`${card} p-4`}>
+      <SectionTitle icon="check-circle" name="Task Status" description="Overall task distribution" href="/tasks" action="View all" />
+      <div className="mt-2"><TaskStatusBars rows={rows ?? []} /></div>
+    </section>
+  );
+}
+
+function QuickActions() {
+  const actions = [
+    { label: "New Client", icon: "clients" as IconName, href: "/clients/new" },
+    { label: "Create Task", icon: "check-square" as IconName, href: "/tasks/new" },
+    { label: "New Invoice", icon: "file-text" as IconName, href: "/invoices/new" },
+    { label: "Upload Document", icon: "upload" as IconName, href: "/documents" },
+  ];
+  return (
+    <section className={`${card} p-4 overflow-hidden`}>
+      <div className="flex items-center gap-3 bg-gradient-to-r from-[#FBF9FF] to-[#F0E9FF] p-3">
+        <Icon name="check-circle" />
+        <h2 className={title}>Quick Actions</h2>
+      </div>
+      <div className="grid grid-cols-2 gap-2 mt-3 p-2 sm:grid-cols-4">
+        {actions.map((action) => (
+          <Link key={action.label} href={action.href} className="flex min-h-[84px] flex-col items-center justify-center gap-2 rounded-xl border border-[#E6E0FA] bg-white p-3 text-center text-[10px] font-semibold text-[#272D4A] shadow-[0_2px_5px_rgba(70,50,130,.035)] transition hover:-translate-y-0.5 hover:border-[#CDBDFF] hover:bg-[#FBF9FF]">
+            <span className="text-[#713EE8]"><Icon name={action.icon} /></span>
+            {action.label}
+          </Link>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function PortfolioAndFinancial({ portfolio, financials }: { portfolio: FirmDashboard["portfolio"]; financials: FirmDashboard["financials"] }) {
+  const p = portfolio ?? {};
+  const items = [
+    ["Active clients", p.clients_active ?? 0],
+    ["Active engagements", p.engagements_active ?? 0],
+    ["New clients (FY)", p.new_clients_this_fy ?? 0],
+    ["Inactive clients", p.clients_inactive ?? 0],
+  ] as const;
+  return (
+    <section className="grid gap-4 xl:grid-cols-2">
+      <div className={`${card} p-4`}>
+        <SectionTitle icon="clients" name="Client Portfolio" description={`${p.clients_total ?? 0} clients on the books`} href="/clients" />
+        <div className="grid grid-cols-2 gap-3 mt-2">
+          {items.map(([label, value]) => <div key={label} className="rounded-xl bg-[#F8F8FD] p-3"><p className="text-2xl font-bold text-[#202541]">{value}</p><p className="mt-1 text-[10px] text-[#7C829B]">{label}</p></div>)}
+        </div>
+      </div>
+      <div className={`${card} p-4`}>
+        <SectionTitle icon="wallet" name="Financial Overview" description={financials ? `${financials.period_label} · outstanding as at today` : "Financial figures"} href="/receivables" action="View report" />
+        {!financials ? <EmptyState message="Financial figures are not available." /> : (
+          <div className="grid grid-cols-2 gap-3 mt-2">
+            {[
+              ["Fees invoiced", formatMoney(financials.fees_invoiced)],
+              ["Fees collected", formatMoney(financials.fees_collected)],
+              ["Outstanding", formatMoney(financials.outstanding_total)],
+              ["Unbilled work", formatMoney(financials.unbilled_value)],
+            ].map(([label, value]) => <div key={label} className="rounded-xl bg-[#F8F8FD] p-3"><p className="break-words text-lg font-bold text-[#202541]">{value}</p><p className="mt-1 text-[10px] text-[#7C829B]">{label}</p></div>)}
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function AttentionAndTeam({ data }: { data: FirmDashboard }) {
+  const clients = (data.at_risk_clients ?? []).slice(0, 5);
+  const team = [...(data.workload ?? [])].sort((a, b) => b.utilisation_percent - a.utilisation_percent).slice(0, 5);
+  return (
+    <section className="grid gap-4 xl:grid-cols-2">
+      <div className={`${card} p-4`}>
+        <SectionTitle icon="alert-circle" name="Clients Needing Attention" description="Ranked by risk, then by how much is late." href="/clients" />
+        {clients.length ? clients.map((row) => {
+          const issue = row.overdue_tasks > 0 ? `${row.overdue_tasks} overdue task(s)` : row.unverified_deadlines > 0 ? `${row.unverified_deadlines} unconfirmed date(s)` : row.open_document_requests > 0 ? `${row.open_document_requests} document request(s)` : `${row.open_tasks} open task(s)`;
+          return <Link key={row.client_id} href={`/clients/${row.client_id}`} className="flex items-center justify-between gap-2 border-b border-[#EEF0F6] py-3 last:border-0"><span className="min-w-0"><b className="block truncate text-xs text-[#292F4C]">{row.client_name}</b><small className="text-[10px] text-[#858BA2]">{issue} · {row.client_code}</small></span><Badge tone={riskTone(row.risk_classification)}>{humanise(row.risk_classification)}</Badge></Link>;
+        }) : <EmptyState message="No client needs attention." />}
+      </div>
+      <div className={`${card} p-4`}>
+        <SectionTitle icon="clients" name="Team Workload" description="Complexity-weighted utilisation." href="/team" action="View team" />
+        {team.length ? <div className="space-y-4 mt-2">{team.map((row) => <div key={row.user_id} className="flex items-center gap-3"><Avatar name={row.full_name} size="sm" /><div className="min-w-0 flex-1"><div className="flex justify-between gap-2"><b className="truncate text-xs text-[#292F4C]">{row.full_name}</b><b className="text-xs text-[#424965]">{formatPercent(row.utilisation_percent)}</b></div><div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-[#E9EAF3]"><div className="h-full rounded-full bg-[#7545E9]" style={{ width: `${Math.min(100, row.utilisation_percent)}%` }} /></div><small className="text-[10px] text-[#858BA2]">{row.open_tasks} open tasks</small></div></div>)}</div> : <EmptyState message="No staff to show." />}
+      </div>
+    </section>
+  );
+}
+
+function RecentActivity({ rows }: { rows: FirmDashboard["recent_activity"] }) {
+  const items = (rows ?? []).slice(0, 5);
+  return (
+    <section className={`${card} p-4`}>
+      <SectionTitle icon="history" name="Recent Activity" description="Latest updates across your practice." href="/reports" />
+      {items.length ? <div className="grid gap-3 md:grid-cols-2 mt-2">{items.map((row) => <div key={row.id} className="flex items-start gap-3 rounded-xl bg-[#FAFAFE] p-3"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[#F0EAFF] text-[#6D3AE8]"><Icon name={activityIcon(row.entity_type)} /></span><div className="min-w-0 flex-1"><p className="text-xs font-medium text-[#303653]">{row.summary ?? `${humanise(row.action)} on ${humanise(row.entity_type)}`}</p><p className="mt-1 text-[10px] text-[#8A90A6]">{row.actor_label ?? "System"}{row.entity_label ? ` · ${row.entity_label}` : ""}</p></div><small className="shrink-0 text-[9px] text-[#9298AA]">{formatRelative(row.created_at)}</small></div>)}</div> : <EmptyState message="Nothing has happened yet." />}
+    </section>
+  );
+}
+
+function activityIcon(entityType: string): IconName {
+  switch (entityType) {
+    case "task": return "check-circle";
+    case "client": return "clients";
+    case "document":
+    case "document_request": return "file-text";
+    case "invoice":
+    case "payment": return "file-text";
+    case "service": return "check-circle";
+    case "user": return "clients";
+    default: return "history";
+  }
 }
 
 export default function DashboardPage() {
@@ -80,843 +372,75 @@ export default function DashboardPage() {
   const { data: session } = useSession();
 
   if (isPending) {
-    return (
-      <div className="dashboard-page min-h-screen space-y-10 py-8">
-        <PageHeader
-          title="Loading dashboard..."
-          subtitle="Fetching your latest practice insights."
-        />
-        <section className="grid grid-cols-2 gap-5 sm:grid-cols-3 xl:grid-cols-5">
-          {[...Array(5)].map((_, i) => (
-            <Card key={i} className="relative p-5">
-              <div className="flex items-start justify-between">
-                <Skeleton className="h-11 w-11 rounded-lg" />
-                <Skeleton className="h-5 w-12" />
-              </div>
-              <Skeleton className="mt-4 h-8 w-16" />
-              <Skeleton className="mt-2 h-3 w-24" />
-            </Card>
-          ))}
-        </section>
-        <div className="grid grid-cols-1 gap-10 xl:grid-cols-3">
-          <Card className="xl:col-span-2">
-            <div className="card-header">
-              <Skeleton className="h-5 w-40" />
-            </div>
-            <div className="card-body">
-              <Skeleton className="h-48 w-full" />
-            </div>
-          </Card>
-          <Card>
-            <div className="card-header">
-              <Skeleton className="h-5 w-32" />
-            </div>
-            <div className="card-body space-y-3">
-              {[...Array(4)].map((_, i) => (
-                <Skeleton key={i} className="h-12 w-full" />
-              ))}
-            </div>
-          </Card>
-        </div>
-      </div>
-    );
+    return <main className="space-y-4"><Skeleton /><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">{Array.from({ length: 5 }).map((_, i) => <div key={i} className={`${card} p-4`}><Skeleton /><div className="mt-3"><Skeleton /></div></div>)}</div><div className="grid gap-4 xl:grid-cols-2"><div className={`${card} p-4`}><Skeleton /></div><div className={`${card} p-4`}><Skeleton /></div></div></main>;
   }
 
-  if (isError) {
-    return (
-      <ErrorState
-        message={
-          error instanceof ApiError
-            ? error.message
-            : "Could not load the dashboard. Please try again."
-        }
-      />
-    );
+  if (isError || !data) {
+    return <div className="p-4"><ErrorState message={error instanceof ApiError ? error.message : "Could not load the dashboard. Please try again."} /></div>;
   }
 
-  const totals = data.totals;
-  const trends = data.trends;
+  const name = session?.user?.full_name?.split(" ")[0];
 
   return (
-    <div className="dashboard-page min-h-screen space-y-8 py-2">
-      <PageHeader
-        title={`${greeting(data)}${session?.user?.full_name ? `, ${session.user.full_name.split(" ")[0]}` : ""}`}
-        subtitle="Here’s what’s important for your practice today."
-        action={
-          <div className="text-right text-xs text-slate-500">
-            <p className="font-medium text-slate-700">
-              {new Intl.DateTimeFormat("en-IN", {
-                timeZone: "Asia/Kolkata",
-                weekday: "long",
-                day: "numeric",
-                month: "short",
-                year: "numeric",
-              }).format(new Date())}
-            </p>
-            {data.financial_year && <p>FY {data.financial_year}</p>}
-            <p className="mt-0.5">
-              {data.scope === "firm" ? "Firm-wide figures" : `Scoped to your ${data.scope}`}
-            </p>
-            <p className="mt-1 flex items-center justify-end gap-1.5">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-              <span>Updated {formatRelative(data.generated_at)}</span>
-            </p>
+    <main className="min-h-full space-y-4">
+      {/* Hero greeting banner */}
+      <section className="relative isolate overflow-hidden rounded-2xl border border-[#E7E3FA] bg-gradient-to-r from-[#F5F1FF] via-[#EDE9FF] to-[#DCD8FF] p-4 md:p-5">
+        <div className="absolute -right-12 -top-24 -z-10 h-64 w-64 rounded-full bg-white/40 blur-3xl" />
+        <div className="absolute right-[18%] top-[-90px] -z-10 h-64 w-64 rounded-full bg-[#A995FF]/25 blur-3xl" />
+        <div className="relative max-w-[650px]">
+          <h1 className="text-[26px] font-bold tracking-[-.045em] text-[#11162F] md:text-[32px]">
+            {greeting()}{name ? "," : ""} <span className="text-[#6B3BE6]">{name || "there"}</span> <span>👋</span>
+          </h1>
+          <p className="mt-1 text-sm text-[#41496C]">Here&apos;s what&apos;s important for your practice today.</p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <span className="inline-flex items-center gap-2 rounded-full border border-white/80 bg-white/65 px-3 py-2 text-[10px] font-semibold text-[#303653]"><Icon name="calendar" /> {dateLabel()}</span>
+            {data.financial_year && <span className="inline-flex items-center gap-2 rounded-full border border-white/80 bg-white/65 px-3 py-2 text-[10px] font-semibold text-[#303653]"><Icon name="file-text" /> FY {data.financial_year}</span>}
+            <span className="inline-flex items-center gap-2 rounded-full border border-white/80 bg-white/65 px-3 py-2 text-[10px] font-semibold text-[#303653]"><i className="h-2 w-2 rounded-full bg-emerald-500" /> Updated {formatRelative(data.generated_at)}</span>
           </div>
-        }
-      />
-
-      <section className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-5">
-        <HeadlineCard
-          icon="clock"
-          tone="danger"
-          label="Overdue"
-          value={totals.tasks_overdue}
-          trend={trends.overdue}
-          href="/tasks"
-          index={0}
-        />
-        <HeadlineCard
-          icon="calendar"
-          tone="warning"
-          label="Due Today"
-          value={totals.tasks_due_today}
-          trend={trends.due_today}
-          href="/calendar"
-          index={1}
-        />
-        <HeadlineCard
-          icon="calendar"
-          tone="info"
-          label="Due This Week"
-          value={totals.tasks_due_this_week}
-          trend={trends.due_this_week}
-          href="/calendar"
-          index={2}
-        />
-        <HeadlineCard
-          icon="check-circle"
-          tone="violet"
-          label="Awaiting Review"
-          value={totals.awaiting_review}
-          href="/tasks"
-          index={3}
-        />
-        <HeadlineCard
-          icon="file-text"
-          tone="success"
-          label="Missing Documents"
-          value={totals.clients_with_missing_documents}
-          hint={`${totals.open_document_requests} open request(s)`}
-          href="/documents"
-          index={4}
-        />
+        </div>
+        <div className="pointer-events-none absolute -right-4 bottom-0 -z-10 hidden h-full w-[42%] items-end justify-center opacity-30 lg:flex">
+          <svg viewBox="0 0 500 190" className="h-full w-full" fill="none" aria-hidden="true">
+            <path d="M130 190V86L245 15L360 86V190" stroke="#7C70C8" strokeWidth="3"/>
+            <path d="M160 190V91L245 40L330 91V190M130 112H360M130 145H360M200 65V190M245 40V190M290 65V190" stroke="#7C70C8" strokeWidth="2"/>
+            <path d="M20 190L130 86L245 15L360 86L470 190" stroke="#A69BE9" strokeWidth="2"/>
+          </svg>
+        </div>
       </section>
 
-      <div className="grid grid-cols-1 gap-8 xl:grid-cols-3">
-        <ComplianceSummary rows={data.compliance} className="xl:col-span-2" />
-        <UpcomingDeadlines rows={data.upcoming_deadlines} />
-      </div>
+      {/* Five daily priority cards */}
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        <StatCard icon="clock" label="Overdue" value={data.totals.tasks_overdue} href="/tasks" colour="rose" />
+        <StatCard icon="calendar" label="Due Today" value={data.totals.tasks_due_today} href="/calendar" colour="orange" />
+        <StatCard icon="calendar" label="Due This Week" value={data.totals.tasks_due_this_week} href="/calendar" colour="blue" />
+        <StatCard icon="check-circle" label="Awaiting Review" value={data.totals.awaiting_review} href="/tasks" colour="violet" />
+        <StatCard icon="file-text" label="Missing Documents" value={data.totals.clients_with_missing_documents} hint={`${data.totals.open_document_requests} open request(s)`} href="/documents" colour="green" />
+      </section>
 
-      <WorkPipeline stages={data.pipeline} />
+      {/* Compliance and deadlines */}
+      <section className="grid gap-4 2xl:grid-cols-[1.2fr_0.8fr]">
+        <CompliancePanel rows={data.compliance} />
+        <DeadlinesPanel rows={data.upcoming_deadlines} />
+      </section>
 
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
-        <ClientPortfolio portfolio={data.portfolio} />
-        <FinancialOverview financials={data.financials} />
-      </div>
+      {/* Task charts and quick actions */}
+      <section className="grid gap-4 2xl:grid-cols-[1fr_1fr_0.95fr]">
+        <TasksOverview stages={data.pipeline} />
+        <WorkPipelinePanel rows={data.compliance} />
+        <QuickActions />
+      </section>
 
-      <div className="grid grid-cols-1 gap-8 xl:grid-cols-3">
-        <ClientsNeedingAttention rows={data.at_risk_clients} />
-        <TeamWorkload rows={data.workload} />
+      {/* Additional existing practice information */}
+    <section className="grid gap-4 grid-cols-1">
+        <PortfolioAndFinancial portfolio={data.portfolio} financials={data.financials} />
+        <AttentionAndTeam data={data} />
+      </section>
+      <section className="grid">
         <RecentActivity rows={data.recent_activity} />
-      </div>
-    </div>
+      </section>
+
+      <p className="text-center text-[10px] text-[#A0A5B6]">
+        {data.scope === "firm" ? "Firm-wide practice dashboard" : `Dashboard scoped to your ${data.scope}`}
+      </p>
+    </main>
   );
-}
-
-/**
- * One of the five headline figures.
- *
- * The trend is rendered only when the API sent one. `awaiting_review` and
- * `missing_documents` have no honest comparison, so those cards show a hint instead of
- * a fabricated arrow.
- */
-function HeadlineCard({
-  icon,
-  tone,
-  label,
-  value,
-  hint,
-  trend,
-  href,
-  index,
-}: {
-  icon: IconName;
-  tone: ChipTone;
-  label: string;
-  value: number;
-  hint?: string;
-  trend?: { delta: number; compared_to: string };
-  href: string;
-  index: number;
-}) {
-  const toneBorder: Record<ChipTone, string> = {
-    danger: "border-t-rose-200",
-    warning: "border-t-amber-200",
-    info: "border-t-sky-200",
-    success: "border-t-emerald-200",
-    violet: "border-t-violet-200",
-    progress: "border-t-indigo-200",
-    neutral: "border-t-slate-200",
-  };
-
-  const iconBg: Record<ChipTone, string> = {
-    danger: "bg-rose-50 text-rose-600",
-    warning: "bg-amber-50 text-amber-600",
-    info: "bg-sky-50 text-sky-600",
-    success: "bg-emerald-50 text-emerald-600",
-    violet: "bg-violet-50 text-violet-600",
-    progress: "bg-indigo-50 text-indigo-600",
-    neutral: "bg-[#f7f6f3] text-slate-600",
-  };
-
-  return (
-    <Link href={href} className="block group">
-      <Card
-        className={cn(
-          "dashboard-card dashboard-stat relative overflow-hidden border-t-2 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg",
-          toneBorder[tone],
-        )}
-        style={{ animationDelay: `${index * 60}ms` }}
-      >
-        <div className="stat-fade-in p-4">
-          <div className="flex items-start justify-between">
-            <div className={cn("flex h-10 w-10 items-center justify-center rounded-lg", iconBg[tone])}>
-              <Icon name={icon} className="h-5 w-5" />
-            </div>
-            {trend ? (
-              <TrendPill delta={trend.delta} comparedTo={trend.compared_to} />
-            ) : hint ? (
-              <Badge tone="neutral" className="text-[10px]">
-                {hint}
-              </Badge>
-            ) : null}
-          </div>
-          <p className="mt-3 text-xs font-medium text-slate-500">{label}</p>
-          <p className="mt-1 text-2xl font-semibold tabular tracking-tight text-slate-900">{value}</p>
-        </div>
-      </Card>
-    </Link>
-  );
-}
-
-/**
- * Work per service category, with the ring chart.
- *
- * The ring shows the selected category only, and its segments are the four buckets the
- * API returns. They are guaranteed to sum to `total` because the API derives
- * `in_progress` as the remainder rather than counting it in a second pass — so the
- * centre figure and the arcs cannot drift apart.
- */
-function ComplianceSummary({
-  rows,
-  className,
-}: {
-  rows: ComplianceCategoryRow[];
-  className?: string;
-}) {
-  const [selected, setSelected] = useState<string | null>(null);
-
-  if (!rows || rows.length === 0) {
-    return (
-      <Card
-        title="Compliance Summary"
-        className={cn(className, "dashboard-card dashboard-card--compliance")}
-        style={{ animationDelay: "180ms" }}
-      >
-         <EmptyState message="No work has been generated yet." />
-       </Card>
-    );
-  }
-
-  const current = rows.find((row) => row.category === selected) ?? rows[0];
-
-  const segments: DonutSegment[] = [
-    {
-      key: "overdue",
-      label: "Overdue",
-      value: current.overdue,
-      className: CATEGORY_COLOURS.overdue,
-    },
-    {
-      key: "due_soon",
-      label: "Due Soon",
-      value: current.due_soon,
-      className: CATEGORY_COLOURS.due_soon,
-    },
-    {
-      key: "in_progress",
-      label: "In Progress",
-      value: current.in_progress,
-      className: CATEGORY_COLOURS.in_progress,
-    },
-    {
-      key: "completed",
-      label: "Completed",
-      value: current.completed,
-      className: CATEGORY_COLOURS.completed,
-    },
-  ];
-
-  return (
-    <Card
-       title="Compliance Summary"
-       subtitle="Work by service category, counted at read time."
-       className={cn(className, "dashboard-card dashboard-card--compliance")}
-      action={
-        <Button asChild variant="ghost" size="sm">
-          <Link href="/tasks">View tasks</Link>
-        </Button>
-      }
-    >
-      <div className="px-4 pt-4 pb-3">
-        <div className="flex flex-wrap gap-2">
-          {rows.map((row) => {
-            const isActive = row.category === current.category;
-            return (
-              <button
-                key={row.category}
-                type="button"
-                onClick={() => setSelected(row.category)}
-                className={cn(
-                  "rounded-full px-3.5 py-1.5 text-sm font-medium transition",
-                  isActive
-                    ? "bg-sky-100 text-sky-700 ring-2 ring-sky-200"
-                    : "text-slate-500 hover:bg-[#f7f6f3] hover:text-slate-800",
-                )}
-              >
-                {row.label}
-                <span className="ml-1.5 tabular text-xs text-slate-400">{row.total}</span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-        <div className="grid grid-cols-1 gap-6 p-5 lg:grid-cols-5 lg:items-start">
-          <div className="lg:col-span-3 flex justify-center">
-            <DonutChart
-              segments={segments}
-              total={current.total}
-              totalLabel={`Total ${current.label} tasks`}
-              size={200}
-            />
-          </div>
-
-          <div className="lg:col-span-2 flex flex-col gap-4">
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between text-xs text-slate-500">
-                <span>Completion</span>
-                <span>
-                  {formatPercent(
-                    current.total > 0 ? (current.completed / current.total) * 100 : 0,
-                  )}
-                  <span className="ml-1 text-slate-400">
-                    ({current.completed} of {current.total})
-                  </span>
-                </span>
-              </div>
-              <MiniBar
-                percent={current.total > 0 ? (current.completed / current.total) * 100 : 0}
-                className="h-2 bg-emerald-500"
-                trackClassName="bg-slate-100"
-              />
-            </div>
-
-          <div className="grid grid-cols-2 gap-2 text-center">
-            <div>
-              <p className="tabular text-xl font-semibold text-slate-900">{current.overdue}</p>
-              <p className="text-[10px] uppercase tracking-wide text-slate-500">Overdue</p>
-            </div>
-            <div>
-              <p className="tabular text-xl font-semibold text-slate-900">{current.in_progress}</p>
-              <p className="text-[10px] uppercase tracking-wide text-slate-500">In progress</p>
-            </div>
-          </div>
-
-          <div className="pt-1 text-center">
-            <p className="tabular text-sm font-medium text-slate-700">
-              {current.total > 0
-                ? `${formatPercent((current.due_soon / current.total) * 100)} due soon`
-                : "No tasks in this category"}
-            </p>
-          </div>
-        </div>
-      </div>
-    </Card>
-  );
-}
-
-function UpcomingDeadlines({ rows }: { rows: FirmDashboard["upcoming_deadlines"] }) {
-  const soon = (rows ?? []).slice(0, 6);
-
-  return (
-    <Card
-      title="Upcoming Deadlines"
-      subtitle="Confirmed statutory dates, plus tasks due soon."
-      className="dashboard-card dashboard-card--deadlines"
-      action={
-        <Button asChild variant="ghost" size="sm">
-          <Link href="/calendar">View calendar</Link>
-        </Button>
-      }
-    >
-      {soon.length === 0 ? (
-        <EmptyState message="Nothing due in the next two weeks." />
-      ) : (
-        <ul className="divide-y divide-slate-100">
-          {soon.map((row) => {
-            const late = row.days_remaining < 0;
-            const urgent = row.days_remaining <= 7;
-            return (
-              <li key={row.task_id ?? `${row.client_id}-${row.statutory_due_date}`}>
-                <Link
-                  href={row.task_id ? `/tasks/${row.task_id}` : "/calendar"}
-                  className="dashboard-row flex items-center gap-3 px-4 py-2.5"
-                >
-                  <span
-                    className={cn(
-                      "flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-lg ring-1 ring-inset",
-                      late
-                        ? "bg-rose-50 text-rose-700 ring-rose-100"
-                        : urgent
-                          ? "bg-amber-50 text-amber-700 ring-amber-100"
-                          : "bg-[#f7f6f3] text-slate-600 ring-slate-200",
-                    )}
-                  >
-                    <span className="tabular text-sm font-semibold leading-none">
-                      {Number(row.statutory_due_date.slice(8, 10))}
-                    </span>
-                    <span className="mt-0.5 text-[10px] uppercase leading-none">
-                      {new Intl.DateTimeFormat("en-IN", { month: "short" }).format(
-                        new Date(`${row.statutory_due_date.slice(0, 10)}T00:00:00Z`),
-                      )}
-                    </span>
-                  </span>
-
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-medium text-slate-800">
-                      {row.title}
-                    </span>
-                    <span className="block truncate text-xs text-slate-500">
-                      {row.client_name}
-                      {!row.verified && " · date unconfirmed"}
-                    </span>
-                  </span>
-
-                  <span
-                    className={cn(
-                      "shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset",
-                      late
-                        ? "bg-rose-50 text-rose-700 ring-rose-200"
-                        : urgent
-                          ? "bg-amber-50 text-amber-800 ring-amber-200"
-                          : "bg-emerald-50 text-emerald-700 ring-emerald-200",
-                    )}
-                  >
-                    {late
-                      ? `${Math.abs(row.days_remaining)}d late`
-                      : row.days_remaining === 0
-                        ? "Due today"
-                        : "On track"}
-                  </span>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-    </Card>
-  );
-}
-
-/**
- * The six pipeline stages, in order, with arrows between them.
- *
- * The grouping of the 14 workflow statuses into these stages is defined by the API, not
- * here — so a screen cannot invent a seventh stage that no task can ever occupy. The
- * stage keys double as the colour index, which keeps the colours stable when a count
- * changes.
- */
-function WorkPipeline({ stages }: { stages: FirmDashboard["pipeline"] }) {
-  const safeStages = stages ?? [];
-  const total = safeStages.reduce((sum, stage) => sum + stage.count, 0);
-
-  return (
-    <Card
-      title="Work Pipeline"
-      subtitle={`${total} task(s) in flight, across ${safeStages.length} stages.`}
-      className="dashboard-card dashboard-card--pipeline"
-      action={
-        <Button asChild variant="ghost" size="sm">
-          <Link href="/tasks">View all</Link>
-        </Button>
-      }
-    >
-      <div className="flex flex-wrap items-stretch gap-2 p-4">
-        {safeStages.map((stage, index) => (
-          <div key={stage.key} className="flex flex-1 items-center gap-2">
-              <Link
-                href="/tasks"
-                title={stage.statuses.map(humanise).join(", ")}
-                className={cn(
-                  "pipeline-stage min-w-[8rem] flex-1 rounded-lg p-3 border border-slate-200",
-                  PIPELINE_COLOURS[index % PIPELINE_COLOURS.length],
-                )}
-              >
-              <p className="tabular text-2xl font-semibold leading-none">{stage.count}</p>
-              <p className="mt-1.5 text-xs font-medium leading-tight">{stage.label}</p>
-            </Link>
-            {index < safeStages.length - 1 && (
-              <Icon name="chevron-right" className="hidden h-4 w-4 shrink-0 text-slate-300 sm:block" />
-            )}
-          </div>
-        ))}
-      </div>
-    </Card>
-  );
-}
-
-function ClientPortfolio({ portfolio }: { portfolio: FirmDashboard["portfolio"] }) {
-  const p = portfolio ?? {};
-  const items: Array<{ icon: IconName; tone: ChipTone; value: number; label: string }> = [
-    {
-      icon: "clients",
-      tone: "info",
-      value: p.clients_active ?? 0,
-      label: "Active clients",
-    },
-    {
-      icon: "tasks",
-      tone: "progress",
-      value: p.engagements_active ?? 0,
-      label: "Active engagements",
-    },
-    {
-      icon: "user",
-      tone: "violet",
-      value: p.new_clients_this_fy ?? 0,
-      label: "New clients (FY)",
-    },
-    {
-      icon: "clock",
-      tone: "neutral",
-      value: p.clients_inactive ?? 0,
-      label: "Inactive clients",
-    },
-  ];
-
-  return (
-    <Card
-       title="Client Portfolio"
-       subtitle={`${p.clients_total ?? 0} client(s) on the books.`}
-       className="dashboard-card dashboard-card--portfolio"
-      action={
-        <Button asChild variant="ghost" size="sm">
-          <Link href="/clients">View all</Link>
-        </Button>
-      }
-    >
-      <div className="grid grid-cols-2 gap-3 p-4 lg:grid-cols-4">
-        {items.map((item) => (
-          <div key={item.label} className="rounded-xl bg-[#f7f6f3] p-5  transition-colors hover:bg-[#f0ede8]">
-             <IconChip tone={item.tone} size="sm">
-               <Icon name={item.icon} className="h-3.5 w-3.5" />
-             </IconChip>
-             <p className="tabular mt-2 text-xl font-semibold text-slate-900">{item.value}</p>
-             <p className="text-xs text-slate-600">{item.label}</p>
-           </div>
-        ))}
-      </div>
-    </Card>
-  );
-}
-
-/**
- * Billed, collected, owed and unbilled.
- *
- * Invoiced and collected are for a period; outstanding and overdue are as at today,
- * across every period — because last quarter's unpaid invoice is exactly the one that
- * needs chasing. The panel says which is which rather than leaving the reader to guess.
- */
-function FinancialOverview({ financials }: { financials: FirmDashboard["financials"] }) {
-  if (!financials) {
-    return (
-      <Card title="Financial Overview" className="dashboard-card dashboard-card--financial">
-         <EmptyState message="Financial figures are not available." />
-       </Card>
-    );
-  }
-
-  return (
-    <Card
-       title="Financial Overview"
-       subtitle={`${financials.period_label} · outstanding is as at today`}
-       className="dashboard-card dashboard-card--financial"
-      action={
-        <Button asChild variant="ghost" size="sm">
-          <Link href="/receivables">View report</Link>
-        </Button>
-      }
-    >
-       <div className="grid grid-cols-2 gap-3 p-4">
-         <div className="rounded-lg bg-emerald-50 p-3 ring-1 ring-inset ring-emerald-100 transition-colors hover:bg-emerald-100/40">
-           <div className="flex items-center gap-2">
-             <Icon name="billing" className="h-4 w-4 text-emerald-600" />
-             <p className="text-xs font-medium text-emerald-800">Fees invoiced</p>
-           </div>
-           <p className="tabular mt-1.5 text-lg font-semibold text-slate-900">
-             {formatMoney(financials.fees_invoiced)}
-           </p>
-           <p className="text-[11px] text-slate-500">{financials.invoice_count} invoice(s)</p>
-         </div>
-
-         <div className="rounded-lg bg-sky-50 p-3 ring-1 ring-inset ring-sky-100 transition-colors hover:bg-sky-100/40">
-           <div className="flex items-center gap-2">
-             <Icon name="receivables" className="h-4 w-4 text-sky-600" />
-             <p className="text-xs font-medium text-sky-800">Fees collected</p>
-           </div>
-           <p className="tabular mt-1.5 text-lg font-semibold text-slate-900">
-             {formatMoney(financials.fees_collected)}
-           </p>
-         </div>
-
-         <div className="rounded-lg bg-rose-50 p-3 ring-1 ring-inset ring-rose-100 transition-colors hover:bg-rose-100/40">
-           <div className="flex items-center gap-2">
-             <Icon name="clock" className="h-4 w-4 text-rose-600" />
-             <p className="text-xs font-medium text-rose-800">Outstanding</p>
-           </div>
-           <p className="tabular mt-1.5 text-lg font-semibold text-slate-900">
-             {formatMoney(financials.outstanding_total)}
-           </p>
-           {financials.overdue_total > 0 && (
-             <p className="text-[11px] text-rose-700">
-               {formatMoney(financials.overdue_total)} of it overdue
-             </p>
-           )}
-         </div>
-
-         <div className="rounded-lg bg-amber-50 p-3 ring-1 ring-inset ring-amber-100 transition-colors hover:bg-amber-100/40">
-           <div className="flex items-center gap-2">
-             <Icon name="file-text" className="h-4 w-4 text-amber-600" />
-             <p className="text-xs font-medium text-amber-800">Unbilled work</p>
-           </div>
-           <p className="tabular mt-1.5 text-lg font-semibold text-slate-900">
-             {formatMoney(financials.unbilled_value)}
-           </p>
-           <p className="text-[11px] text-slate-500">
-             {financials.unbilled_task_count} completed task(s)
-           </p>
-         </div>
-       </div>
-
-      {financials.notes.length > 0 && (
-        <ul className="space-y-1 border-t border-slate-200 px-4 py-3 text-[11px] text-slate-500">
-          {financials.notes.map((note) => (
-            <li key={note}>{note}</li>
-          ))}
-        </ul>
-      )}
-    </Card>
-  );
-}
-
-function ClientsNeedingAttention({ rows }: { rows: FirmDashboard["at_risk_clients"] }) {
-  const top = (rows ?? []).slice(0, 6);
-
-  return (
-    <Card
-      title="Clients Needing Attention"
-      subtitle="Ranked by risk, then by how much is late."
-      className="dashboard-card dashboard-card--at-risk"
-      action={
-        <Button asChild variant="ghost" size="sm">
-          <Link href="/clients">View all</Link>
-        </Button>
-      }
-    >
-      {top.length === 0 ? (
-        <EmptyState message="No client needs attention." />
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[24rem]">
-            <thead className="bg-[#f7f6f3]">
-              <tr>
-                <th className="th">Client</th>
-                <th className="th">Issue</th>
-                <th className="th">Risk</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {top.map((row) => {
-                // The single most pressing fact about this client, in the order that
-                // matters: late work, then unconfirmed dates, then missing paperwork.
-                const issue =
-                  row.overdue_tasks > 0
-                    ? `${row.overdue_tasks} task(s) overdue`
-                    : row.unverified_deadlines > 0
-                      ? `${row.unverified_deadlines} unconfirmed date(s)`
-                      : row.open_document_requests > 0
-                        ? `${row.open_document_requests} document request(s)`
-                        : `${row.open_tasks} open task(s)`;
-
-                return (
-                  <tr key={row.client_id} className="dashboard-row">
-                     <td className="td text-xs">
-                      <Link
-                        href={`/clients/${row.client_id}`}
-                        className="font-medium text-slate-900 underline-offset-2 hover:underline"
-                      >
-                        {row.client_name}
-                      </Link>
-                      <span className="ml-2 font-mono text-slate-400">{row.client_code}</span>
-                    </td>
-                    <td className="td text-xs text-slate-600">{issue}</td>
-                    <td className="td">
-                      <Badge tone={riskTone(row.risk_classification)}>
-                        {humanise(row.risk_classification)}
-                      </Badge>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </Card>
-  );
-}
-
-function TeamWorkload({ rows }: { rows: FirmDashboard["workload"] }) {
-  const top = [...(rows ?? [])]
-    .sort((a, b) => b.utilisation_percent - a.utilisation_percent)
-    .slice(0, 6);
-
-  return (
-    <Card
-      title="Team Workload"
-      subtitle="Utilisation is complexity-weighted effort, not a task count."
-      className="dashboard-card dashboard-card--workload"
-      action={
-        <Button asChild variant="ghost" size="sm">
-          <Link href="/team">View team</Link>
-        </Button>
-      }
-    >
-      {top.length === 0 ? (
-        <EmptyState message="No staff to show." />
-      ) : (
-        <ul className="divide-y divide-slate-100">
-          {top.map((row) => {
-            const tone = utilisationTone(row.utilisation_percent);
-            return (
-               <li key={row.user_id} className="dashboard-row flex items-center gap-3 px-4 py-2.5">
-                <Avatar name={row.full_name} size="sm" />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-xs font-medium text-slate-800">{row.full_name}</p>
-                  <p className="text-[11px] text-slate-500">
-                    {row.open_tasks} open
-                    {row.overdue_tasks > 0 && (
-                      <span className="text-rose-600"> · {row.overdue_tasks} overdue</span>
-                    )}
-                  </p>
-                  <MiniBar
-                    percent={row.utilisation_percent}
-                    className={cn(
-                      "mt-1",
-                      tone === "danger"
-                        ? "bg-rose-500"
-                        : tone === "warning"
-                          ? "bg-amber-500"
-                          : tone === "success"
-                            ? "bg-emerald-500"
-                            : "bg-slate-400",
-                    )}
-                  />
-                </div>
-                <span className="tabular shrink-0 text-xs font-medium text-slate-700">
-                  {formatPercent(row.utilisation_percent)}
-                </span>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-    </Card>
-  );
-}
-
-function RecentActivity({ rows }: { rows: FirmDashboard["recent_activity"] }) {
-  const top = (rows ?? []).slice(0, 6);
-
-  return (
-    <Card
-      title="Recent Activity"
-      subtitle="Append-only: the firm's own record of what happened."
-      className="dashboard-card dashboard-card--activity"
-      action={
-        <Button asChild variant="ghost" size="sm">
-          <Link href="/reports">View all</Link>
-        </Button>
-      }
-    >
-      {top.length === 0 ? (
-        <EmptyState message="Nothing has happened yet." />
-      ) : (
-        <ul className="divide-y divide-slate-100">
-          {top.map((row) => (
-              <li key={row.id} className="dashboard-row flex items-start gap-3 px-4 py-2.5">
-               <span className="activity-dot bg-[#f7f6f3] text-slate-600 ring-slate-200">
-                 <Icon name={activityIcon(row.entity_type)} className="h-3.5 w-3.5" />
-               </span>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-xs text-slate-800">
-                  {row.summary ?? `${humanise(row.action)} on ${humanise(row.entity_type)}`}
-                </p>
-                <p className="truncate text-[11px] text-slate-500">
-                  {row.actor_label ?? "System"}
-                  {row.entity_label ? ` · ${row.entity_label}` : ""}
-                </p>
-              </div>
-              <span className="shrink-0 text-[11px] text-slate-400">
-                {formatRelative(row.created_at)}
-              </span>
-            </li>
-          ))}
-        </ul>
-      )}
-    </Card>
-  );
-}
-
-/** An icon per entity type, so the feed is scannable without reading every line. */
-function activityIcon(entityType: string): IconName {
-  switch (entityType) {
-    case "task":
-      return "tasks";
-    case "client":
-      return "clients";
-    case "document":
-    case "document_request":
-      return "file-text";
-    case "invoice":
-    case "payment":
-      return "billing";
-    case "service":
-      return "check-circle";
-    case "user":
-      return "user";
-    default:
-      return "circle-dot";
-  }
 }

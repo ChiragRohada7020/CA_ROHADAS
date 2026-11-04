@@ -71,9 +71,6 @@
 @layer components {
   .card { @apply rounded-lg border border-[#e5e2dc] bg-white shadow-sm; transition: border-color 150ms ease, box-shadow 150ms ease; }
   .card:hover { @apply border-[#d5d1c8] shadow-md; }
-  .dashboard-page { @apply bg-[#f8f7f4]; }
-  .dashboard-row { @apply transition-colors duration-150; }
-  .dashboard-row:hover { @apply bg-[#f8f7f4]; }
   .card-header { @apply flex items-center justify-between gap-4 border-b border-[#e5e2dc] px-4 py-3; }
   .card-title { @apply text-sm font-semibold text-[#1a1814]; }
   .card-subtitle { @apply text-xs text-[#6b6357]; }

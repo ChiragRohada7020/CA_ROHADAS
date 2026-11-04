@@ -1,5 +1,6 @@
 ﻿"use client";
 
+import { PageHeader } from "@/components/ui";
 import { motion } from "framer-motion";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
@@ -11,7 +12,6 @@ import { Icon } from "@/components/Icon";
 import { ServiceCombobox, flattenClientServices, type ServiceOption } from "@/components/ServiceCombobox";
 import { FormError, FormSuccess, SelectField, TextAreaField, TextField } from "@/components/form";
 import { api, buildQuery } from "@/lib/api";
-import { InvoiceTemplateSelector } from "@/components/InvoiceTemplateSelector";
 import { addDays, formatMoney, todayInIST } from "@/lib/format";
 import { computeTotals, resolveTax } from "@/lib/billing";
 import type {
@@ -55,7 +55,6 @@ function computeFinancialYear(invoiceDate: string, startMonth = 4): string {
   return `${fyStart}-${String(fyStart + 1).slice(-2)}`;
 }
 
-/** Map a ClientDetail → PartyDetails for the preview. */
 function toPartyDetails(client: ClientDetail | null): PartyDetails | null {
   if (!client) return null;
   const primaryContact = client.contacts?.find((c) => c.is_primary) ?? null;
@@ -95,23 +94,12 @@ interface Step {
   complete: boolean;
 }
 
-const SECTION_VARIANTS = {
-  hidden: { opacity: 0, y: 10 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.3, ease: "easeOut" },
-  },
-};
-
-/** Full-page invoice creation with a live split-pane preview. */
 export function CreateInvoiceForm({ initial, onDone, onClose }: CreateInvoiceFormProps) {
   const queryClient = useQueryClient();
   const router = useRouter();
   const isEdit = !!initial;
   const today = todayInIST();
 
-  // ── Form state ───────────────────────────────────────────
   const [clientId, setClientId] = useState(initial?.client_id ?? "");
   const [invoiceDate, setInvoiceDate] = useState(initial?.invoice_date ?? today);
   const [dueDate, setDueDate] = useState(initial?.due_date ?? addDays(today, DEFAULT_CREDIT_DAYS));
@@ -127,15 +115,9 @@ export function CreateInvoiceForm({ initial, onDone, onClose }: CreateInvoiceFor
   const [saved, setSaved] = useState<string | null>(null);
 
   const [bankDetails, setBankDetails] = useState<BankDetails>({
-    bank_name: "",
-    account_name: "",
-    account_number: "",
-    ifsc_code: "",
-    upi_id: "",
-    payment_reference: "",
+    bank_name: "", account_name: "", account_number: "", ifsc_code: "", upi_id: "", payment_reference: "",
   });
 
-  // ── Client data ──────────────────────────────────────────
   const clients = useQuery({
     queryKey: ["clients", { for: "invoice-create" }],
     queryFn: () => api.get<Page<ClientListItem>>(`/clients${buildQuery({ limit: 200 })}`),
@@ -148,39 +130,26 @@ export function CreateInvoiceForm({ initial, onDone, onClose }: CreateInvoiceFor
     enabled: !!clientId,
     staleTime: 60 * 1000,
   });
-
   const clientDetail = selectedClientDetail.data;
+  const clientServices = useMemo(() => flattenClientServices(clientDetail?.services), [clientDetail?.services]);
 
-  const clientServices = useMemo(
-    () => flattenClientServices(clientDetail?.services),
-    [clientDetail?.services],
-  );
-
-  // ── Firm billing settings ────────────────────────────────
   const firm = useQuery({
     queryKey: ["billing", "settings"],
     queryFn: () => api.get<FirmBillingSettings>("/billing/settings"),
     staleTime: 10 * 60 * 1000,
   });
 
-  const [template, setTemplate] = useState<InvoiceTemplate>(
-    firm.data?.invoice_template ?? "modern"
-  );
-  // Update template when firm settings load
+  const [template, setTemplate] = useState<InvoiceTemplate>(firm.data?.invoice_template ?? "modern");
   useEffect(() => {
-    if (firm.data?.invoice_template && !initial) {
-      setTemplate(firm.data.invoice_template);
-    }
+    if (firm.data?.invoice_template && !initial) setTemplate(firm.data.invoice_template);
   }, [firm.data?.invoice_template, initial]);
 
-  // ── Auto-dismiss success message ─────────────────────────
   useEffect(() => {
     if (!saved) return;
     const timer = setTimeout(() => setSaved(null), 4000);
     return () => clearTimeout(timer);
   }, [saved]);
 
-  // ── Mutations ────────────────────────────────────────────
   const create = useMutation({
     mutationFn: (payload: InvoicePayload) => api.post<InvoiceDetail>("/invoices", payload),
     onSuccess: (invoice) => {
@@ -192,8 +161,7 @@ export function CreateInvoiceForm({ initial, onDone, onClose }: CreateInvoiceFor
   });
 
   const update = useMutation({
-    mutationFn: (payload: InvoicePayload) =>
-      api.patch<InvoiceDetail>(`/invoices/${initial!.id}`, payload),
+    mutationFn: (payload: InvoicePayload) => api.patch<InvoiceDetail>(`/invoices/${initial!.id}`, payload),
     onSuccess: (invoice) => {
       void queryClient.invalidateQueries({ queryKey: ["invoices"] });
       void queryClient.invalidateQueries({ queryKey: ["invoice", initial!.id] });
@@ -212,72 +180,42 @@ export function CreateInvoiceForm({ initial, onDone, onClose }: CreateInvoiceFor
     },
   });
 
-  // ── Derived state ────────────────────────────────────────
   const usableLines = lines.filter((line) => line.description.trim().length > 0);
   const financialYear = computeFinancialYear(invoiceDate);
-  const invoiceNumberPreview =
-    isEdit && initial ? initial.invoice_number ?? "(draft)" : "(draft)";
+  const invoiceNumberPreview = isEdit && initial ? initial.invoice_number ?? "(draft)" : "(draft)";
   const canSave = clientId !== "" && usableLines.length > 0 && dueDate >= invoiceDate;
   const activeMutation = create.isPending || update.isPending || issue.isPending;
 
-  const errorMsg = create.isError
-    ? create.error
-    : update.isError
-      ? update.error
-      : issue.isError
-        ? issue.error
-        : null;
+  const errorMsg = create.isError ? create.error : update.isError ? update.error : issue.isError ? issue.error : null;
 
-  // ── Live financial totals ─────────────────────────────────
   const taxType = useMemo(() => {
     const firmState = firm.data?.state_code ?? null;
     const clientState = clientDetail?.state_code ?? null;
     return resolveTax(firmState, clientState, taxRate).taxType;
   }, [firm.data?.state_code, clientDetail?.state_code, taxRate]);
 
-  const totals = useMemo(
-    () => computeTotals(lines, taxRate, taxType),
-    [lines, taxRate, taxType],
-  );
+  const totals = useMemo(() => computeTotals(lines, taxRate, taxType), [lines, taxRate, taxType]);
 
   function toPreviewState(): PreviewFormState {
     return {
       client: toPartyDetails(clientDetail ?? null),
-      firm: firm.data
-        ? {
-            name: firm.data.name,
-            legal_name: firm.data.legal_name,
-            address_line1: firm.data.address_line1 ?? null,
-            address_line2: firm.data.address_line2 ?? null,
-            city: firm.data.city ?? null,
-            state: firm.data.state ?? null,
-            state_code: firm.data.state_code ?? null,
-            pincode: firm.data.pincode ?? null,
-            gstin: firm.data.gstin ?? null,
-            pan: firm.data.pan ?? null,
-            email: firm.data.email ?? null,
-            phone: firm.data.phone ?? null,
-            currency: firm.data.currency,
-          }
-        : null,
-      invoiceNumber: invoiceNumberPreview,
-      invoiceDate,
-      dueDate,
-      invoiceType,
-      financialYear,
-      taxRate,
-      lines,
-      terms,
-      notes,
-      template: firm.data?.invoice_template ?? template,
-      bankDetails,
-      taxNote: null,
+      firm: firm.data ? {
+        name: firm.data.name, legal_name: firm.data.legal_name,
+        address_line1: firm.data.address_line1 ?? null, address_line2: firm.data.address_line2 ?? null,
+        city: firm.data.city ?? null, state: firm.data.state ?? null,
+        state_code: firm.data.state_code ?? null, pincode: firm.data.pincode ?? null,
+        gstin: firm.data.gstin ?? null, pan: firm.data.pan ?? null,
+        email: firm.data.email ?? null, phone: firm.data.phone ?? null,
+        currency: firm.data.currency,
+      } : null,
+      invoiceNumber: invoiceNumberPreview, invoiceDate, dueDate, invoiceType,
+      financialYear, taxRate, lines, terms, notes,
+      template: firm.data?.invoice_template ?? template, bankDetails, taxNote: null,
     };
   }
 
   const previewState = toPreviewState();
 
-  // ── Steps progress ────────────────────────────────────────
   const steps: Step[] = useMemo(
     () => [
       { label: "Client", icon: "user", complete: !!clientId },
@@ -288,430 +226,166 @@ export function CreateInvoiceForm({ initial, onDone, onClose }: CreateInvoiceFor
   );
   const stepsComplete = steps.filter((s) => s.complete).length;
 
-  // ── Line & bank management ──────────────────────────────
   function updateLine(key: string, patch: Partial<DraftLine>) {
-    setLines((current) =>
-      current.map((line) => (line.key === key ? { ...line, ...patch } : line)),
-    );
+    setLines((current) => current.map((line) => (line.key === key ? { ...line, ...patch } : line)));
   }
+  function addLine() { setLines((current) => [...current, blankLine()]); }
+  function removeLine(key: string) { setLines((current) => current.filter((line) => line.key !== key)); }
+  function updateBank(field: keyof BankDetails, value: string) { setBankDetails((current) => ({ ...current, [field]: value })); }
 
-  function addLine() {
-    setLines((current) => [...current, blankLine()]);
-  }
-
-  function removeLine(key: string) {
-    setLines((current) => current.filter((line) => line.key !== key));
-  }
-
-  function updateBank(field: keyof BankDetails, value: string) {
-    setBankDetails((current) => ({ ...current, [field]: value }));
-  }
-
-  // ── Submit ───────────────────────────────────────────────
   function preparePayload(): InvoicePayload {
     return {
-      client_id: clientId,
-      invoice_date: invoiceDate,
-      due_date: dueDate,
+      client_id: clientId, invoice_date: invoiceDate, due_date: dueDate,
       lines: usableLines.map((line: DraftLine): InvoiceLineInput => ({
         description: line.description.trim(),
-        quantity: Number(line.quantity ?? 1),
-        unit_price: Number(line.unit_price ?? 0),
-        discount: Number(line.discount ?? 0),
-        sac_code: line.sac_code || null,
-        is_taxable: line.is_taxable ?? true,
-        service_id: line.service_id || null,
-        task_id: line.task_id || null,
+        quantity: Number(line.quantity ?? 1), unit_price: Number(line.unit_price ?? 0),
+        discount: Number(line.discount ?? 0), sac_code: line.sac_code || null,
+        is_taxable: line.is_taxable ?? true, service_id: line.service_id || null, task_id: line.task_id || null,
       })),
-      tax_rate: taxRate,
-      notes: notes.trim() || null,
-      terms: terms.trim() || null,
-      issue: false,
+      tax_rate: taxRate, notes: notes.trim() || null, terms: terms.trim() || null, issue: false,
       bank_details: {
-        bank_name: bankDetails.bank_name.trim() || null,
-        account_name: bankDetails.account_name.trim() || null,
-        account_number: bankDetails.account_number.trim() || null,
-        ifsc_code: bankDetails.ifsc_code.trim() || null,
-        upi_id: bankDetails.upi_id.trim() || null,
-        payment_reference: bankDetails.payment_reference.trim() || null,
+        bank_name: bankDetails.bank_name.trim() || null, account_name: bankDetails.account_name.trim() || null,
+        account_number: bankDetails.account_number.trim() || null, ifsc_code: bankDetails.ifsc_code.trim() || null,
+        upi_id: bankDetails.upi_id.trim() || null, payment_reference: bankDetails.payment_reference.trim() || null,
       },
     };
   }
 
-  function handleSaveDraft() {
-    const payload = preparePayload();
-    const mutation = isEdit ? update : create;
-    mutation.mutate(payload);
-  }
-
+  function handleSaveDraft() { const mutation = isEdit ? update : create; mutation.mutate(preparePayload()); }
   function handleSaveAndSend() {
     const payload = { ...preparePayload(), issue: true };
     if (isEdit) {
-      update.mutate(payload, {
-        onSuccess: (invoice) => {
-          if (invoice.status !== "issued") {
-            issue.mutate(invoice.id);
-          }
-        },
-      });
-    } else {
-      create.mutate(payload);
-    }
+      update.mutate(payload, { onSuccess: (invoice) => { if (invoice.status !== "issued") issue.mutate(invoice.id); } });
+    } else { create.mutate(payload); }
   }
+  function handleClose() { onClose?.(); }
 
-  function handleClose() {
-    onClose?.();
-  }
-
-  const clientOptions = (clients.data?.items ?? []).map((row) => ({
-    value: row.id,
-    label: `${row.client_code} · ${row.trade_name || row.legal_name}`,
-  }));
-
+  const clientOptions = (clients.data?.items ?? []).map((row) => ({ value: row.id, label: `${row.client_code} · ${row.trade_name || row.legal_name}` }));
   function handleServiceSelect(key: string, service: ServiceOption | null) {
     if (!service) return;
-    updateLine(key, {
-      description: service.name,
-      sac_code: service.sac_code,
-      unit_price: Number(service.standard_fee ?? 0),
-      service_id: service.id,
-    });
+    updateLine(key, { description: service.name, sac_code: service.sac_code, unit_price: Number(service.standard_fee ?? 0), service_id: service.id });
   }
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] flex-col gap-4 md:flex-row">
-      {/* Left: Form */}
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          handleSaveAndSend();
-        }}
-        aria-label="Invoice form"
-        className="flex w-full flex-col gap-4 overflow-y-auto pr-2"
-      >
-        {/* Top row: customer, dates */}
-        <motion.div
-          className="grid grid-cols-1 gap-3 sm:grid-cols-3"
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, ease: "easeOut", delay: 0.05 }}
-        >
-          <div>
-            <SelectField
-              label="Customer"
-              value={clientId}
-              onChange={setClientId}
-              options={clientOptions}
-              placeholder="Search customer…"
-              required
-              hint={selectedClientDetail.isPending ? "Loading…" : undefined}
-              error={selectedClientDetail.isError ? "Could not load client details" : undefined}
-            />
-          </div>
-          <div>
-            <TextField
-              label="Date"
-              type="date"
-              value={invoiceDate}
-              onChange={setInvoiceDate}
-              required
-            />
-          </div>
-          <div>
-            <TextField
-              label="Due date"
-              type="date"
-              value={dueDate}
-              onChange={setDueDate}
-              required
-              hint={dueDate < invoiceDate ? "Must be after the invoice date" : undefined}
-            />
-          </div>
-        </motion.div>
+    <div className="space-y-8">
+      <PageHeader
+        title={isEdit ? "Edit invoice" : "New invoice"}
+        subtitle={isEdit ? "Update an existing sale invoice." : "Create a sale invoice with a live preview."}
+        action={
+          <button type="button" className="btn btn-ghost px-5 py-2.5 text-[#8A90A6] hover:text-[#252B47] hover:bg-[#F3F3FA]" onClick={() => router.push("/invoices")}>
+            Back to invoices
+          </button>
+        }
+      />
 
-        {/* Tax rate + invoice type */}
-        <motion.div
-          className="grid grid-cols-1 gap-3 sm:grid-cols-2"
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, ease: "easeOut", delay: 0.1 }}
-        >
-          <div>
-            <TextField
-              label="Tax rate (%)"
-              type="number"
-              value={String(taxRate)}
-              onChange={(v) => setTaxRate(Number(v) || 0)}
-              hint={taxType === "inter_state" ? "Inter-state tax (IGST)" : "Intra-state tax (CGST + SGST)"}
-            />
-          </div>
-          <div>
-            <SelectField
-              label="Invoice type"
-              value={invoiceType}
-              onChange={setInvoiceType}
-              options={INVOICE_TYPES}
-            />
-          </div>
-        </motion.div>
-
-        {/* Line items */}
-        <motion.section
-          className="space-y-2"
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, ease: "easeOut", delay: 0.15 }}
-        >
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-            Line Items
-          </h3>
-          <InvoiceLineTable
-            lines={lines}
-            taxRate={taxRate}
-            onUpdate={updateLine}
-            onAdd={addLine}
-            onRemove={removeLine}
-            clientServices={clientServices}
-            clientServicesLoading={selectedClientDetail.isPending && !!clientId}
-          />
-        </motion.section>
-
-        {/* Totals summary */}
-        <motion.div
-          className="flex justify-end"
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, ease: "easeOut", delay: 0.2 }}
-        >
-          <motion.div
-            className="w-64 space-y-1.5 rounded-lg border border-slate-200 bg-slate-50 p-3"
-            whileHover={{ scale: 1.01, boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }}
-            transition={{ type: "spring", stiffness: 400, damping: 25 }}
+      <section className="rounded-xl border border-[#E3E5F4] bg-white shadow-[0_3px_12px_rgba(40,42,90,.045)] p-6 md:p-8">
+        <div className="flex h-[calc(100vh-16rem)] flex-col gap-6 md:flex-row">
+          {/* Left: Form */}
+          <form
+            onSubmit={(e) => { e.preventDefault(); handleSaveAndSend(); }}
+            aria-label="Invoice form"
+            className="flex w-full flex-col gap-5 overflow-y-auto pr-3"
           >
-            <div className="flex justify-between text-sm">
-              <span className="text-slate-600">Subtotal</span>
-              <motion.span
-                className="tabular-nums font-medium text-slate-900"
-                initial={{ opacity: 0.5 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.2 }}
-              >
-                {formatMoney(totals.subtotal)}
-              </motion.span>
-            </div>
-            {totals.discountTotal > 0 && (
+            {/* Section: Customer & dates */}
+            <section className="space-y-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <div><SelectField label="Customer" value={clientId} onChange={setClientId} options={clientOptions} placeholder="Search customer…" required hint={selectedClientDetail.isPending ? "Loading…" : undefined} error={selectedClientDetail.isError ? "Could not load client details" : undefined} /></div>
+                <div><TextField label="Date" type="date" value={invoiceDate} onChange={setInvoiceDate} required /></div>
+                <div><TextField label="Due date" type="date" value={dueDate} onChange={setDueDate} required hint={dueDate < invoiceDate ? "Must be after the invoice date" : undefined} /></div>
+              </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div><TextField label="Tax rate (%)" type="number" value={String(taxRate)} onChange={(v) => setTaxRate(Number(v) || 0)} hint={taxType === "inter_state" ? "Inter-state tax (IGST)" : "Intra-state tax (CGST + SGST)"} /></div>
+                <div><SelectField label="Invoice type" value={invoiceType} onChange={setInvoiceType} options={INVOICE_TYPES} /></div>
+              </div>
+            </section>
+
+            {/* Section: Line items */}
+            <section className="space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-[#858BA2]">Line Items</h3>
+                <button type="button" onClick={addLine} className="inline-flex items-center gap-1.5 rounded-lg border border-[#E3E2F2] bg-[#F8F5FF] px-2.5 py-1.5 text-[10px] font-semibold text-[#6D3AE8] hover:bg-[#F1ECFF] transition-colors">
+                  <Icon name="plus" className="h-4 w-4" /> Add line
+                </button>
+              </div>
+              <InvoiceLineTable lines={lines} taxRate={taxRate} onUpdate={updateLine} onAdd={addLine} onRemove={removeLine} clientServices={clientServices} clientServicesLoading={selectedClientDetail.isPending && !!clientId} />
+            </section>
+
+            {/* Section: Totals */}
+            <div className="mt-2 w-64 space-y-2 rounded-xl border border-[#E3E2F2] bg-[#F1ECFF] p-3">
               <div className="flex justify-between text-sm">
-                <span className="text-slate-600">Discount</span>
-                <span className="tabular-nums text-emerald-600">−{formatMoney(totals.discountTotal)}</span>
+                <span className="text-[#8A90A6]">Subtotal</span>
+                <span className="tabular-nums font-medium text-[#11162F]">{formatMoney(totals.subtotal)}</span>
               </div>
-            )}
-            <div className="flex justify-between text-sm">
-              <span className="text-slate-600">Tax</span>
-              <motion.span
-                className="tabular-nums text-slate-900"
-                initial={{ opacity: 0.5 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.2 }}
-              >
-                {formatMoney(totals.cgst + totals.sgst + totals.igst)}
-              </motion.span>
-            </div>
-            <div className="border-t border-slate-200 pt-1.5">
-              <div className="flex justify-between text-base font-semibold">
-                <span className="text-slate-900">Total</span>
-                <motion.span
-                  className="tabular-nums font-bold text-sky-700"
-                  initial={{ scale: 0.95, opacity: 0.5 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  transition={{ type: "spring", stiffness: 400, damping: 25 }}
-                >
-                  {formatMoney(totals.total)}
-                </motion.span>
+              {totals.discountTotal > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-[#8A90A6]">Discount</span>
+                  <span className="tabular-nums text-[#6D3AE8]">−{formatMoney(totals.discountTotal)}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-sm">
+                <span className="text-[#8A90A6]">Tax</span>
+                <span className="tabular-nums text-[#11162F]">{formatMoney(totals.cgst + totals.sgst + totals.igst)}</span>
+              </div>
+              <div className="border-t border-[#E3E2F2] pt-2">
+                <div className="flex justify-between text-base font-semibold">
+                  <span className="text-[#11162F]">Total</span>
+                  <span className="tabular-nums font-bold text-[#6D3AE8]">{formatMoney(totals.total)}</span>
+                </div>
               </div>
             </div>
+
+            {/* Section: Notes & terms */}
+            <section className="mt-4 grid gap-3 md:grid-cols-2">
+              <TextAreaField label="Notes" value={notes} onChange={setNotes} rows={3} placeholder="Additional notes for the customer..." />
+              <TextAreaField label="Terms & conditions" value={terms} onChange={setTerms} rows={3} placeholder="Payment terms, warranty, etc..." />
+            </section>
+
+            {/* Section: Bank details */}
+            <section className="mt-4 space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-[#858BA2]">Bank / Payment details</h3>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <TextField label="Bank name" value={bankDetails.bank_name} onChange={(v) => updateBank("bank_name", v)} placeholder="e.g. SBI" />
+                <TextField label="Account number" value={bankDetails.account_number} onChange={(v) => updateBank("account_number", v)} placeholder="e.g. 1234567890" />
+                <TextField label="Account holder" value={bankDetails.account_name} onChange={(v) => updateBank("account_name", v)} placeholder="Name as on the bank account" />
+                <TextField label="IFSC code" value={bankDetails.ifsc_code} onChange={(v) => updateBank("ifsc_code", v)} placeholder="e.g. SBIN0001234" />
+                <TextField label="UPI ID" value={bankDetails.upi_id} onChange={(v) => updateBank("upi_id", v)} placeholder="e.g. name@fam" />
+                <TextField label="Payment reference" value={bankDetails.payment_reference} onChange={(v) => updateBank("payment_reference", v)} placeholder="e.g. Invoice ref / UTR" />
+              </div>
+            </section>
+
+            {errorMsg && <FormError error={errorMsg} />}
+            <FormSuccess message={saved} />
+
+            {/* Actions */}
+            <section className="mt-7 flex items-center justify-between gap-3 border-t border-[#EEF0F7] pt-5 bg-[#F8F5FF] rounded-b-xl px-4 py-4">
+              <div className="flex items-center gap-2 text-xs text-[#8A90A6]">
+                <span className="flex items-center gap-1"><span className={`flex h-2 w-2 rounded-full ${clientId ? "bg-[#6D3AE8]" : "bg-[#E3E2F2]"}`} /> Client: {clientId ? "done" : "missing"}</span>
+                <span className="flex items-center gap-1"><span className={`flex h-2 w-2 rounded-full ${usableLines.length > 0 ? "bg-[#6D3AE8]" : "bg-[#E3E2F2]"}`} /> Lines: {usableLines.length}</span>
+                <span className="flex items-center gap-1"><span className={`flex h-2 w-2 rounded-full ${canSave ? "bg-[#6D3AE8]" : "bg-[#E3E2F2]"}`} /> Ready: {stepsComplete}/{steps.length}</span>
+              </div>
+
+              <div className="flex gap-2">
+                {onClose && (
+                  <button type="button" className="btn btn-ghost px-5 py-2.5 text-[#8A90A6] hover:text-[#252B47] hover:bg-[#F3F3FA]" disabled={activeMutation} onClick={handleClose}>Cancel</button>
+                )}
+                <button type="button" className="btn btn-ghost px-5 py-2.5 text-[#8A90A6] hover:text-[#6D3AE8] hover:bg-[#F1ECFF]" disabled={activeMutation || !canSave} onClick={handleSaveDraft}>
+                  {activeMutation ? "Saving…" : "Save draft"}
+                </button>
+                <button type="submit" disabled={activeMutation || !canSave} className="btn btn-primary px-6 py-2.5">
+                  {activeMutation ? "Creating…" : isEdit ? "Update and send" : "Create and send"}
+                </button>
+              </div>
+            </section>
+          </form>
+
+          {/* Right: Live preview */}
+          <motion.div className="w-full min-w-[320px] max-w-[500px] overflow-y-auto border-l border-[#EEF0F7] pl-6">
+            <LiveInvoicePreview state={previewState} onEditTax={() => setTaxRate((current) => (current === 0 ? 18 : current))} onDownloadPdf={() => { if (initial?.id) { window.open(`/print/invoices/${initial.id}`, "_blank"); } }} onSendClient={() => { if (initial?.id) { router.push(`/invoices/${initial.id}`); } }} onMoreActions={() => { if (initial?.id) { router.push(`/invoices/${initial.id}`); } }} />
           </motion.div>
-        </motion.div>
-
-        {/* Notes and terms */}
-        <motion.div
-          className="grid grid-cols-1 gap-3 md:grid-cols-2"
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, ease: "easeOut", delay: 0.25 }}
-        >
-          <TextAreaField
-            label="Notes"
-            value={notes}
-            onChange={setNotes}
-            rows={3}
-            placeholder="Additional notes for the customer..."
-          />
-          <TextAreaField
-            label="Terms & conditions"
-            value={terms}
-            onChange={setTerms}
-            rows={3}
-            placeholder="Payment terms, warranty, etc..."
-          />
-        </motion.div>
-
-        {/* Bank details */}
-        <motion.section
-          className="space-y-2"
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, ease: "easeOut", delay: 0.3 }}
-        >
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-            Bank / Payment details
-          </h3>
-          <motion.div
-            className="grid grid-cols-1 gap-3 sm:grid-cols-2"
-            whileHover={{ boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}
-            transition={{ type: "spring", stiffness: 400, damping: 25 }}
-          >
-            <TextField
-              label="Bank name"
-              value={bankDetails.bank_name}
-              onChange={(v) => updateBank("bank_name", v)}
-              placeholder="e.g. SBI"
-            />
-            <TextField
-              label="Account number"
-              value={bankDetails.account_number}
-              onChange={(v) => updateBank("account_number", v)}
-              placeholder="e.g. 1234567890"
-            />
-            <TextField
-              label="Account holder"
-              value={bankDetails.account_name}
-              onChange={(v) => updateBank("account_name", v)}
-              placeholder="Name as on the bank account"
-            />
-            <TextField
-              label="IFSC code"
-              value={bankDetails.ifsc_code}
-              onChange={(v) => updateBank("ifsc_code", v)}
-              placeholder="e.g. SBIN0001234"
-            />
-            <TextField
-              label="UPI ID"
-              value={bankDetails.upi_id}
-              onChange={(v) => updateBank("upi_id", v)}
-              placeholder="e.g. name@fam"
-            />
-            <TextField
-              label="Payment reference"
-              value={bankDetails.payment_reference}
-              onChange={(v) => updateBank("payment_reference", v)}
-              placeholder="e.g. Invoice ref / UTR"
-            />
-          </motion.div>
-        </motion.section>
-
-        {/* Error + success */}
-        {errorMsg && <FormError error={errorMsg} />}
-        <FormSuccess message={saved} />
-
-        {/* Actions */}
-        <motion.div
-          className="flex items-center justify-between gap-3 border-t border-slate-200 pt-3"
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, ease: "easeOut", delay: 0.35 }}
-        >
-          <div className="flex items-center gap-2 text-xs text-slate-500">
-            <span className="flex items-center gap-1">
-              <span
-                className={`flex h-2 w-2 rounded-full ${
-                  clientId ? "bg-emerald-500" : "bg-slate-300"
-                }`}
-              />
-              Client: {clientId ? "done" : "missing"}
-            </span>
-            <span
-              className={`flex h-2 w-2 rounded-full ${
-                usableLines.length > 0 ? "bg-emerald-500" : "bg-slate-300"
-              }`}
-            />
-            <span className="flex items-center gap-1">
-              <span />
-              Lines: {usableLines.length}
-            </span>
-            <span
-              className={`flex h-2 w-2 rounded-full ${
-                canSave ? "bg-emerald-500" : "bg-slate-300"
-              }`}
-            />
-            <span>Ready: {stepsComplete}/{steps.length}</span>
-          </div>
-
-          <div className="flex gap-2">
-            {onClose && (
-              <motion.button
-                type="button"
-                className="btn btn-ghost px-5 py-2.5"
-                disabled={activeMutation}
-                onClick={handleClose}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                transition={{ type: "spring", stiffness: 400, damping: 25 }}
-              >
-                Cancel
-              </motion.button>
-            )}
-            <motion.button
-              type="button"
-              className="btn btn-ghost px-5 py-2.5"
-              disabled={activeMutation || !canSave}
-              onClick={handleSaveDraft}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              transition={{ type: "spring", stiffness: 400, damping: 25 }}
-            >
-              {activeMutation ? "Saving…" : "Save draft"}
-            </motion.button>
-            <motion.button
-              type="submit"
-              disabled={activeMutation || !canSave}
-              className="btn btn-primary px-5 py-2.5"
-              whileHover={{ scale: 1.01 }}
-              whileTap={{ scale: 0.98 }}
-              transition={{ type: "spring", stiffness: 400, damping: 25 }}
-            >
-              {activeMutation ? "Creating…" : isEdit ? "Update and send" : "Create and send"}
-            </motion.button>
-          </div>
-        </motion.div>
-      </form>
-
-      {/* Right: Live preview */}
-      <motion.div
-        className="w-full min-w-[320px] max-w-[500px] overflow-y-auto"
-        initial={{ opacity: 0, x: 10 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.4, ease: "easeOut", delay: 0.2 }}
-      >
-        <LiveInvoicePreview
-          state={previewState}
-          onEditTax={() => setTaxRate((current) => (current === 0 ? 18 : current))}
-          onDownloadPdf={() => {
-            if (initial?.id) {
-              window.open(`/print/invoices/${initial.id}`, "_blank");
-            }
-          }}
-          onSendClient={() => {
-            if (initial?.id) {
-              router.push(`/invoices/${initial.id}`);
-            }
-          }}
-          onMoreActions={() => {
-            if (initial?.id) {
-              router.push(`/invoices/${initial.id}`);
-            }
-          }}
-        />
-      </motion.div>
+        </div>
+      </section>
     </div>
   );
 }

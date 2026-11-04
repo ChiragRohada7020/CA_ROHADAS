@@ -602,8 +602,8 @@ async def update_client(
     from app.core.rbac import Permission as Perm
 
     principal = await get_current_user(request, db)
-    if "client.update" not in principal.permissions and "*:*" not in principal.permissions:
-        raise HTTPException(status_code=403, detail="Permission 'client.update' is required")
+    if "client.write" not in principal.permissions and "*:*" not in principal.permissions:
+        raise HTTPException(status_code=403, detail="Permission 'client.write' is required")
 
     client = db.get(Client, client_id)
     if client is None:
@@ -630,8 +630,8 @@ async def change_client_status(
     from app.core.rbac import Permission as Perm
 
     principal = await get_current_user(request, db)
-    if "client.update" not in principal.permissions and "*:*" not in principal.permissions:
-        raise HTTPException(status_code=403, detail="Permission 'client.update' is required")
+    if "client.write" not in principal.permissions and "*:*" not in principal.permissions:
+        raise HTTPException(status_code=403, detail="Permission 'client.write' is required")
 
     client = db.get(Client, client_id)
     if client is None:
@@ -692,8 +692,8 @@ async def add_contact(
     from app.core.rbac import Permission as Perm
 
     principal = await get_current_user(request, db)
-    if "client.update" not in principal.permissions and "*:*" not in principal.permissions:
-        raise HTTPException(status_code=403, detail="Permission 'client.update' is required")
+    if "client.write" not in principal.permissions and "*:*" not in principal.permissions:
+        raise HTTPException(status_code=403, detail="Permission 'client.write' is required")
 
     client = db.get(Client, client_id)
     if client is None:
@@ -735,8 +735,8 @@ async def add_registration(
     db: SessionLocal = Depends(get_db),
 ) -> Any:
     principal = await get_current_user(request, db)
-    if "client.update" not in principal.permissions and "*:*" not in principal.permissions:
-        raise HTTPException(status_code=403, detail="Permission 'client.update' is required")
+    if "client.write" not in principal.permissions and "*:*" not in principal.permissions:
+        raise HTTPException(status_code=403, detail="Permission 'client.write' is required")
 
     client = db.get(Client, client_id)
     if client is None:
@@ -811,8 +811,8 @@ async def detach_client_service(
     db: SessionLocal = Depends(get_db),
 ) -> Any:
     principal = await get_current_user(request, db)
-    if "client.update" not in principal.permissions and "*:*" not in principal.permissions:
-        raise HTTPException(status_code=403, detail="Permission 'client.update' is required")
+    if "client.write" not in principal.permissions and "*:*" not in principal.permissions:
+        raise HTTPException(status_code=403, detail="Permission 'client.write' is required")
 
     client = db.get(Client, client_id)
     if client is None:

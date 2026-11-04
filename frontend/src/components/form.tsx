@@ -242,15 +242,17 @@ export function FormActions({
   busy,
   onCancel,
   disabled,
+  className,
 }: {
   submitLabel: string;
   busy?: boolean;
   onCancel?: () => void;
   disabled?: boolean;
+  className?: string;
 }) {
   return (
     <div className="flex items-center gap-2">
-      <button type="submit" className="btn btn-primary px-5 py-2.5" disabled={busy || disabled}>
+      <button type="submit" className={`btn btn-primary px-5 py-2.5 ${className}`} disabled={busy || disabled}>
         {busy ? "Saving…" : submitLabel}
       </button>
       {onCancel && (

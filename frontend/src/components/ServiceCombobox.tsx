@@ -313,7 +313,7 @@ export function ServiceCombobox({
 
   function handleSelect(opt: ServiceOption) {
     onChange(opt);
-    setQuery("");
+    setQuery(opt.name);
     setOpen(false);
     setGlobalSearch(false);
   }
@@ -363,7 +363,7 @@ export function ServiceCombobox({
             type="text"
             className={inputCls}
             placeholder="Search services…"
-            value={open ? query : selected?.name ?? ""}
+            value={(query || selected?.name) ?? ""}
             onChange={handleInputChange}
             onFocus={handleInputFocus}
             onBlur={handleInputBlur}
@@ -431,17 +431,17 @@ export function ServiceCombobox({
     <div className="relative" ref={containerRef}>
       <div className="relative">
         <Icon name="search" className={iconCls} />
-        <input
-          ref={inputRef}
-          type="text"
-          className={inputCls}
-          placeholder={selected?.name ?? placeholder}
-          value={open ? query : selected?.name ?? ""}
-          onChange={handleInputChange}
-          onFocus={handleInputFocus}
-          onBlur={handleInputBlur}
-          onClick={() => setOpen(true)}
-        />
+          <input
+            ref={inputRef}
+            type="text"
+            className={inputCls}
+            placeholder={selected?.name ?? placeholder}
+            value={(query || selected?.name) ?? ""}
+            onChange={handleInputChange}
+            onFocus={handleInputFocus}
+            onBlur={handleInputBlur}
+            onClick={() => setOpen(true)}
+          />
       </div>
       {showDropdown && dropdownPos && (
         <>
@@ -461,13 +461,11 @@ export function ServiceCombobox({
                 maxHeight: MAX_DROPDOWN_HEIGHT,
               }}
             >
-              {clientFiltered.length > 0 && query.trim() && (
-                <p className={cn("px-3 pb-1 text-xs", dark ? "text-[var(--h-dark-text-tertiary)]" : "text-slate-500")}>
-                  {clientFiltered.length} client service{clientFiltered.length === 1 ? "" : "s"}
-                </p>
-              )}
               {clientFiltered.length > 0 && (
                 <>
+                  <p className={cn("px-3 pb-1 text-xs", dark ? "text-[var(--h-dark-text-tertiary)]" : "text-slate-500")}>
+                    {clientFiltered.length} client service{clientFiltered.length === 1 ? "" : "s"}
+                  </p>
                   {clientFiltered.map((opt) => (
                     <ServiceOptionRow
                       key={opt.id}

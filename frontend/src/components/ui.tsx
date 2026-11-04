@@ -1,18 +1,90 @@
-import { useEffect } from "react";
+"use client";
 
-import { badgeClasses, barClass, type Tone } from "@/lib/status";
+import Link from "next/link";
+import { Children, cloneElement, createContext, useContext, useEffect, useState } from "react";
+import { AlertCircle, AlertTriangle, CheckCircle, Info } from "lucide-react";
 import { cn } from "@/lib/format";
 
-/**
- * Re-exported from `form.tsx`, not redefined.
- *
- * `form.tsx` owns the interactive surface and says so. This exists only so a dialog
- * author has one import for the pieces a dialog is made of — `Modal`, `Section`, and the
- * `Field` inside them — instead of reaching into two modules for three things that
- * always travel together. The definition stays in one place.
- */
-export { Field } from "./form";
+/** ── Button ── */
+export function Button({
+  variant = "primary",
+  size = "md",
+  loading = false,
+  icon,
+  iconPosition = "left",
+  asChild = false,
+  children,
+  className,
+  disabled,
+  ...props
+}: {
+  variant?: "primary" | "secondary" | "ghost" | "outline" | "danger" | "subtle";
+  size?: "sm" | "md" | "lg";
+  loading?: boolean;
+  icon?: React.ReactNode;
+  iconPosition?: "left" | "right";
+  asChild?: boolean;
+} & React.ButtonHTMLAttributes<HTMLButtonElement>) {
+  const variantClass: Record<string, string> = {
+    primary: "bg-[#b85c38] text-white hover:bg-[#9a4a2d] shadow-sm",
+    secondary: "bg-transparent text-[#1a1814] hover:bg-[#f0ede8]",
+    ghost: "bg-transparent text-[#1a1814] hover:bg-[#f0ede8]",
+    outline: "border border-[#e5e2dc] bg-transparent text-[#1a1814] hover:bg-[#f0ede8]",
+    danger: "bg-[#ef4444] text-white hover:bg-[#dc2626]",
+    subtle: "bg-transparent text-[#1a1814] hover:bg-[#f0ede8]",
+  };
+  const sizeClass: Record<string, string> = {
+    sm: "px-2.5 py-1.5 text-xs",
+    md: "px-5 py-2.5 text-sm",
+    lg: "px-4 py-2.5 text-base",
+  };
+  const cls = cn(
+    "inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b85c38] disabled:cursor-not-allowed disabled:opacity-50",
+    variantClass[variant],
+    sizeClass[size],
+    className,
+  );
 
+  if (asChild) {
+    const child = Children.only(children) as React.ReactElement<
+      React.HTMLAttributes<HTMLElement>
+    >;
+    const childProps = child.props as React.HTMLAttributes<HTMLElement> & {
+      className?: string;
+      children?: React.ReactNode;
+    };
+    return cloneElement(child, {
+      className: cn(cls, childProps.className),
+      children: (
+        <>
+          {loading && (
+            <span className="size-4 animate-pulse rounded-full border-2 border-current border-t-transparent" aria-hidden />
+          )}
+          {!loading && icon && iconPosition === "left" && icon}
+          {childProps.children}
+          {!loading && icon && iconPosition === "right" && icon}
+        </>
+      ),
+    });
+  }
+
+  return (
+    <button
+      {...props}
+      disabled={disabled || loading}
+      className={cls}
+    >
+      {loading && (
+        <span className="size-4 animate-pulse rounded-full border-2 border-current border-t-transparent" aria-hidden />
+      )}
+      {!loading && icon && iconPosition === "left" && icon}
+      {children}
+      {!loading && icon && iconPosition === "right" && icon}
+    </button>
+  );
+}
+
+/** ── Card ── */
 export function Card({
   title,
   subtitle,
@@ -31,100 +103,120 @@ export function Card({
   style?: React.CSSProperties;
 }) {
   return (
-    <section className={cn("card", className)} style={style}>
+    <section className={cn("rounded-xl border border-[#e5e2dc] bg-white text-[#1a1814] shadow-sm", className)} style={style}>
       {title && (
-        <header className="card-header">
+        <header className="flex items-center justify-between border-b border-[#e5e2dc] px-6 py-4">
           <div className="flex items-center gap-2">
-            {icon}
+            {icon && (
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#f0ede8] text-[#b85c38]">
+                {icon}
+              </span>
+            )}
             <div className="min-w-0">
-              <h2 className="card-title">{title}</h2>
-              {subtitle && <p className="card-subtitle">{subtitle}</p>}
+              <h2 className="text-base font-semibold text-[#1a1814]">{title}</h2>
+              {subtitle && <p className="text-sm text-[#6b6357]">{subtitle}</p>}
             </div>
           </div>
           {action}
         </header>
       )}
-      {children}
+      <div className="p-6">{children}</div>
     </section>
   );
 }
 
-export function Badge({ tone, children, className }: { tone: Tone; children: React.ReactNode; className?: string }) {
-  return <span className={cn(badgeClasses(tone), className)}>{children}</span>;
+/** ── Badge ── */
+export function Badge({ tone, children, className }: { tone: string; children: React.ReactNode; className?: string }) {
+  const toneClass: Record<string, string> = {
+    default: "border-[#b85c38]/20 bg-[#b85c38]/10 text-[#b85c38]",
+    secondary: "border-[#e5e2dc]/20 bg-[#e5e2dc]/10 text-[#6b6357]",
+    destructive: "border-[#ef4444]/20 bg-[#ef4444]/10 text-[#ef4444]",
+    success: "border-[#16a36a]/20 bg-[#16a36a]/10 text-[#16a36a]",
+    warning: "border-[#f59e0b]/20 bg-[#f59e0b]/10 text-[#f59e0b]",
+    danger: "border-[#ef4444]/20 bg-[#ef4444]/10 text-[#ef4444]",
+    info: "border-[#2583eb]/20 bg-[#2583eb]/10 text-[#2583eb]",
+    neutral: "border-[#e5e2dc]/20 bg-[#e5e2dc]/10 text-[#6b6357]",
+    progress: "border-[#b85c38]/20 bg-[#b85c38]/10 text-[#b85c38]",
+  };
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors",
+        toneClass[tone] || toneClass.default,
+        className,
+      )}
+    >
+      {children}
+    </span>
+  );
 }
 
-/**
- * A single headline figure.
- *
- * `hint` exists so a number is never left ambiguous — "Unverified deadlines" means
- * nothing without "statutory dates no person has confirmed".
- *
- * `icon` is optional. When given, the figure is laid out beside a tinted chip, which is
- * how the dashboard and the list screens present their totals. One component rather than
- * a copy per screen: three near-identical tiles drifting apart is exactly what makes an
- * app feel assembled rather than designed.
- */
+/** ── StatCard ── */
 export function StatCard({
-  label,
+  title,
   value,
   hint,
   tone = "neutral",
   emphasis = false,
   icon,
 }: {
-  label: string;
+  label?: string;
   value: number | string;
   hint?: string;
-  tone?: Tone;
+  tone?: string;
   emphasis?: boolean;
   icon?: React.ReactNode;
-}) {
-  const accent: Record<Tone, string> = {
-    neutral: "text-slate-900",
-    info: "text-sky-700",
-    progress: "text-indigo-700",
-    warning: "text-amber-700",
-    danger: "text-rose-700",
-    success: "text-emerald-700",
+} & { title?: string }) {
+  const label = title || value !== undefined ? "" : "";
+  const accent: Record<string, string> = {
+    neutral: "text-[#1a1814]",
+    info: "text-[#2583eb]",
+    progress: "text-[#b85c38]",
+    warning: "text-[#f59e0b]",
+    danger: "text-[#ef4444]",
+    success: "text-[#16a36a]",
   };
-
-  const chip: Record<Tone, string> = {
-    neutral: "bg-slate-100 text-slate-600",
-    info: "bg-sky-50 text-sky-600",
-    progress: "bg-indigo-50 text-indigo-600",
-    warning: "bg-amber-50 text-amber-600",
-    danger: "bg-rose-50 text-rose-600",
-    success: "bg-emerald-50 text-emerald-600",
+  const chip: Record<string, string> = {
+    neutral: "bg-[#f0ede8] text-[#b85c38]",
+    info: "bg-[#eaf3ff] text-[#2583eb]",
+    progress: "bg-[#b85c38]/10 text-[#b85c38]",
+    warning: "bg-[#fff5df] text-[#f59e0b]",
+    danger: "bg-[#feecec] text-[#ef4444]",
+    success: "bg-[#e8f8f0] text-[#16a36a]",
   };
 
   if (icon) {
     return (
-      <div className="card flex items-start gap-3 p-4">
+      <div className="rounded-xl border border-[#e5e2dc] bg-white text-[#1a1814] shadow-sm flex items-start gap-3 p-4">
         <span
           aria-hidden
           className={cn(
             "flex size-10 shrink-0 items-center justify-center rounded-lg",
-            chip[tone],
+            chip[tone] || chip.neutral,
           )}
         >
           {icon}
         </span>
         <div className="min-w-0">
-          <p className="text-[10px] font-medium text-slate-500">{label}</p>
-          <p className={cn("tabular mt-0.5 text-xl font-semibold leading-tight", accent[tone])}>
+          <p className="text-[10px] font-medium text-[#6b6357]">{title}</p>
+          <p className={cn("tabular mt-0.5 text-xl font-semibold leading-tight", accent[tone] || accent.neutral)}>
             {value}
           </p>
-          {hint && <p className="mt-0.5 text-[11px] text-slate-400">{hint}</p>}
+          {hint && <p className="mt-0.5 text-[11px] text-[#6b6357]">{hint}</p>}
         </div>
       </div>
     );
   }
 
   return (
-    <div className="card p-4">
-      <p className="section-title">{label}</p>
-      <p className={cn("tabular mt-1 text-2xl font-semibold", accent[tone])}>{value}</p>
-      {hint && <p className="mt-1 text-xs text-slate-500">{hint}</p>}
+    <div className="rounded-xl border border-[#e5e2dc] bg-white text-[#1a1814] shadow-sm p-4">
+      <p className="text-xs font-semibold text-[#6b6357] uppercase tracking-wider">
+        {title}
+      </p>
+      <p className={cn("tabular mt-1 text-2xl font-bold text-[#1a1814]")}>
+        {value}
+      </p>
+      {hint && <p className="mt-1 text-sm text-[#6b6357]">{hint}</p>}
       {emphasis && value !== 0 && (
         <span className="mt-2 inline-block h-1 w-8 rounded-full bg-current opacity-40" />
       )}
@@ -132,81 +224,128 @@ export function StatCard({
   );
 }
 
-export function LoadingState({ label = "Loading…" }: { label?: string }) {
-  return <p className="px-4 py-8 text-center text-sm text-slate-500">{label}</p>;
-}
-
-export function ErrorState({
-  message,
-  action,
-}: {
-  message: string;
-  action?: React.ReactNode;
-}) {
-  return (
-    <div className="px-4 py-8 text-center">
-      <p role="alert" className="text-sm text-rose-600">
-        {message}
-      </p>
-      {action && <div className="mt-3">{action}</div>}
-    </div>
-  );
-}
-
-/**
- * The "nothing here" state.
- *
- * `title` is optional and `message` is required, so a caller cannot produce an empty
- * state that says nothing useful. The two-line form exists because "Coming soon" alone
- * tells a reader nothing about what will appear. An `action` gives the state a way
- * forward, which is the difference between "nothing here" and "nothing here yet".
- */
-export function EmptyState({
-  message,
-  title,
-  action,
-}: {
-  message: string;
-  title?: string;
-  action?: React.ReactNode;
-}) {
-  if (title) {
-    return (
-      <div className="px-4 py-10 text-center">
-        <p className="text-sm font-semibold text-slate-700">{title}</p>
-        <p className="mx-auto mt-1 max-w-md text-sm text-slate-500">{message}</p>
-        {action && <div className="mt-4 flex justify-center">{action}</div>}
-      </div>
-    );
-  }
-  return (
-    <div className="px-4 py-8 text-center">
-      <p className="text-sm text-slate-500">{message}</p>
-      {action && <div className="mt-3 flex justify-center">{action}</div>}
-    </div>
-  );
-}
-
-export function ProgressBar({
-  percent,
-  tone = "progress",
+/** ── Input ── */
+export function Input({
+  label,
+  hint,
+  error,
   className,
-}: {
-  percent: number;
-  tone?: Tone;
-  className?: string;
-}) {
-  const clamped = Math.min(100, Math.max(0, percent));
+  ...props
+}: { label?: string; hint?: string; error?: string } & React.InputHTMLAttributes<HTMLInputElement>) {
   return (
-    <div className={cn("h-1.5 w-full overflow-hidden rounded-full bg-slate-200", className)}>
-      <div
-        className={cn("h-full rounded-full", barClass(tone))}
-        style={{ width: `${clamped}%` }}
+    <label className="block">
+      {label && <span className="label mb-1">{label}</span>}
+      <input
+        className={cn(
+          "flex h-10 w-full rounded-lg border border-[#e5e2dc] bg-[#f8f7f4] px-4 py-3 text-sm text-[#1a1814] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#b85c38] disabled:cursor-not-allowed disabled:opacity-50",
+          error && "border-[#ef4444]",
+          className,
+        )}
+        {...props}
       />
+      {error ? (
+        <p className="mt-1 text-xs text-[#ef4444]">{error}</p>
+      ) : hint ? (
+        <p className="mt-1 text-xs text-[#6b6357]">{hint}</p>
+      ) : null}
+    </label>
+  );
+}
+
+/** ── Textarea ── */
+export function Textarea({
+  label,
+  hint,
+  error,
+  className,
+  ...props
+}: { label?: string; hint?: string; error?: string } & React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
+  return (
+    <label className="block">
+      {label && <span className="label mb-1">{label}</span>}
+      <textarea
+        className={cn(
+          "flex min-h-[80px] w-full rounded-lg border border-[#e5e2dc] bg-[#f8f7f4] px-4 py-3 text-sm text-[#1a1814] shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b85c38] disabled:cursor-not-allowed disabled:opacity-50",
+          error && "border-[#ef4444]",
+          className,
+        )}
+        {...props}
+      />
+      {error ? (
+        <p className="mt-1 text-xs text-[#ef4444]">{error}</p>
+      ) : hint ? (
+        <p className="mt-1 text-xs text-[#6b6357]">{hint}</p>
+      ) : null}
+    </label>
+  );
+}
+
+/** ── Table primitives ── */
+export function Table({ children, className }: { children: React.ReactNode; className?: string }) {
+  return <table className={cn("w-full text-sm caption-bottom text-[#1a1814]", className)}>{children}</table>;
+}
+export function TableHeader({ children, className }: { children: React.ReactNode; className?: string }) {
+  return <thead className={cn("border-b border-[#e5e2dc]", className)}>{children}</thead>;
+}
+export function TableBody({ children, className }: { children: React.ReactNode; className?: string }) {
+  return <tbody className={cn("divide-y divide-[#e5e2dc]", className)}>{children}</tbody>;
+}
+export function TableRow({ children, className, clickable, ...props }: { children: React.ReactNode; className?: string; clickable?: boolean } & React.HTMLAttributes<HTMLTableRowElement>) {
+  return (
+    <tr
+      className={cn(
+        "transition-colors hover:bg-[#f0ede8]",
+        clickable && "cursor-pointer",
+        className,
+      )}
+      {...props}
+    >
+      {children}
+    </tr>
+  );
+}
+export function TableHead({ children, className, ...props }: { children?: React.ReactNode; className?: string } & React.ThHTMLAttributes<HTMLTableCellElement>) {
+  return (
+    <th
+      className={cn(
+        "h-11 px-4 text-left align-middle font-medium text-[#6b6357] text-xs uppercase tracking-[0.08em]",
+        className,
+      )}
+      {...props}
+    >
+      {children}
+    </th>
+  );
+}
+export function TableCell({ children, className, ...props }: { children?: React.ReactNode; className?: string } & React.TdHTMLAttributes<HTMLTableCellElement>) {
+  return <td className={cn("p-4 align-middle text-[#1a1814]", className)} {...props}>{children}</td>;
+}
+
+/** ── Tabs ── */
+export function Tabs({ tabs, value, onChange }: { tabs: Array<{ value: string; label: string }>; value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="inline-flex items-center justify-center gap-1 rounded-lg border border-[#e5e2dc] bg-[#f0ede8]/30 p-1">
+      {tabs.map((t) => (
+        <button
+          key={t.value}
+          type="button"
+          onClick={() => onChange(t.value)}
+          className={cn(
+            "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+            value === t.value
+              ? "bg-[#b85c38] text-white"
+              : "text-[#6b6357] hover:bg-[#f0ede8] hover:text-[#1a1814]",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b85c38]",
+          )}
+        >
+          {t.label}
+        </button>
+      ))}
     </div>
   );
 }
 
+/** ── Select ── */
 export function Select({
   label,
   value,
@@ -220,17 +359,23 @@ export function Select({
   onChange: (value: string) => void;
   options: Array<{ value: string; label: string }>;
   placeholder?: string;
-  /** For a filter bar, where the placeholder already names the field. */
   hideLabel?: boolean;
 }) {
   return (
     <label className="block">
-      <span className={hideLabel ? "sr-only" : "label mb-1"}>{label}</span>
+      {label && !hideLabel && <span className="label mb-1">{label}</span>}
       <select
-        className="select py-1.5"
+        className="flex h-10 w-full items-center justify-between rounded-lg border border-[#e5e2dc] bg-[#f8f7f4] px-4 py-3 text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#b85c38] disabled:cursor-not-allowed disabled:opacity-50 appearance-none"
         value={value}
         onChange={(event) => onChange(event.target.value)}
         aria-label={label}
+        style={{
+          backgroundImage: "url(\"data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b' stroke-width='1.5'%3e%3cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'%3e%3c/path%3e%3c/svg%3e\")",
+          backgroundPosition: "right 0.5rem center",
+          backgroundRepeat: "no-repeat",
+          backgroundSize: "1em 1em",
+          paddingRight: "2.5rem",
+        }}
       >
         <option value="">{placeholder ?? "All"}</option>
         {options.map((option) => (
@@ -243,12 +388,7 @@ export function Select({
   );
 }
 
-/**
- * A search box with a leading icon.
- *
- * The icon is what distinguishes it from every other text input at a glance, which
- * matters on a screen that also has filter dropdowns beside it.
- */
+/** ── SearchInput ── */
 export function SearchInput({
   value,
   onChange,
@@ -265,7 +405,7 @@ export function SearchInput({
       <span className={hideLabel ? "sr-only" : "label mb-1"}>Search</span>
       <span className="relative block">
         <span
-          className="pointer-events-none absolute inset-y-0 left-2.5 flex items-center text-slate-400"
+          className="pointer-events-none absolute inset-y-0 left-2.5 flex items-center text-[#6b6357]"
           aria-hidden
         >
           <svg viewBox="0 0 20 20" className="size-4" fill="none" stroke="currentColor" strokeWidth="1.6">
@@ -274,7 +414,7 @@ export function SearchInput({
           </svg>
         </span>
         <input
-          className="input py-1.5 pl-8"
+          className="flex h-10 w-full rounded-lg border border-[#e5e2dc] bg-[#f8f7f4] px-4 py-3 text-sm text-[#1a1814] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#b85c38] pl-8"
           value={value}
           onChange={(event) => onChange(event.target.value)}
           placeholder={placeholder}
@@ -286,13 +426,7 @@ export function SearchInput({
   );
 }
 
-/**
- * Offset paging controls.
- *
- * Shows the range and the total so a partner always knows whether they are looking
- * at all of something or the first page of it — a list that silently truncates is
- * how work gets missed.
- */
+/** ── Pagination ── */
 export function Pagination({
   page,
   limit,
@@ -313,23 +447,23 @@ export function Pagination({
   const last = Math.min(offset + limit, total);
 
   return (
-    <div className="flex items-center justify-between gap-3 border-t border-[#e6e3dc] px-4 py-3">
-      <p className="tabular text-xs text-slate-500">
+    <div className="flex items-center justify-between gap-3 border-t border-[#e5e2dc] px-4 py-3">
+      <p className="tabular text-xs text-[#6b6357]">
         Showing {first}–{last} of {total}
       </p>
       <div className="flex items-center gap-2">
         <button
           type="button"
-          className="btn-ghost px-2 py-1 text-xs"
+          className="inline-flex items-center justify-center gap-2 rounded-lg px-5 py-2.5 text-sm font-medium border border-[#e5e2dc] bg-white text-[#1a1814] hover:bg-[#f0ede8] disabled:cursor-not-allowed disabled:opacity-50"
           disabled={offset === 0}
           onClick={() => onOffsetChange(Math.max(0, offset - limit))}
         >
           Previous
         </button>
-        <span className="text-xs text-slate-500">Page {page}</span>
+        <span className="tabular text-xs text-[#6b6357]">Page {page}</span>
         <button
           type="button"
-          className="btn-ghost px-2 py-1 text-xs"
+          className="inline-flex items-center justify-center gap-2 rounded-lg px-5 py-2.5 text-sm font-medium border border-[#e5e2dc] bg-white text-[#1a1814] hover:bg-[#f0ede8] disabled:cursor-not-allowed disabled:opacity-50"
           disabled={!hasMore}
           onClick={() => onOffsetChange(offset + limit)}
         >
@@ -340,14 +474,140 @@ export function Pagination({
   );
 }
 
-/**
- * The heading of a screen.
- *
- * Every page uses this rather than writing its own `<h2>`, so titles sit at the same
- * size and baseline wherever you land. It deliberately carries no bottom margin: pages
- * already space their blocks with `space-y-4`, and adding a margin here made pages that
- * used this component 16px looser than pages that did not.
- */
+/** ── ConfirmDialog ── */
+export function ConfirmDialog({
+  open,
+  onClose,
+  onConfirm,
+  title,
+  description,
+  confirmText = "Confirm",
+  cancelText = "Cancel",
+  variant = "default",
+  loading = false,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  title: string;
+  description: string;
+  confirmText?: string;
+  cancelText?: string;
+  variant?: "danger" | "default";
+  loading?: boolean;
+}) {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50 bg-[#1a1814]/30 backdrop-blur-sm">
+      <div className="fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border border-[#e5e2dc] bg-white p-6 shadow-lg rounded-xl">
+        <div className="flex flex-col space-y-1.5 px-6 py-1.5 text-center sm:text-left">
+          <h3 className="text-xl font-semibold leading-none tracking-tight text-[#1a1814]">{title}</h3>
+        </div>
+        <div className="mt-3 text-sm text-[#1a1814]">{description}</div>
+        <div className="mt-6 flex flex-row-reverse gap-2 px-6 py-1.5 sm:pb-6">
+          <Button variant="outline" size="sm" onClick={onClose} disabled={loading}>
+            {cancelText}
+          </Button>
+          <Button variant={variant === "danger" ? "danger" : "primary"} size="sm" onClick={onConfirm} loading={loading}>
+            {confirmText}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** ── Skeleton ── */
+export function Skeleton({ className, variant = "rectangular" }: { className?: string; variant?: "text" | "circular" | "rectangular" }) {
+  const base = "animate-pulse rounded-md bg-[#e5e2dc]";
+  const shape =
+    variant === "circular"
+      ? "rounded-full"
+      : variant === "text"
+        ? "rounded h-3"
+        : "rounded-md";
+  return <div className={cn(base, shape, className)} aria-hidden />;
+}
+
+/** ── EmptyState ── */
+export function EmptyState({
+  message,
+  title,
+  action,
+}: {
+  message: string;
+  title?: string;
+  action?: React.ReactNode;
+}) {
+  if (title) {
+    return (
+      <div className="px-4 py-10 text-center">
+        <p className="text-lg font-semibold text-[#1a1814]">{title}</p>
+        <p className="mx-auto mt-2 max-w-md text-sm text-[#6b6357]">
+          {message}
+        </p>
+        {action && <div className="mt-6 flex justify-center">{action}</div>}
+      </div>
+    );
+  }
+  return (
+    <div className="px-4 py-8 text-center">
+      <p className="text-sm text-[#6b6357]">{message}</p>
+      {action && <div className="mt-6 flex justify-center">{action}</div>}
+    </div>
+  );
+}
+
+/** ── ErrorState ── */
+export function ErrorState({
+  message,
+  action,
+}: {
+  message: string;
+  action?: React.ReactNode;
+}) {
+  return (
+    <div className="px-4 py-8 text-center">
+      <p role="alert" className="text-sm text-[#ef4444]">{message}</p>
+      {action && <div className="mt-3">{action}</div>}
+    </div>
+  );
+}
+
+/** ── LoadingState ── */
+export function LoadingState({ label = "Loading…" }: { label?: string }) {
+  return (
+    <p className="px-4 py-8 text-center text-sm text-[#6b6357]">{label}</p>
+  );
+}
+
+/** ── ProgressBar ── */
+export function ProgressBar({
+  percent,
+  tone = "progress",
+  className,
+}: {
+  percent: number;
+  tone?: string;
+  className?: string;
+}) {
+  const clamped = Math.min(100, Math.max(0, percent));
+  const toneColor: Record<string, string> = {
+    default: "bg-[#b85c38]",
+    success: "bg-[#16a36a]",
+    warning: "bg-[#f59e0b]",
+    danger: "bg-[#ef4444]",
+    info: "bg-[#2583eb]",
+    progress: "bg-[#b85c38]",
+  };
+  return (
+    <div className={cn("h-1.5 w-full overflow-hidden rounded-full bg-[#e5e2dc]/30", className)}>
+      <div className={cn("h-full rounded-full transition-all duration-300", toneColor[tone] || toneColor.progress)} style={{ width: `${clamped}%` }} />
+    </div>
+  );
+}
+
+/** ── PageHeader ── */
 export function PageHeader({
   title,
   subtitle,
@@ -358,26 +618,24 @@ export function PageHeader({
   action?: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-wrap items-end justify-between gap-3">
-      <div className="min-w-0">
-        <h2 className="page-title">{title}</h2>
-        {subtitle && <p className="page-subtitle">{subtitle}</p>}
+    <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col gap-1">
+        {subtitle && <p className="text-sm text-[#6b6357]">{subtitle}</p>}
+        <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-[#1a1814]">{title}</h1>
       </div>
-      {action}
+      {action && <div className="flex items-center gap-3">{action}</div>}
     </div>
   );
 }
 
-/**
- * A dialog.
- *
- * Rendered inline rather than through a portal, because every caller already sits inside
- * the app shell and nothing here needs to escape a stacking context. `Escape` closes and
- * the page behind is frozen, which are the two things a hand-rolled overlay always
- * forgets.
- *
- * `size` widens the panel; the default is a comfortable form width.
- */
+export { Children, cloneElement };
+
+/** ── FilterBar ── */
+export function FilterBar({ children }: { children: React.ReactNode }) {
+  return <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:grid-cols-4 mb-6">{children}</div>;
+}
+
+/** ── Modal ── */
 export function Modal({
   open,
   onClose,
@@ -407,289 +665,32 @@ export function Modal({
 
   if (!open) return null;
 
-  const width = { md: "max-w-lg", lg: "max-w-3xl", xl: "max-w-5xl" }[size];
+  const width = { sm: "max-w-sm", md: "max-w-lg", lg: "max-w-xl", xl: "max-w-5xl" }[size];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 sm:p-8">
-      <button
-        type="button"
-        aria-label="Close"
-        onClick={onClose}
-        className="absolute inset-0 cursor-default"
-      />
+    <div className="fixed inset-0 z-50 bg-[#1a1814]/30 backdrop-blur-sm">
       <div
         role="dialog"
         aria-modal="true"
         aria-label={title}
         className={cn(
-          "relative z-10 w-full max-w-2xl rounded-lg border border-[#e6e3dc] bg-white shadow-2xl flex flex-col max-h-[calc(100vh-4rem)]",
+          "fixed left-[50%] top-[50%] z-50 grid w-full translate-x-[-50%] translate-y-[-50%] gap-4 border border-[#e5e2dc] bg-white p-6 shadow-lg rounded-xl",
           width,
         )}
       >
-        <div className="flex-shrink-0 border-b border-[#e6e3dc] px-5 py-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-semibold text-slate-900">{title}</h2>
-            <button type="button" onClick={onClose} className="btn-icon" aria-label="Close">
-              ✕
-            </button>
-          </div>
+        <div className="flex flex-col space-y-1.5 px-6 py-1.5 text-center sm:text-left">
+          <h2 className="text-xl font-semibold leading-none tracking-tight text-[#1a1814]">{title}</h2>
         </div>
-        <div className="overflow-y-auto">
-          {children}
-        </div>
+        <div className="pb-4">{children}</div>
       </div>
     </div>
   );
 }
 
-/**
- * A titled block inside a dialog or a page.
- *
- * `number` is for the numbered sections of a wizard; `id` makes the heading an anchor,
- * so a numbered rail can link to it.
- */
-export function Section({
-  id,
-  number,
-  title,
-  children,
-  className,
-}: {
-  id?: string;
-  number?: number;
-  title: string;
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <section
-      id={id}
-      className={cn("scroll-mt-2 rounded-lg border border-[#e6e3dc] bg-white", className)}
-    >
-      <h3 className="flex items-center gap-2 border-b border-slate-100 px-4 py-2.5 text-sm font-semibold text-slate-800">
-        {number !== undefined && <span className="tabular text-slate-400">{number}.</span>}
-        {title}
-      </h3>
-      {children}
-    </section>
-  );
-}
-
-/* ── Button ─────────────────────────────────────────────────────────────── */
-
-import { Children, cloneElement, useState } from "react";
-
-/**
- * The one button. Every action in the app goes through this so that a primary
- * gradient, a ghosted toolbar control and a destructive action all read as the
- * same family.
- *
- * `asChild` lets a `<Link>` wear the button's classes without duplicating them —
- * the navigation target stays a real anchor, which is what screen readers and
- * the prefetcher expect. Only the class and the children are merged onto the
- * child; anything button-specific (`disabled`, `formAction`) is dropped, because
- * an anchor has no such concept.
- */
-export function Button({
-  variant = "primary",
-  size = "md",
-  loading = false,
-  icon,
-  iconPosition = "left",
-  asChild = false,
-  children,
-  className,
-  disabled,
-  ...props
-}: {
-  variant?: "primary" | "secondary" | "ghost" | "outline" | "danger" | "subtle";
-  size?: "sm" | "md" | "lg";
-  loading?: boolean;
-  icon?: React.ReactNode;
-  iconPosition?: "left" | "right";
-  asChild?: boolean;
-} & React.ButtonHTMLAttributes<HTMLButtonElement>) {
-  const variantClass: Record<string, string> = {
-    primary: "btn-primary",
-    secondary: "btn-ghost",
-    ghost: "btn-ghost",
-    outline: "btn-outline",
-    danger: "btn-danger",
-    subtle: "btn-ghost",
-  };
-  const sizeClass: Record<string, string> = {
-    sm: "px-2.5 py-1.5 text-xs",
-    md: "",
-    lg: "px-4 py-2.5 text-base",
-  };
-  const cls = cn(variantClass[variant], sizeClass[size], className);
-
-  if (asChild) {
-    const child = Children.only(children) as React.ReactElement<React.HTMLAttributes<HTMLElement>>;
-    const childProps = child.props as React.HTMLAttributes<HTMLElement> & {
-      className?: string;
-      children?: React.ReactNode;
-    };
-    return cloneElement(child, {
-      className: cn(cls, childProps.className),
-      children: (
-        <>
-          {loading && <span className="size-4 animate-spin rounded-full border-2 border-current border-t-transparent" aria-hidden />}
-          {!loading && icon && iconPosition === "left" && icon}
-          {childProps.children}
-          {!loading && icon && iconPosition === "right" && icon}
-        </>
-      ),
-    });
-  }
-
-  return (
-    <button
-      {...props}
-      disabled={disabled || loading}
-      className={cls}
-    >
-      {loading && <span className="size-4 animate-spin rounded-full border-2 border-current border-t-transparent" aria-hidden />}
-      {!loading && icon && iconPosition === "left" && icon}
-      {children}
-      {!loading && icon && iconPosition === "right" && icon}
-    </button>
-  );
-}
-
-/* ── Input / Textarea ────────────────────────────────────────────────────── */
-
-export function Input({
-  label,
-  hint,
-  error,
-  className,
-  ...props
-}: { label?: string; hint?: string; error?: string } & React.InputHTMLAttributes<HTMLInputElement>) {
-  return (
-    <label className="block">
-      {label && <span className="label mb-1">{label}</span>}
-      <input className={cn("input", error && "border-rose-400", className)} {...props} />
-      {error ? <p className="mt-1 text-xs text-rose-600">{error}</p> : hint ? <p className="field-hint">{hint}</p> : null}
-    </label>
-  );
-}
-
-export function Textarea({
-  label,
-  hint,
-  error,
-  className,
-  ...props
-}: { label?: string; hint?: string; error?: string } & React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
-  return (
-    <label className="block">
-      {label && <span className="label mb-1">{label}</span>}
-      <textarea className={cn("input", error && "border-rose-400", className)} {...props} />
-      {error ? <p className="mt-1 text-xs text-rose-600">{error}</p> : hint ? <p className="field-hint">{hint}</p> : null}
-    </label>
-  );
-}
-
-/* ── Table primitives ────────────────────────────────────────────────────── */
-
-export function Table({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <table className={cn("w-full text-sm", className)}>{children}</table>;
-}
-export function TableHeader({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <thead className={cn("border-b border-[#e6e3dc] bg-slate-50", className)}>{children}</thead>;
-}
-export function TableBody({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <tbody className={cn("divide-y divide-slate-100", className)}>{children}</tbody>;
-}
-export function TableRow({ children, className, clickable, ...props }: { children: React.ReactNode; className?: string; clickable?: boolean } & React.HTMLAttributes<HTMLTableRowElement>) {
-  return <tr className={cn("dashboard-row", clickable && "cursor-pointer", className)} {...props}>{children}</tr>;
-}
-export function TableHead({ children, className, ...props }: { children?: React.ReactNode; className?: string } & React.ThHTMLAttributes<HTMLTableCellElement>) {
-  return <th className={cn("px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500", className)} {...props}>{children}</th>;
-}
-export function TableCell({ children, className, ...props }: { children?: React.ReactNode; className?: string } & React.TdHTMLAttributes<HTMLTableCellElement>) {
-  return <td className={cn("px-4 py-3 text-slate-700", className)} {...props}>{children}</td>;
-}
-
-/* ── Skeleton ────────────────────────────────────────────────────────────── */
-
-export function Skeleton({ className, variant = "rectangular" }: { className?: string; variant?: "text" | "circular" | "rectangular" }) {
-  const base = "animate-pulse bg-slate-200";
-  const shape = variant === "circular" ? "rounded-full" : variant === "text" ? "rounded h-3" : "rounded-md";
-  return <div className={cn(base, shape, className)} aria-hidden />;
-}
-
-/* ── Tabs ────────────────────────────────────────────────────────────────── */
-
-export function Tabs({ tabs, value, onChange }: { tabs: Array<{ value: string; label: string }>; value: string; onChange: (v: string) => void }) {
-  return (
-    <div className="flex gap-1 border-b border-[#e6e3dc]">
-      {tabs.map((t) => (
-        <button
-          key={t.value}
-          type="button"
-          onClick={() => onChange(t.value)}
-          className={cn(
-            "px-3 py-2 text-sm font-medium transition",
-            value === t.value ? "border-b-2 border-sky-600 text-sky-700" : "text-slate-500 hover:text-slate-700",
-          )}
-        >
-          {t.label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-/* ── ConfirmDialog ───────────────────────────────────────────────────────── */
-
-export function ConfirmDialog({
-  open,
-  onClose,
-  onConfirm,
-  title,
-  description,
-  confirmText = "Confirm",
-  cancelText = "Cancel",
-  variant = "default",
-  loading = false,
-}: {
-  open: boolean;
-  onClose: () => void;
-  onConfirm: () => void;
-  title: string;
-  description: string;
-  confirmText?: string;
-  cancelText?: string;
-  variant?: "danger" | "default";
-  loading?: boolean;
-}) {
-  if (!open) return null;
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 dialog-overlay">
-      <div className="w-full max-w-md rounded-lg border border-[#e6e3dc] bg-white p-6 shadow-2xl dialog-content">
-        <h3 className="text-base font-semibold text-slate-900">{title}</h3>
-        <p className="mt-3 text-sm text-slate-600">{description}</p>
-        <div className="mt-6 flex justify-end gap-3">
-          <Button variant="ghost" size="sm" onClick={onClose} disabled={loading} className="px-5 py-2 text-sm transition-all duration-200 hover:bg-[#f7f6f3] active:bg-[#e6e3dc]">
-            {cancelText}
-          </Button>
-          <Button variant={variant === "danger" ? "danger" : "primary"} size="sm" onClick={onConfirm} loading={loading} className="px-5 py-2 text-sm font-medium transition-all duration-200 shadow-sm hover:scale-[1.02] active:scale-95">
-            {confirmText}
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ── Toast system ────────────────────────────────────────────────────────── */
-
+/** ── Toast system ── */
 type ToastType = "success" | "error" | "warning" | "info";
 interface ToastItem { id: string; type: ToastType; message: string; }
 
-import { createContext, useContext } from "react";
 const ToastContext = createContext<{ push: (t: Omit<ToastItem, "id">) => void } | null>(null);
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
@@ -704,13 +705,20 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       {children}
       <div className="fixed bottom-4 right-4 z-[60] flex flex-col gap-2">
         {toasts.map((t) => (
-          <div key={t.id} className={cn("rounded-md px-4 py-2 text-sm text-white shadow-lg",
-            t.type === "success" && "bg-emerald-600",
-            t.type === "error" && "bg-rose-600",
-            t.type === "warning" && "bg-amber-600",
-            t.type === "info" && "bg-sky-600",
+          <div key={t.id} className={cn(
+            "relative flex items-center gap-4 rounded-md border bg-white p-4 shadow-lg border-[#e5e2dc]",
+            t.type === "success" && "border-[#16a36a] bg-[#e8f8f0] text-[#16a36a]",
+            t.type === "error" && "border-[#ef4444] bg-[#feecec] text-[#ef4444]",
+            t.type === "warning" && "border-[#f59e0b] bg-[#fff5df] text-[#f59e0b]",
+            t.type === "info" && "border-[#2583eb] bg-[#eaf3ff] text-[#2583eb]",
           )}>
-            {t.message}
+            <span className="flex shrink-0 items-center justify-center rounded-full bg-[#f8f7f4]/50 p-1.5">
+              {t.type === "success" && <CheckCircle className="h-4 w-4 text-[#16a36a]" />}
+              {t.type === "error" && <AlertCircle className="h-4 w-4 text-[#ef4444]" />}
+              {t.type === "warning" && <AlertTriangle className="h-4 w-4 text-[#f59e0b]" />}
+              {t.type === "info" && <Info className="h-4 w-4 text-[#2583eb]" />}
+            </span>
+            <p className="text-sm font-medium">{t.message}</p>
           </div>
         ))}
       </div>
@@ -720,7 +728,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
 export function useToast() {
   const ctx = useContext(ToastContext);
-  if (!ctx) throw new Error("useToast must be used within ToastProvider");
+  if (!ctx) throw new Error("useToast must be used within ToastContext.Provider");
   return ctx;
 }
 

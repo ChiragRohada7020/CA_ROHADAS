@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { ChevronRight, LogOut, Menu, X } from "lucide-react";
+import { ChevronRight, LogOut, Menu, PanelLeftClose, PanelLeftOpen, X } from "lucide-react";
 
 import { Icon, type IconName } from "@/components/Icon";
 import { ApiError, api } from "@/lib/api";
@@ -56,6 +56,8 @@ interface AppSidebarProps {
   pathname: string;
   permissions: string[];
   signingOut: boolean;
+  collapsed: boolean;
+  setCollapsed: (v: boolean) => void;
   onSignOut: () => void;
 }
 
@@ -64,6 +66,8 @@ export function AppSidebar({
   permissions,
   onSignOut,
   signingOut,
+  collapsed,
+  setCollapsed,
 }: AppSidebarProps) {
   const firm = useQuery({
     queryKey: ["billing", "settings"],
@@ -77,464 +81,313 @@ export function AppSidebar({
     staleTime: 10 * 60 * 1000,
   });
 
-  const activeYear = years.data?.find((row) => row.is_active);
+  const [activeYear, setActiveYear] = useState<FinancialYearRow | null>(null);
+  const queryClient = useQueryClient();
+
+  // Sync active year with the server's active year
+  useEffect(() => {
+    const serverActive = years.data?.find((row) => row.is_active) || null;
+    if (serverActive) {
+      setActiveYear(serverActive);
+    }
+  }, [years.data]);
+
+  const activateFY = useMutation({
+    mutationFn: (fyId: string) =>
+      api.patch<FinancialYearRow>(`/financial-years/${fyId}/activate`, {}),
+    onSuccess: (updated) => {
+      setActiveYear(updated);
+      void queryClient.invalidateQueries({ queryKey: ["financial-years"] });
+    },
+  });
 
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
-  const [collapsed, setCollapsed] = useState(false);
-
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const renderNavigation = (mobile: boolean) => (
+    <nav>
+      {NAV.filter((item) => {
+        if (item.children) {
+          if (item.permission && !permissions.includes(item.permission)) return false;
+          return true;
+        }
+        if (!item.ready) return true;
+        if (item.permission === null || item.permission === undefined) return true;
+        return permissions.includes(item.permission);
+      }).map((item) => {
+        if (item.children) {
+          const isGroupActive = item.children.some(
+            (c) => c.href && (pathname === c.href || pathname.startsWith(`${c.href}/`)),
+          );
+          const isExpanded = expandedGroups.has(item.label) || isGroupActive;
+          return (
+            <div key={item.label} className="space-y-1">
+              <button
+                type="button"
+                onClick={() => {
+                  const next = new Set(expandedGroups);
+                  if (next.has(item.label)) next.delete(item.label);
+                  else next.add(item.label);
+                  setExpandedGroups(next);
+                  if (mobile) setMobileMenuOpen(false);
+                }}
+                className={cn(
+                  "flex items-center gap-3 rounded-xl px-3 py-2 text-xs transition",
+                  isGroupActive ? "bg-[#F1ECFF] text-[#6D3AE8] border border-[#E3E2F2]" : "text-[#8A90A6] hover:bg-[#FAFAFE]",
+                )}
+              >
+                <Icon
+                  name={item.icon}
+                  className={cn(
+                    "h-6 w-6 shrink-0 transition-transform duration-200",
+                    isExpanded ? "rotate-90" : "",
+                    isGroupActive ? "text-[#6D3AE8]" : "text-[#8A90A6]",
+                  )}
+                />
+                {(!collapsed || mobile) && <span className="text-xs font-medium text-[#252B47]">{item.label}</span>}
+                <ChevronRight
+                  className={cn(
+                    "ml-auto h-6 w-6 shrink-0 transition-transform duration-200",
+                    isExpanded ? "rotate-90" : "",
+                  )}
+                />
+              </button>
+              {isExpanded && (
+                <div className="ml-3 space-y-0.5">
+                  {item.children
+                    .filter((c) => {
+                      if (c.permission && !permissions.includes(c.permission)) return false;
+                      if (!c.ready) return true;
+                      return true;
+                    })
+                    .map((child) => {
+                      if (!child.ready || !child.href) {
+                        return (
+                          <span
+                            key={child.label}
+                            aria-disabled="true"
+                            className="flex items-center gap-3 rounded-xl px-3 py-2 text-[10px] text-[#8A90A6]"
+                          >
+                            <Icon name={child.icon} className="h-5 w-5" />
+                            {!collapsed && <span>{child.label}</span>}
+                          </span>
+                        );
+                      }
+                      const isChildActive =
+                        pathname === child.href ||
+                        pathname.startsWith(`${child.href}/`);
+                      return (
+                        <Link
+                          key={child.href}
+                          href={child.href}
+                          onClick={mobile ? () => setMobileMenuOpen(false) : undefined}
+                          className={cn(
+                            "flex items-center gap-3 rounded-xl px-3 py-2 text-[10px] transition",
+                            isChildActive
+                              ? "bg-[#F1ECFF] text-[#6D3AE8] border border-[#E3E2F2]"
+                              : "text-[#8A90A6] hover:bg-[#FAFAFE]",
+                          )}
+                        >
+                          <Icon
+                            name={child.icon}
+                            className={cn(
+                              "h-5 w-5 shrink-0",
+                              isChildActive ? "text-[#6D3AE8]" : "text-[#8A90A6]",
+                            )}
+                          />
+                          {!collapsed && <span>{child.label}</span>}
+                        </Link>
+                      );
+                    })}
+                </div>
+              )}
+            </div>
+          );
+        }
+        const isActive =
+          pathname === item.href || pathname.startsWith(`${item.href}/`);
+
+        if (!item.ready || !item.href) {
+          return (
+            <span
+              key={item.label}
+              aria-disabled="true"
+              title="Coming next"
+              className="flex items-center gap-3 rounded-xl px-3 py-2 text-[10px] text-[#8A90A6]"
+            >
+              <Icon name={item.icon} className="h-5 w-5 shrink-0 opacity-50" />
+              {!collapsed && <span>{item.label}</span>}
+              <span className="ml-auto text-[9px] font-semibold text-[#C9B7FF]">next</span>
+            </span>
+          );
+        }
+
+        return (
+          <Link
+            key={item.href}
+            href={item.href}
+            onClick={mobile ? () => setMobileMenuOpen(false) : undefined}
+            className={cn(
+              "flex items-center gap-3 rounded-xl px-3 py-2 text-[10px] transition",
+              isActive
+                ? "bg-[#F1ECFF] text-[#6D3AE8] border border-[#E3E2F2]"
+                : "text-[#8A90A6] hover:bg-[#FAFAFE]",
+            )}
+          >
+            <Icon
+              name={item.icon}
+              className={cn(
+                "h-5 w-5 shrink-0",
+                isActive ? "text-[#6D3AE8]" : "text-[#8A90A6]",
+              )}
+            />
+            {(!collapsed || mobile) && <span className="text-xs font-medium text-[#252B47]">{item.label}</span>}
+          </Link>
+        );
+      })}
+    </nav>
+  );
+
+  const footer = (mobile = false) => (
+    <div className="space-y-3 border-t border-[#EEF0F7] p-3">
+      {(!collapsed || mobile) && (
+        <div className="rounded-xl border border-[#E3E2F2] bg-[#F1ECFF] p-3">
+          <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-[.14em] text-[#858BA2]">
+            <Icon name="calendar" className="h-3 w-3 text-[#6D3AE8]" /> Financial year
+          </div>
+          {years.isPending ? (
+            <p className="text-xs text-[#8D96B9]">Loading financial year…</p>
+          ) : years.isError ? (
+            <p className="text-xs text-rose-300">Could not load financial year</p>
+          ) : activeYear ? (
+            <>
+              <p className="text-xs font-semibold text-[#252B47]">{activeYear.label}</p>
+              {activeYear.assessment_year && <p className="mt-0.5 text-xs text-[#858BA2]">Assessment year {activeYear.assessment_year}</p>}
+            </>
+          ) : (
+            <p className="text-xs text-[#929BBE]">No financial year configured</p>
+          )}
+          {/* Financial year selector dropdown */}
+          {years.data && years.data.length > 1 && (
+            <select
+              value={activeYear?.id || ""}
+              onChange={(e) => {
+                const selectedId = e.target.value;
+                if (selectedId) {
+                  activateFY.mutate(selectedId);
+                }
+              }}
+              className="mt-2 block w-full rounded-lg border border-[#E3E2F2] bg-[#FAFAFE] px-3 py-2 text-sm text-[#252B47] focus:ring-2 focus:ring-[#6D3AE8]/50 outline-none"
+            >
+              <option value="">Select financial year</option>
+              {years.data.map((fy) => (
+                <option key={fy.id} value={fy.id}>
+                  {fy.code || fy.label}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
+      )}
+
+      <div className={cn("flex items-center gap-2 rounded-xl px-2 py-2", collapsed && !mobile && "justify-center")}>
+        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-[#E3E2F2] bg-[#F8F5FF] text-[#6D3AE8]">
+          <Icon name="building" className="h-[17px] w-[17px]" />
+        </span>
+        {(!collapsed || mobile) && (
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold text-[#252B47]">{firm.data?.legal_name || firm.data?.name || "Your firm"}</p>
+            <p className="truncate text-sm text-[#858BA2]">
+              {firm.data ? [firm.data.city, firm.data.state].filter(Boolean).join(", ") || "No address set" : firm.isError ? "Firm details unavailable" : "Loading firm…"}
+            </p>
+          </div>
+        )}
+      </div>
+
+      <button
+        type="button"
+        onClick={onSignOut}
+        disabled={signingOut}
+        className={cn(
+          "flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-rose-400/30 bg-rose-500/[0.10] px-3 text-xs font-semibold text-rose-200 transition hover:border-rose-300/50 hover:bg-rose-500/[0.18] disabled:cursor-not-allowed disabled:opacity-50",
+          collapsed && !mobile && "px-0",
+        )}
+      >
+        <LogOut className="h-6 w-6 shrink-0" />
+        {(!collapsed || mobile) && (signingOut ? "Signing out…" : "Sign out")}
+      </button>
+    </div>
+  );
 
   return (
     <>
       {/* Desktop sidebar */}
       <aside
         className={cn(
-          "sidebar transition-all duration-300",
-          collapsed ? "sidebar-collapsed" : "",
+          "fixed inset-y-0 left-0 z-30 hidden flex-col overflow-y-auto border-r border-[#EEF0F7] bg-[#FAFAFE] text-[#252B47] shadow-[8px_0_30px_rgba(40,42,90,.045)] transition-[width] duration-300 lg:flex",
+          collapsed ? "w-[78px]" : "w-[272px]",
         )}
       >
-        <div className="sidebar-header">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary via-primary/90 to-accent text-sm font-bold text-white">
-            RC
+        <div className={cn("flex h-[76px] shrink-0 items-center gap-3 border-b border-[#EEF0F7] px-4", collapsed && "justify-center px-2")}>
+          <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-[#6D3AE8] to-[#5730CB] text-lg font-bold text-white shadow-[0_5px_16px_rgba(103,64,220,.35)] ring-1 ring-white/15">
+            CA
           </div>
           {!collapsed && (
-            <div className="min-w-0">
-              <p className="text-sm font-semibold tracking-tight text-white">
-                Rohadas CA
-              </p>
-              <p className="truncate text-[11px] text-hsl(var(--sidebar-foreground))/60">
-                CA Practice Management
-              </p>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-lg font-bold tracking-[-.02em] text-[#11162F]">Rohadas CA</p>
+              <p className="truncate text-sm text-[#858BA2]">CA Practice Management</p>
             </div>
           )}
-          <button
-            type="button"
-            className="ml-auto p-1.5 text-hsl(var(--sidebar-foreground))/60 hover:text-hsl(var(--sidebar-foreground)) hover:bg-hsl(var(--sidebar-accent)) rounded-md transition-colors"
-            aria-label="Toggle sidebar"
-            onClick={() => setCollapsed((prev) => !prev)}
-          >
-            <svg className="h-4 w-4" stroke="currentColor" fill="none" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-          </button>
+          {!collapsed && (
+            <button type="button" onClick={() => setCollapsed(true)} aria-label="Collapse sidebar" className="rounded-lg p-1.5 text-[#8A90A6] transition hover:bg-[#FAFAFE] hover:text-[#252B47]">
+              <PanelLeftClose className="h-6 w-6" />
+            </button>
+          )}
+          {collapsed && (
+            <button type="button" onClick={() => setCollapsed(false)} aria-label="Expand sidebar" className="absolute right-1 top-[86px] rounded-md bg-[#FFFFFF] border border-[#EEF0F7] p-1 text-[#6D3AE8] hover:text-[#252B47]">
+              <PanelLeftOpen className="h-5 w-5" />
+            </button>
+          )}
         </div>
 
-        <nav className="sidebar-nav">
-          {NAV.filter((item) => {
-            if (item.children) {
-              if (item.permission && !permissions.includes(item.permission)) return false;
-              return true;
-            }
-            if (!item.ready) return true;
-            if (item.permission === null || item.permission === undefined) return true;
-            return permissions.includes(item.permission);
-          }).map((item) => {
-            if (item.children) {
-              const isGroupActive = item.children.some(
-                (c) => c.href && (pathname === c.href || pathname.startsWith(`${c.href}/`)),
-              );
-              const isExpanded = expandedGroups.has(item.label) || isGroupActive;
-              return (
-                <div key={item.label} className="space-y-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const next = new Set(expandedGroups);
-                      if (next.has(item.label)) next.delete(item.label);
-                      else next.add(item.label);
-                      setExpandedGroups(next);
-                    }}
-                    className={cn(
-                      "sidebar-item",
-                      isGroupActive ? "sidebar-item-active" : "",
-                    )}
-                  >
-                    <Icon
-                      name={item.icon}
-                      className={cn(
-                        "h-[18px] w-[18px] transition-transform duration-200",
-                        isExpanded ? "rotate-90" : "",
-                        isGroupActive ? "text-hsl(var(--primary))" : "",
-                      )}
-                    />
-                    {!collapsed && <span>{item.label}</span>}
-                    <ChevronRight
-                      className={cn(
-                        "ml-auto h-4 w-4 shrink-0 transition-transform duration-200",
-                        isExpanded ? "rotate-90" : "",
-                      )}
-                    />
-                  </button>
-                  {isExpanded && (
-                    <div className="ml-3 space-y-0.5">
-                      {item.children
-                        .filter((c) => {
-                          if (c.permission && !permissions.includes(c.permission)) return false;
-                          if (!c.ready) return true;
-                          return true;
-                        })
-                        .map((child) => {
-                          if (!child.ready || !child.href) {
-                            return (
-                              <span
-                                key={child.label}
-                                aria-disabled="true"
-                                className="flex items-center gap-3 rounded-xl px-3 py-2 text-sm text-hsl(var(--sidebar-foreground))/40"
-                              >
-                                <Icon
-                                  name={child.icon}
-                                  className="h-[18px] w-[18px]"
-                                />
-                                {!collapsed && <span>{child.label}</span>}
-                              </span>
-                            );
-                          }
-                          const isChildActive =
-                            pathname === child.href ||
-                            pathname.startsWith(`${child.href}/`);
-                          return (
-                            <Link
-                              key={child.href}
-                              href={child.href}
-                              className={cn(
-                                "flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition",
-                                isChildActive
-                                  ? "sidebar-item-active"
-                                  : "",
-                              )}
-                            >
-                              <Icon
-                                name={child.icon}
-                                className={cn(
-                                  "h-[18px] w-[18px]",
-                                  isChildActive
-                                    ? "text-hsl(var(--primary))"
-                                    : "",
-                                )}
-                              />
-                              {!collapsed && <span>{child.label}</span>}
-                            </Link>
-                          );
-                        })}
-                    </div>
-                  )}
-                </div>
-              );
-            }
-            const isActive =
-              pathname === item.href || pathname.startsWith(`${item.href}/`);
-
-            if (!item.ready || !item.href) {
-              return (
-                <span
-                  key={item.label}
-                  aria-disabled="true"
-                  title="Coming next"
-                  className={cn(
-                    "sidebar-item",
-                    "text-hsl(var(--sidebar-foreground))/40",
-                  )}
-                >
-                  <Icon name={item.icon} className="h-[18px] w-[18px]" />
-                  {!collapsed && <span>{item.label}</span>}
-                  <span className="ml-auto rounded bg-hsl(var(--sidebar-accent)) px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-hsl(var(--sidebar-foreground))/50">
-                    next
-                  </span>
-                </span>
-              );
-            }
-
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "sidebar-item",
-                  isActive ? "sidebar-item-active" : "",
-                )}
-              >
-                <Icon
-                  name={item.icon}
-                  className={cn(
-                    "h-[18px] w-[18px]",
-                    isActive ? "text-hsl(var(--primary))" : "",
-                  )}
-                />
-                {!collapsed && <span>{item.label}</span>}
-              </Link>
-            );
-          })}
+        <nav className="flex-1 overflow-y-auto space-y-2 p-3">
+          {renderNavigation(false)}
         </nav>
 
-        <div className="sidebar-footer">
-          <div className="space-y-2 p-2">
-            <div className="rounded-xl bg-hsl(var(--sidebar-accent)) px-3 py-2">
-              <p className="text-[10px] font-medium uppercase tracking-wide text-hsl(var(--sidebar-foreground))/60">
-                Financial year
-              </p>
-              {years.isPending && (
-                <p className="mt-0.5 text-xs text-hsl(var(--sidebar-foreground))/40">
-                  Loading…
-                </p>
-              )}
-              {years.isSuccess && activeYear && (
-                <>
-                  <p className="mt-0.5 text-sm font-semibold text-hsl(var(--sidebar-foreground))">
-                    {activeYear.label}
-                  </p>
-                  {activeYear.assessment_year && (
-                    <p className="text-[11px] text-hsl(var(--sidebar-foreground))/50">
-                      Assessment year {activeYear.assessment_year}
-                    </p>
-                  )}
-                </>
-              )}
-              {years.isSuccess && !activeYear && (
-                <p className="mt-0.5 text-xs text-hsl(var(--sidebar-foreground))/40">
-                  None set up yet
-                </p>
-              )}
-            </div>
-
-            <div className="flex items-start gap-2 px-3 py-1">
-              <Icon name="building" className="mt-0.5 h-4 w-4 shrink-0 text-hsl(var(--sidebar-foreground))/40" />
-              <div className="min-w-0">
-                <p className="truncate text-xs font-semibold text-hsl(var(--sidebar-foreground))">
-                  {firm.data?.legal_name || firm.data?.name || "Your firm"}
-                </p>
-                <p className="truncate text-[11px] text-hsl(var(--sidebar-foreground))/50">
-                  {firm.data
-                    ? [firm.data.city, firm.data.state].filter(Boolean).join(", ") ||
-                      "No address set"
-                    : "…"}
-                </p>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              className="btn btn-danger w-full justify-center py-2 gap-2"
-              disabled={signingOut}
-              onClick={onSignOut}
-            >
-              <LogOut className="h-4 w-4" />
-              {!collapsed && (
-                <span>{signingOut ? "Signing out…" : "Sign out"}</span>
-              )}
-            </button>
-          </div>
-        </div>
+        {footer(false)}
       </aside>
 
-      {/* Mobile sidebar overlay */}
-      {mobileMenuOpen && (
-        <>
-          <div
-            className="fixed inset-0 z-40 bg-hsl(var(--background))/80 backdrop-blur-lg:hidden"
-            onClick={() => setMobileMenuOpen(false)}
-          />
-          <aside
-            className="fixed inset-y-0 right-0 z-50 w-72 flex-col border-l border-hsl(var(--sidebar-border)) bg-hsl(var(--sidebar)) shadow-2xl lg:hidden"
-          >
-            <div className="flex items-center justify-between border-b border-hsl(var(--sidebar-border)) px-4 py-4">
-              <div className="flex items-center gap-2">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary via-primary/90 to-accent text-sm font-bold text-white">
-                  RC
-                </div>
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold tracking-tight text-hsl(var(--sidebar-foreground))">
-                    Rohadas CA
-                  </p>
-                  <p className="truncate text-[11px] text-hsl(var(--sidebar-foreground))/60">
-                    CA Practice Management
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setMobileMenuOpen(false)}
-                className="p-1 text-hsl(var(--sidebar-foreground))/60 hover:text-hsl(var(--sidebar-foreground))"
-                aria-label="Close menu"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            <nav className="flex-1 overflow-y-auto space-y-0.5 p-2">
-              {NAV.filter((item) => {
-                if (item.children) {
-                  if (item.permission && !permissions.includes(item.permission)) return false;
-                  return true;
-                }
-                if (!item.ready) return true;
-                if (item.permission === null || item.permission === undefined) return true;
-                return permissions.includes(item.permission);
-              }).map((item) => {
-                if (item.children) {
-                  const isGroupActive = item.children.some(
-                    (c) => c.href && (pathname === c.href || pathname.startsWith(`${c.href}/`)),
-                  );
-                  const isExpanded = expandedGroups.has(item.label) || isGroupActive;
-                  return (
-                    <div key={item.label} className="space-y-1">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const next = new Set(expandedGroups);
-                          if (next.has(item.label)) next.delete(item.label);
-                          else next.add(item.label);
-                          setExpandedGroups(next);
-                          setMobileMenuOpen(false);
-                        }}
-                        className={cn(
-                          "sidebar-item",
-                          isGroupActive ? "sidebar-item-active" : "",
-                        )}
-                      >
-                        <Icon
-                          name={item.icon}
-                          className={cn(
-                            "h-[18px] w-[18px] transition-transform duration-200",
-                            isExpanded ? "rotate-90" : "",
-                            isGroupActive ? "text-hsl(var(--primary))" : "",
-                          )}
-                        />
-                        <span>{item.label}</span>
-                        <ChevronRight
-                          className={cn(
-                            "ml-auto h-4 w-4 shrink-0 transition-transform duration-200",
-                            isExpanded ? "rotate-90" : "",
-                          )}
-                        />
-                      </button>
-                      {isExpanded && (
-                        <div className="ml-3 space-y-0.5">
-                          {item.children
-                            .filter((c) => {
-                              if (c.permission && !permissions.includes(c.permission)) return false;
-                              if (!c.ready) return true;
-                              return true;
-                            })
-                            .map((child) => {
-                              if (!child.ready || !child.href) {
-                                return (
-                                  <span
-                                    key={child.label}
-                                    aria-disabled="true"
-                                    className="flex items-center gap-3 rounded-xl px-3 py-2 text-sm text-hsl(var(--sidebar-foreground))/40"
-                                  >
-                                    <Icon name={child.icon} className="h-[18px] w-[18px]" />
-                                    <span>{child.label}</span>
-                                  </span>
-                                );
-                              }
-                              const isChildActive =
-                                pathname === child.href ||
-                                pathname.startsWith(`${child.href}/`);
-                              return (
-                                <Link
-                                  key={child.href}
-                                  href={child.href}
-                                  onClick={() => setMobileMenuOpen(false)}
-                                  className={cn(
-                                    "flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition",
-                                    isChildActive
-                                      ? "sidebar-item-active"
-                                      : "",
-                                  )}
-                                >
-                                  <Icon
-                                    name={child.icon}
-                                    className={cn(
-                                      "h-[18px] w-[18px]",
-                                      isChildActive
-                                        ? "text-hsl(var(--primary))"
-                                        : "",
-                                    )}
-                                  />
-                                  <span>{child.label}</span>
-                                </Link>
-                              );
-                            })}
-                        </div>
-                      )}
-                    </div>
-                  );
-                }
-                const isActive =
-                  pathname === item.href || pathname.startsWith(`${item.href}/`);
-
-                if (!item.ready || !item.href) {
-                  return (
-                    <span
-                      key={item.label}
-                      aria-disabled="true"
-                      title="Coming next"
-                      className={cn(
-                        "sidebar-item",
-                        "text-hsl(var(--sidebar-foreground))/40",
-                      )}
-                    >
-                      <Icon name={item.icon} className="h-[18px] w-[18px]" />
-                      <span>{item.label}</span>
-                      <span className="ml-auto rounded bg-hsl(var(--sidebar-accent)) px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-hsl(var(--sidebar-foreground))/50">
-                        next
-                      </span>
-                    </span>
-                  );
-                }
-
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={() => setMobileMenuOpen(false)}
-                    className={cn(
-                      "sidebar-item",
-                      isActive ? "sidebar-item-active" : "",
-                    )}
-                  >
-                    <Icon
-                      name={item.icon}
-                      className={cn(
-                        "h-[18px] w-[18px]",
-                        isActive ? "text-hsl(var(--primary))" : "",
-                      )}
-                    />
-                    <span>{item.label}</span>
-                  </Link>
-                );
-              })}
-            </nav>
-            <div className="sidebar-footer">
-              <div className="space-y-2 p-2">
-                <button
-                  type="button"
-                  className="btn btn-danger w-full justify-center py-2 gap-2"
-                  disabled={signingOut}
-                  onClick={() => {
-                    setMobileMenuOpen(false);
-                    onSignOut();
-                  }}
-                >
-                  <LogOut className="h-4 w-4" />
-                  <span>{signingOut ? "Signing out…" : "Sign out"}</span>
-                </button>
-              </div>
-            </div>
-          </aside>
-        </>
-      )}
-
-      {/* Mobile menu toggle button */}
-      <button
+      {/* Mobile sidebar trigger */}
+        <button
         type="button"
-        className="mr-2 flex h-9 w-9 items-center justify-center rounded-lg border border-hsl(var(--border)) bg-hsl(var(--card)) text-hsl(var(--foreground)) hover:bg-hsl(var(--secondary)) md:hidden"
-        aria-label="Open navigation menu"
-        onClick={() => setMobileMenuOpen((open) => !open)}
+        onClick={() => setMobileMenuOpen(true)}
+        aria-label="Open navigation"
+        className="fixed left-3 top-3 z-40 grid h-10 w-10 place-items-center rounded-xl border border-[#E3E5F4] bg-white text-[#222844] shadow-sm lg:hidden"
       >
-        <Menu className="h-5 w-5" />
+        <Menu className="h-6 w-6" />
       </button>
+
+      {/* Mobile drawer */}
+      {mobileMenuOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+              <button type="button" aria-label="Close navigation overlay" onClick={() => setMobileMenuOpen(false)} className="absolute inset-0 bg-[#080B1C]/55 backdrop-blur-[2px]" />
+          <aside className="absolute inset-y-0 left-0 flex w-[min(86vw,300px)] flex-col border-r border-[#EEF0F7] bg-[#FAFAFE] text-[#252B47] shadow-2xl">
+            <div className="flex h-[76px] shrink-0 items-center gap-3 border-b border-[#EEF0F7] px-4">
+              <div className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-[#6D3AE8] to-[#5730CB] text-sm font-bold text-white">CA</div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-bold text-[#11162F]">Rohadas CA</p>
+                <p className="text-[10px] text-[#858BA2]">CA Practice Management</p>
+              </div>
+              <button type="button" onClick={() => setMobileMenuOpen(false)} aria-label="Close navigation" className="rounded-lg p-2 text-[#8A90A6] hover:bg-[#FAFAFE] hover:text-[#252B47]"><X className="h-5 w-5" /></button>
+            </div>
+            <nav className="flex-1 overflow-y-auto space-y-2 p-3">
+              {renderNavigation(true)}
+            </nav>
+            {footer(true)}
+          </aside>
+        </div>
+      )}
     </>
   );
 }

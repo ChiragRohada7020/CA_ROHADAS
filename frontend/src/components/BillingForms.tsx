@@ -26,6 +26,7 @@ import { paymentMethodLabel } from "@/lib/status";
 import type {
   ClientDetail,
   ClientListItem,
+  ClientServiceRow,
   CreditNoteCreatePayload,
   FirmBillingSettings,
   GenerateResult,
@@ -36,6 +37,7 @@ import type {
   InvoiceTemplate,
   Page,
   PaymentMethod,
+  ServiceRow,
   ShareLinkResult,
 } from "@/lib/types";
 
@@ -231,15 +233,13 @@ export function NewInvoiceForm({ onDone, onClose }: { onDone: (invoiceId: string
 
   const [clientId, setClientId] = useState("");
   const [invoiceDate, setInvoiceDate] = useState(today);
-  const [dueDate, setDueDate] = useState(addDays(today, 30));
   const [lines, setLines] = useState<DraftLine[]>([blankLine()]);
   const [notes, setNotes] = useState("");
   const [terms, setTerms] = useState("");
   const [isOpen, setIsOpen] = useState(true);
+  const [addServiceOpen, setAddServiceOpen] = useState(false);
+  const [addServiceQuery, setAddServiceQuery] = useState("");
 
-  // Fetch the firm's default tax rate so the slide-over form does not
-  // silently hardcode 18% — the full-page CreateInvoiceForm already reads
-  // this, and the two entry points must agree.
   const settings = useQuery({
     queryKey: ["billing", "settings"],
     queryFn: () => api.get<FirmBillingSettings>("/billing/settings"),
@@ -249,7 +249,6 @@ export function NewInvoiceForm({ onDone, onClose }: { onDone: (invoiceId: string
   const firmSettings = settings.data;
   const defaultTaxRate = firmSettings?.default_gst_rate ?? 18;
 
-  // Prevent the page behind the slide-over from scrolling and close on Escape.
   useEffect(() => {
     const previous = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -279,12 +278,29 @@ export function NewInvoiceForm({ onDone, onClose }: { onDone: (invoiceId: string
     return flattenClientServices(clientDetail.data?.services);
   }, [clientDetail.data?.services]);
 
+  const serviceSearch = useQuery({
+    queryKey: ["services", "search", addServiceQuery],
+    queryFn: () =>
+      api.get<Page<ServiceOption>>(`/services${buildQuery({ q: addServiceQuery, limit: 50 })}`),
+    enabled: addServiceQuery.trim().length > 0,
+    staleTime: 30 * 1000,
+  });
+
+  const addServiceToClient = useMutation({
+    mutationFn: (serviceId: string) =>
+      api.post(`/clients/${clientId}/services`, { service_id: serviceId }),
+    onSuccess: () => {
+      setAddServiceOpen(false);
+      setAddServiceQuery("");
+      void queryClient.invalidateQueries({ queryKey: ["client", clientId] });
+    },
+  });
+
   const create = useMutation({
     mutationFn: () =>
       api.post<InvoiceDetail>("/invoices", {
         client_id: clientId,
         invoice_date: invoiceDate,
-        due_date: dueDate,
         notes: notes.trim() || null,
         terms: terms.trim() || null,
         tax_rate: defaultTaxRate,
@@ -294,7 +310,6 @@ export function NewInvoiceForm({ onDone, onClose }: { onDone: (invoiceId: string
             description: line.description.trim(),
             quantity: Number(line.quantity ?? 1),
             unit_price: Number(line.unit_price ?? 0),
-            discount: Number(line.discount ?? 0),
             sac_code: line.sac_code || null,
             is_taxable: line.is_taxable ?? true,
             service_id: line.service_id || null,
@@ -314,14 +329,11 @@ export function NewInvoiceForm({ onDone, onClose }: { onDone: (invoiceId: string
 
   const usableLines = lines.filter((line) => line.description.trim().length > 0);
   const subtotal = usableLines.reduce(
-    (sum, line) =>
-      sum + Number(line.quantity ?? 1) * Number(line.unit_price ?? 0) - Number(line.discount ?? 0),
+    (sum, line) => sum + Number(line.quantity ?? 1) * Number(line.unit_price ?? 0),
     0,
   );
-  // Use the shared billing service so the slide-over agrees with the
-  // full-page CreateInvoiceForm and the backend — never hardcode 18%.
   const computedTotals = computeTotals(usableLines, defaultTaxRate, "intra_state");
-  const canSubmit = clientId !== "" && usableLines.length > 0 && dueDate >= invoiceDate;
+  const canSubmit = clientId !== "" && usableLines.length > 0;
 
   const update = (key: string, patch: Partial<DraftLine>) =>
     setLines((current) => current.map((line) => (line.key === key ? { ...line, ...patch } : line)));
@@ -329,8 +341,7 @@ export function NewInvoiceForm({ onDone, onClose }: { onDone: (invoiceId: string
   function lineAmount(line: DraftLine): number {
     const qty = Number(line.quantity ?? 1);
     const rate = Number(line.unit_price ?? 0);
-    const disc = Number(line.discount ?? 0);
-    return qty * rate - disc;
+    return qty * rate;
   }
 
   function handleServiceSelect(key: string, service: ServiceOption | null) {
@@ -352,7 +363,6 @@ export function NewInvoiceForm({ onDone, onClose }: { onDone: (invoiceId: string
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
         >
-          {/* Click outside panel to close, stay on same URL */}
           <motion.button
             type="button"
             className="absolute inset-0 z-0"
@@ -367,299 +377,331 @@ export function NewInvoiceForm({ onDone, onClose }: { onDone: (invoiceId: string
             role="dialog"
             aria-modal="true"
             aria-label="New invoice"
-            className="z-10 flex h-full w-full max-w-[720px] flex-col border-l border-slate-200 bg-white shadow-xl"
+            className="z-10 flex h-full w-full max-w-[720px] flex-col border-l border-[#EEF0F7] bg-[#FAFAFE] shadow-2xl"
             onClick={(e) => e.stopPropagation()}
             initial={{ x: "100%" }}
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "tween", duration: 0.3, ease: "easeOut" }}
           >
-          <div className="px-6 py-4 flex items-center justify-between border-b border-slate-200">
-            <div>
-            <h2 className="text-lg font-bold text-slate-900">
-                 New Invoice
-               </h2>
-               <p className="mt-0.5 text-xs text-slate-500">
-                 Create a new sale invoice
-               </p>
-            </div>
-            <button
-              type="button"
-              aria-label="Close"
-              onClick={() => onClose?.()}
-              className="p-1.5 rounded hover:bg-slate-100 transition-colors text-slate-500"
-            >
-              <Icon name="x" className="h-4 w-4" />
-            </button>
-          </div>
-
-           <form onSubmit={(e) => { e.preventDefault(); create.mutate(); }} aria-label="New Invoice" className="flex flex-col flex-1 overflow-hidden">
-            <div className="flex-1 overflow-y-auto min-h-0 px-6 py-5 space-y-5">
-              {/* Top row: customer, dates */}
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                 <div>
-                   <label className="invoice-form-label">Customer *</label>
-                   <SelectField
-                    label="Customer"
-                    value={clientId}
-                    onChange={setClientId}
-                    options={clientOptions}
-                    placeholder="Search customer…"
-                    required
-                    hint=""
-                  />
-                </div>
-                <div>
-                   <label className="invoice-form-label">Date</label>
-                   <TextField
-                    label="Date"
-                    type="date"
-                    value={invoiceDate}
-                    onChange={setInvoiceDate}
-                    required
-                    hint=""
-                  />
-                </div>
-                <div>
-                   <label className="invoice-form-label">Due date</label>
-                   <TextField
-                    label="Due date"
-                    type="date"
-                    value={dueDate}
-                    onChange={setDueDate}
-                    required
-                    hint=""
-                  />
-                </div>
+            <div className="px-5 py-4 flex items-center justify-between border-b border-[#EEF0F7] bg-[#F3F0FF]">
+              <div>
+                <h2 className="text-lg font-bold text-[#11162F]">New Invoice</h2>
+                <p className="mt-0.5 text-xs text-[#858BA2]">Create a new sale invoice</p>
               </div>
+              <button
+                type="button"
+                aria-label="Close"
+                onClick={() => onClose?.()}
+                className="p-1.5 rounded hover:bg-[#F1ECFF] transition-colors text-[#8A90A6]"
+              >
+                <Icon name="x" className="h-4 w-4" />
+              </button>
+            </div>
 
-              {/* Line items */}
-              <section className="space-y-2">
-                <div className="flex items-center justify-between">
-                   <h3 className="invoice-form-section-title">Line Items</h3>
+            <form onSubmit={(e) => { e.preventDefault(); create.mutate(); }} aria-label="New Invoice" className="flex flex-col flex-1 overflow-hidden">
+              <div className="flex-1 overflow-y-auto min-h-0 px-5 py-4 space-y-5">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div>
+                    <SelectField
+                      label="Customer"
+                      value={clientId}
+                      onChange={setClientId}
+                      options={clientOptions}
+                      placeholder="Search customer…"
+                      required
+                      hint=""
+                    />
+                  </div>
+                  <div>
+                    <TextField
+                      label="Date"
+                      type="date"
+                      value={invoiceDate}
+                      onChange={setInvoiceDate}
+                      required
+                      hint=""
+                    />
+                  </div>
                 </div>
-                <div className="rounded-xl overflow-hidden border border-slate-200">
-                  {/* Header row */}
-                  <div
-                    className="grid gap-2 px-3 py-2 text-xs font-medium bg-slate-50 text-slate-500"
-                    style={{
-                      gridTemplateColumns: "3fr 80px 80px 68px 68px 84px 32px",
-                    }}
-                  >
-                    <span>Product</span>
-                    <span className="text-right">Qty</span>
-                    <span className="text-right">Price</span>
-                    <span className="text-right">Tax %</span>
-                    <span className="text-right">Disc %</span>
-                    <span className="text-right">Amount</span>
-                    <span />
+
+                <section className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-[#858BA2]">Line Items</h3>
                   </div>
-
-                  {/* Line item rows */}
-                  <div className="divide-y divide-slate-200">
-                    {lines.map((line, index) => {
-                      const amount = lineAmount(line);
-                      const showRemove = lines.length > 1;
-                      const isRowEmpty = !line.description.trim();
-
-                      return (
-                        <div key={line.key}>
-                          <div
-                             className="grid gap-2 px-4 py-2.5 items-center"
-                             style={{
-                               gridTemplateColumns: "3fr 80px 80px 68px 68px 84px 32px",
-                               background: isRowEmpty ? "bg-slate-50" : "transparent",
-                             }}
-                          >
-                            {/* Product + Item name combined searchable dropdown */}
-                            <div className="min-w-0">
-                              <ServiceCombobox
-                                value={line.service_id ?? ""}
-                                onChange={(s: ServiceOption | null) => handleServiceSelect(line.key, s)}
-                                clientServices={clientServices}
-                                loading={clientDetail.isPending && !!clientId}
-                                dark
-                                placeholder={isRowEmpty ? "Search product or custom item" : line.description}
-                                dropdownMinWidth={360}
-                              />
-                            </div>
-
-                            {/* Qty */}
-                            <div>
-                              <input
-                                type="number"
-                                min="0.001"
-                                step="any"
-                                className="invoice-form-input text-right"
-                                value={String(line.quantity ?? 1)}
-                                onChange={(e) => update(line.key, { quantity: Number(e.target.value) })}
-                              />
-                            </div>
-
-                            {/* Price */}
-                            <div>
-                              <input
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                className="invoice-form-input text-right"
-                                value={String(line.unit_price ?? 0)}
-                                onChange={(e) => update(line.key, { unit_price: Number(e.target.value) })}
-                              />
-                            </div>
-
-                            {/* Tax % */}
-                            <div>
-                              <input
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                className="invoice-form-input text-right"
-                                value={line.is_taxable ? String(18) : "0"}
-                                onChange={(e) => update(line.key, { is_taxable: Number(e.target.value) > 0 })}
-                              />
-                            </div>
-
-                            {/* Discount % */}
-                            <div>
-                              <input
-                                type="number"
-                                min="0"
-                                max="100"
-                                step="0.01"
-                                className="invoice-form-input text-right"
-                                value={String(line.discount ?? 0)}
-                                onChange={(e) => update(line.key, { discount: Number(e.target.value) })}
-                              />
-                            </div>
-
-                            {/* Amount */}
-                            <div className="text-right text-sm font-semibold tabular-nums text-slate-900">
-                              {isRowEmpty ? "—" : formatMoney(amount)}
-                            </div>
-
-                            {/* Delete */}
-                            <div className="text-center">
-                              {showRemove && (
-                                <button
-                                  type="button"
-                                  className="p-1 rounded hover:bg-slate-100 text-[var(--h-brand-600)] transition-colors"
-                                  onClick={(e) => { e.preventDefault(); setLines((current) => current.filter((row) => row.key !== line.key)); }}
-                                  aria-label="Remove line item"
-                                >
-                                  <Icon name="x" className="h-3 w-3" />
-                                </button>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Notes under line */}
-                          <div className="px-3 pb-2">
-                            <textarea
-                              value={line.description}
-                              onChange={(e) => update(line.key, { description: e.target.value })}
-                              placeholder="Notes for this line (optional)"
-                              rows={1}
-                              maxLength={500}
-                              className="invoice-form-textarea"
-                            />
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  {/* Add row link */}
-                  <div className="px-3 py-2.5 bg-slate-50">
-                    <button
-                      type="button"
-                      className="invoice-form-add-item"
-                      onClick={(e) => { e.preventDefault(); setLines((current) => [...current, blankLine()]); }}
+                  <div className="rounded-xl border border-[#E3E2F2] bg-[#F8F5FF] overflow-hidden">
+                    <div
+                      className="grid gap-2 px-3 py-2 text-xs font-medium text-[#8A90A6]"
+                      style={{ gridTemplateColumns: "3fr 80px 80px 68px 84px 32px" }}
                     >
-                      <Icon name="plus" className="h-4 w-4" />
-                      Add line item
-                    </button>
+                      <span>Service / Product</span>
+                      <span className="text-right">Qty</span>
+                      <span className="text-right">Price</span>
+                      <span className="text-right">Tax %</span>
+                      <span className="text-right">Amount</span>
+                      <span />
+                    </div>
+                    <div className="divide-y divide-[#EEF0F7]">
+                      {lines.map((line, index) => {
+                        const amount = lineAmount(line);
+                        const showRemove = lines.length > 1;
+                        const isRowEmpty = !line.description.trim();
+                        return (
+                          <div key={line.key}>
+                            <div
+                              className="grid gap-2 px-4 py-2.5 items-center"
+                              style={{
+                                gridTemplateColumns: "3fr 80px 80px 68px 84px 32px",
+                                background: isRowEmpty ? "#FAFAFE" : "transparent",
+                              }}
+                            >
+                              <div className="min-w-0">
+                                <ServiceCombobox
+                                  value={line.service_id ?? ""}
+                                  onChange={(s: ServiceOption | null) => handleServiceSelect(line.key, s)}
+                                  clientServices={clientServices}
+                                  loading={clientDetail.isPending && !!clientId}
+                                  placeholder={isRowEmpty ? "Search product or custom item" : line.description}
+                                  dropdownMinWidth={360}
+                                />
+                              </div>
+                              <div>
+                                <input
+                                  type="number"
+                                  min="0.001"
+                                  step="any"
+                                  className="w-full text-right text-xs bg-transparent border-none focus:ring-0"
+                                  value={String(line.quantity ?? 1)}
+                                  onChange={(e) => update(line.key, { quantity: Number(e.target.value) })}
+                                />
+                              </div>
+                              <div>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="0.01"
+                                  className="w-full text-right text-xs bg-transparent border-none focus:ring-0"
+                                  value={String(line.unit_price ?? 0)}
+                                  onChange={(e) => update(line.key, { unit_price: Number(e.target.value) })}
+                                />
+                              </div>
+                              <div>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="0.01"
+                                  className="w-full text-right text-xs bg-transparent border-none focus:ring-0"
+                                  value={line.is_taxable ? String(18) : "0"}
+                                  onChange={(e) => update(line.key, { is_taxable: Number(e.target.value) > 0 })}
+                                />
+                              </div>
+                              <div className="text-right text-sm font-semibold tabular-nums text-[#11162F]">
+                                {isRowEmpty ? "—" : formatMoney(amount)}
+                              </div>
+                              <div className="text-center">
+                                {showRemove && (
+                                  <button
+                                    type="button"
+                                    className="p-1 rounded hover:bg-[#F1ECFF] text-[#6D3AE8] transition-colors"
+                                    onClick={(e) => { e.preventDefault(); setLines((current) => current.filter((row) => row.key !== line.key)); }}
+                                    aria-label="Remove line item"
+                                  >
+                                    <Icon name="x" className="h-3 w-3" />
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                            <div className="px-3 pb-2">
+                              <textarea
+                                value={line.description}
+                                onChange={(e) => update(line.key, { description: e.target.value })}
+                                placeholder="Notes for this line (optional)"
+                                rows={1}
+                                maxLength={500}
+                                className="w-full text-xs bg-transparent border-none focus:ring-0 text-[#252B47] placeholder-[#8A90A6]"
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="px-3 py-2.5 bg-[#F8F5FF]">
+                      <button
+                        type="button"
+                        className="flex items-center gap-1.5 rounded-lg border border-[#E3E2F2] bg-[#F1ECFF] px-2.5 py-1.5 text-[10px] font-semibold text-[#6D3AE8] hover:bg-[#F3F0FF] transition-colors"
+                        onClick={(e) => { e.preventDefault(); setLines((current) => [...current, blankLine()]); }}
+                      >
+                        <Icon name="plus" className="h-4 w-4" />
+                        Add line item
+                      </button>
+                    </div>
+                  </div>
+                </section>
+
+                <div className="flex justify-end">
+                  <div className="w-72 space-y-2 rounded-xl border border-[#E3E2F2] bg-[#F1ECFF] p-3">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-[#8A90A6]">Subtotal</span>
+                      <span className="tabular-nums font-medium text-[#11162F]">{formatMoney(subtotal)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-[#8A90A6]">Tax</span>
+                      <span className="tabular-nums text-[#11162F]">{formatMoney(computedTotals.cgst + computedTotals.sgst + computedTotals.igst)}</span>
+                    </div>
+                    <div className="pt-2 border-t border-[#E3E2F2] flex justify-between">
+                      <span className="text-base font-semibold text-[#11162F]">Total</span>
+                      <span className="text-xl font-bold tabular-nums text-[#6D3AE8]">{formatMoney(computedTotals.total)}</span>
+                    </div>
                   </div>
                 </div>
-              </section>
 
-              {/* Totals summary */}
-              <div className="flex justify-end">
-                <div className="w-72 space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-slate-700">Subtotal</span>
-                    <span className="tabular-nums font-medium text-slate-900">
-                      {formatMoney(subtotal)}
-                    </span>
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-[#252B47]">Notes</label>
+                    <textarea
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                      rows={3}
+                      placeholder="Additional notes for the customer..."
+                      className="w-full rounded-lg border border-[#E3E2F2] bg-[#FAFAFE] px-3 py-2 text-sm text-[#252B47] focus:ring-2 focus:ring-[#6D3AE8]/50 outline-none"
+                    />
                   </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-slate-700">Tax</span>
-                    <span className="tabular-nums text-slate-900">
-                      {formatMoney(computedTotals.cgst + computedTotals.sgst + computedTotals.igst)}
-                    </span>
-                  </div>
-                  <div className="pt-2 border-t border-slate-200 flex justify-between">
-                    <span className="text-base font-semibold text-slate-900">Total</span>
-                    <span className="text-xl font-bold tabular-nums text-[var(--h-brand-600)]">
-                      {formatMoney(computedTotals.total)}
-                    </span>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-[#252B47]">Terms & conditions</label>
+                    <textarea
+                      value={terms}
+                      onChange={(e) => setTerms(e.target.value)}
+                      rows={3}
+                      placeholder="Payment terms, warranty, etc..."
+                      className="w-full rounded-lg border border-[#E3E2F2] bg-[#FAFAFE] px-3 py-2 text-sm text-[#252B47] focus:ring-2 focus:ring-[#6D3AE8]/50 outline-none"
+                    />
                   </div>
                 </div>
               </div>
 
-               {/* Notes and terms */}
-               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                 <div>
-                   <label className="invoice-form-label">Notes</label>
-                   <textarea
-                     value={notes}
-                     onChange={(e) => setNotes(e.target.value)}
-                     rows={3}
-                     placeholder="Additional notes for the customer..."
-                     className="invoice-form-textarea"
-                   />
-                 </div>
-                 <div>
-                   <label className="invoice-form-label">Terms & conditions</label>
-                   <textarea
-                     value={terms}
-                     onChange={(e) => setTerms(e.target.value)}
-                     rows={3}
-                     placeholder="Payment terms, warranty, etc..."
-                     className="invoice-form-textarea"
-                   />
-                 </div>
-               </div>
-            </div>
-
-             {/* Footer */}
-            <div className="flex-shrink-0 px-6 py-4 flex items-center justify-between border-t border-slate-200 bg-slate-50">
-              {create.isError && <FormError error={create.error} />}
-              <div className="flex-1" />
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  className="invoice-form-cancel"
-                  onClick={(e) => { e.preventDefault(); onClose?.(); }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={create.isPending || !canSubmit}
-                  className="invoice-form-submit"
-                >
-                  {create.isPending ? "Creating…" : "Create Invoice"}
-                </button>
+              <div className="flex-shrink-0 px-5 py-4 flex items-center justify-between border-t border-[#EEF0F7] bg-[#F3F0FF]">
+                {create.isError && <FormError error={create.error} />}
+                <div className="flex-1" />
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    className="px-5 py-2.5 rounded-lg text-[#8A90A6] font-medium hover:bg-[#F1ECFF] hover:text-[#252B47] transition-colors"
+                    onClick={(e) => { e.preventDefault(); onClose?.(); }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={create.isPending || !canSubmit}
+                    className="px-6 py-2.5 rounded-lg bg-[#6D3AE8] text-white font-medium hover:bg-[#5B30D6] disabled:bg-[#C7BFFF] disabled:text-white transition-colors"
+                  >
+                    {create.isPending ? "Creating…" : "Create Invoice"}
+                  </button>
+                </div>
               </div>
-            </div>
-          </form>
+            </form>
           </motion.div>
+
+          {/* Add Service Dialog */}
+          {addServiceOpen && (
+            <motion.div
+              className="fixed inset-0 z-60 flex items-center justify-end bg-black/40"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <motion.button
+                type="button"
+                className="absolute inset-0 z-0"
+                onClick={() => setAddServiceOpen(false)}
+                aria-label="Close service selector"
+              />
+              <motion.div
+                role="dialog"
+                aria-modal="true"
+                aria-label="Add service to client"
+                className="z-10 flex h-full w-full max-w-[720px] flex-col border-l border-[#EEF0F7] bg-[#FAFAFE] shadow-2xl"
+                onClick={(e) => e.stopPropagation()}
+                initial={{ x: "100%" }}
+                animate={{ x: 0 }}
+                exit={{ x: "100%" }}
+                transition={{ type: "tween", duration: 0.3, ease: "easeOut" }}
+              >
+                <div className="px-5 py-4 flex items-center justify-between border-b border-[#EEF0F7] bg-[#F3F0FF]">
+                  <div>
+                    <h2 className="text-lg font-bold text-[#11162F]">Add service to client</h2>
+                    <p className="mt-0.5 text-xs text-[#858BA2]">Select a service to attach to this client</p>
+                  </div>
+                  <button
+                    type="button"
+                    aria-label="Close"
+                    onClick={() => setAddServiceOpen(false)}
+                    className="p-1.5 rounded hover:bg-[#F1ECFF] transition-colors text-[#8A90A6]"
+                  >
+                    <Icon name="x" className="h-4 w-4" />
+                  </button>
+                </div>
+
+                <div className="flex-1 overflow-y-auto min-h-0 px-5 py-4 space-y-4">
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-[#252B47]">Search services</label>
+                    <input
+                      type="text"
+                      value={addServiceQuery}
+                      onChange={(e) => setAddServiceQuery(e.target.value)}
+                      placeholder="Search all services…"
+                      className="w-full rounded-lg border border-[#E3E2F2] bg-[#FAFAFE] px-3 py-2 text-sm text-[#252B47] focus:ring-2 focus:ring-[#6D3AE8]/50 outline-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    {addServiceQuery.trim() === "" ? (
+                      <p className="text-xs text-[#8A90A6] py-4 text-center">Search for a service to attach</p>
+                    ) : serviceSearch.isPending ? (
+                      <p className="text-xs text-[#8A90A6] py-4 text-center">Searching…</p>
+                    ) : (serviceSearch.data?.items?.length ?? 0) === 0 ? (
+                      <p className="text-xs text-[#8A90A6] py-4 text-center">No services found</p>
+                    ) : (
+                      serviceSearch.data?.items.map((service) => (
+                        <button
+                          key={service.id}
+                          type="button"
+                          className="flex items-center justify-between rounded-lg border border-[#E3E2F2] bg-white px-3 py-2.5 hover:bg-[#F3F0FF] transition-colors"
+                          onClick={(e) => { e.preventDefault(); addServiceToClient.mutate(service.id); }}
+                        >
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium text-[#11162F]">{service.name}</p>
+                            <p className="text-xs text-[#8A90A6]">{service.code} · SAC: {service.sac_code}</p>
+                            {service.standard_fee != null && (
+                              <p className="text-xs font-medium text-[#6D3AE8]">₹{service.standard_fee.toLocaleString("en-IN")}</p>
+                            )}
+                          </div>
+                          <Icon name="plus" className="h-4 w-4 text-[#6D3AE8]" />
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex-shrink-0 px-5 py-4 flex items-center justify-between border-t border-[#EEF0F7] bg-[#F3F0FF]">
+                  <div className="flex-1" />
+                  <button
+                    type="button"
+                    className="px-5 py-2.5 rounded-lg text-[#8A90A6] font-medium hover:bg-[#F1ECFF] hover:text-[#252B47] transition-colors"
+                    onClick={() => setAddServiceOpen(false)}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
         </motion.div>
       )}
     </AnimatePresence>
   );
 }
+
 /**
  * What can be done to an invoice, given where it is.
  *
@@ -831,7 +873,7 @@ export function InvoiceActions({ invoice }: { invoice: InvoiceDetail }) {
 
              {outcomes && (
                <ul className="space-y-1 rounded-md bg-slate-50 p-3 text-xs ring-1 ring-inset ring-slate-200">
-                 {outcomes.outcomes.map((row) => (
+{outcomes.outcomes.map((row) => (
                    <li key={row.channel} className="flex items-start gap-2">
                      <Badge tone={row.status === "queued" ? "success" : "warning"}>
                        {row.channel}
@@ -952,7 +994,7 @@ export function InvoiceActions({ invoice }: { invoice: InvoiceDetail }) {
 
             {outcomes && (
               <ul className="space-y-1 rounded-md bg-slate-50 p-3 text-xs ring-1 ring-inset ring-slate-200">
-                {outcomes.outcomes.map((row) => (
+{outcomes.outcomes.map((row: any) => (
                   <li key={row.channel} className="flex items-start gap-2">
                     <Badge tone={row.status === "queued" ? "success" : "warning"}>
                       {row.channel}
