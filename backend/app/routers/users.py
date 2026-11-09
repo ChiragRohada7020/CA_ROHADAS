@@ -837,3 +837,39 @@ async def invite_user(
 
     db.commit()
     return {"id": str(user_id), "email": email, "full_name": full_name, "status": "active", "temporary_password": temp_password}
+
+
+@router.get("/users/me/shortcuts")
+async def get_my_shortcuts(
+    request: Request,
+    db: Any = Depends(get_db),
+) -> Any:
+    principal = await get_current_user(request, db)
+    user_id = str(principal.id)
+    row = db.execute(text("SELECT shortcuts FROM users WHERE id = CAST(:uid AS uuid)"), {"uid": user_id}).first()
+    if not row or not row[0]:
+        return {}
+    try:
+        import json
+        return json.loads(row[0]) if isinstance(row[0], str) else row[0]
+    except Exception:
+        return {}
+
+
+@router.put("/users/me/shortcuts")
+async def put_my_shortcuts(
+    request: Request,
+    db: Any = Depends(get_db),
+) -> Any:
+    principal = await get_current_user(request, db)
+    user_id = str(principal.id)
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    shortcuts = body.get("shortcuts", {})
+    db.execute(text(
+        "UPDATE users SET shortcuts = CAST(:sc AS json), updated_at = NOW() WHERE id = CAST(:uid AS uuid)"
+    ), {"sc": __import__("json").dumps(shortcuts), "uid": user_id})
+    db.commit()
+    return {"ok": True}

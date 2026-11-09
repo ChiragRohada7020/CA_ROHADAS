@@ -96,7 +96,7 @@ export function GenerateInvoicesPanel() {
       title="Generate invoices from completed work"
       subtitle="Completed work that has not been billed. Work already on a live invoice is never proposed again."
     >
-      <div className="space-y-4 p-4">
+      <div className="space-y-5 p-5 sm:p-6">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <SelectField
             label="Client"
@@ -128,36 +128,36 @@ export function GenerateInvoicesPanel() {
 
         {result && (
           <div className="space-y-3">
-            {result.notes.map((note) => (
+            {result.notes.map((note, noteIdx) => (
               <p
-                key={note}
+                key={`note-${noteIdx}`}
                 className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-900 ring-1 ring-inset ring-amber-200"
               >
                 {note}
               </p>
             ))}
 
-            {previews.length === 0 && <p className="text-sm text-slate-500">Nothing to invoice.</p>}
+            {previews.length === 0 && <p className="text-sm text-violet-600">Nothing to invoice.</p>}
 
-            {previews.map((preview) => (
-              <div key={preview.client_id} className="rounded-md border border-slate-200 p-3">
+            {previews.map((preview, previewIdx) => (
+              <div key={`preview-${previewIdx}`} className="rounded-md border border-violet-200 p-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-sm font-medium text-slate-900">
+                  <p className="text-sm font-medium text-violet-950">
                     {preview.client_name ?? "Unknown client"}
                   </p>
-                  <p className="tabular text-sm text-slate-700">
+                  <p className="tabular text-sm text-violet-800">
                     {preview.line_count} line(s) · {formatMoney(preview.subtotal)} +{" "}
                     {formatMoney(preview.tax_amount)} tax ={" "}
                     <strong>{formatMoney(preview.total)}</strong>
                   </p>
                 </div>
-                <p className="mt-1 text-xs text-slate-500">{preview.tax_note}</p>
+                <p className="mt-1 text-xs text-violet-600">{preview.tax_note}</p>
                 <ul className="mt-2 space-y-1">
-                  {preview.lines.map((line) => (
-                    <li key={line.task_id} className="text-xs text-slate-600">
+                  {preview.lines.map((line, lineIdx) => (
+                    <li key={`line-${lineIdx}`} className="text-xs text-violet-700">
                       <span className="font-medium">{line.description}</span> ·{" "}
                       <span className="tabular">{formatMoney(line.unit_price)}</span> ·{" "}
-                      <span className="text-slate-400">{line.fee_source}</span>
+                      <span className="text-violet-400">{line.fee_source}</span>
                     </li>
                   ))}
                 </ul>
@@ -165,13 +165,13 @@ export function GenerateInvoicesPanel() {
             ))}
 
             {result.unbillable.length > 0 && (
-              <div className="rounded-md bg-slate-50 p-3 ring-1 ring-inset ring-slate-200">
-                <p className="text-xs font-semibold text-slate-700">
+              <div className="rounded-md bg-violet-50 p-3 ring-1 ring-inset ring-violet-200">
+                <p className="text-xs font-semibold text-violet-800">
                   Not billed — no agreed fee ({result.unbillable.length})
                 </p>
                 <ul className="mt-1 space-y-1">
-                  {result.unbillable.map((line) => (
-                    <li key={line.task_id} className="text-xs text-slate-600">
+                  {result.unbillable.map((line, lineIdx) => (
+                    <li key={`unbillable-${lineIdx}`} className="text-xs text-violet-700">
                       <span className="font-medium">{line.task_title}</span>
                       {line.note && <> — {line.note}</>}
                     </li>
@@ -181,7 +181,7 @@ export function GenerateInvoicesPanel() {
             )}
 
             {previews.length > 0 && (
-              <div className="flex flex-wrap items-center gap-2 border-t border-slate-200 pt-3">
+              <div className="flex flex-wrap items-center gap-2 border-t border-violet-200 pt-3">
                 <button
                   type="button"
                   className="btn btn-primary px-5 py-2.5"
@@ -358,7 +358,7 @@ export function NewInvoiceForm({ onDone, onClose }: { onDone: (invoiceId: string
     <AnimatePresence>
       {isOpen && (
         <motion.div
-          className="fixed inset-0 z-50 flex items-center justify-end bg-black/30"
+          className="fixed inset-0 z-50 flex items-center justify-end bg-[#171329]/45 backdrop-blur-sm"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -377,14 +377,14 @@ export function NewInvoiceForm({ onDone, onClose }: { onDone: (invoiceId: string
             role="dialog"
             aria-modal="true"
             aria-label="New invoice"
-            className="z-10 flex h-full w-full max-w-[720px] flex-col border-l border-[#EEF0F7] bg-[#FAFAFE] shadow-2xl"
+            className="z-10 flex h-full w-full max-w-[760px] flex-col border-l border-violet-100 bg-[#FBFAFF] shadow-[0_24px_80px_rgba(31,20,66,.22)]"
             onClick={(e) => e.stopPropagation()}
             initial={{ x: "100%" }}
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "tween", duration: 0.3, ease: "easeOut" }}
           >
-            <div className="px-5 py-4 flex items-center justify-between border-b border-[#EEF0F7] bg-[#F3F0FF]">
+            <div className="flex items-center justify-between border-b border-violet-100 bg-gradient-to-r from-violet-50 via-white to-white px-6 py-5">
               <div>
                 <h2 className="text-lg font-bold text-[#11162F]">New Invoice</h2>
                 <p className="mt-0.5 text-xs text-[#858BA2]">Create a new sale invoice</p>
@@ -400,7 +400,7 @@ export function NewInvoiceForm({ onDone, onClose }: { onDone: (invoiceId: string
             </div>
 
             <form onSubmit={(e) => { e.preventDefault(); create.mutate(); }} aria-label="New Invoice" className="flex flex-col flex-1 overflow-hidden">
-              <div className="flex-1 overflow-y-auto min-h-0 px-5 py-4 space-y-5">
+              <div className="min-h-0 flex-1 space-y-6 overflow-y-auto bg-[#FBFAFF] px-5 py-6 sm:px-7">
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div>
                     <SelectField
@@ -579,7 +579,7 @@ export function NewInvoiceForm({ onDone, onClose }: { onDone: (invoiceId: string
                 </div>
               </div>
 
-              <div className="flex-shrink-0 px-5 py-4 flex items-center justify-between border-t border-[#EEF0F7] bg-[#F3F0FF]">
+              <div className="flex shrink-0 items-center justify-between border-t border-violet-100 bg-white/95 px-6 py-4 shadow-[0_-8px_24px_rgba(31,20,66,.04)]">
                 {create.isError && <FormError error={create.error} />}
                 <div className="flex-1" />
                 <div className="flex gap-2">
@@ -620,14 +620,14 @@ export function NewInvoiceForm({ onDone, onClose }: { onDone: (invoiceId: string
                 role="dialog"
                 aria-modal="true"
                 aria-label="Add service to client"
-                className="z-10 flex h-full w-full max-w-[720px] flex-col border-l border-[#EEF0F7] bg-[#FAFAFE] shadow-2xl"
+                className="z-10 flex h-full w-full max-w-[760px] flex-col border-l border-violet-100 bg-[#FBFAFF] shadow-[0_24px_80px_rgba(31,20,66,.22)]"
                 onClick={(e) => e.stopPropagation()}
                 initial={{ x: "100%" }}
                 animate={{ x: 0 }}
                 exit={{ x: "100%" }}
                 transition={{ type: "tween", duration: 0.3, ease: "easeOut" }}
               >
-                <div className="px-5 py-4 flex items-center justify-between border-b border-[#EEF0F7] bg-[#F3F0FF]">
+                <div className="flex items-center justify-between border-b border-violet-100 bg-gradient-to-r from-violet-50 via-white to-white px-6 py-5">
                   <div>
                     <h2 className="text-lg font-bold text-[#11162F]">Add service to client</h2>
                     <p className="mt-0.5 text-xs text-[#858BA2]">Select a service to attach to this client</p>
@@ -683,7 +683,7 @@ export function NewInvoiceForm({ onDone, onClose }: { onDone: (invoiceId: string
                   </div>
                 </div>
 
-                <div className="flex-shrink-0 px-5 py-4 flex items-center justify-between border-t border-[#EEF0F7] bg-[#F3F0FF]">
+                <div className="flex shrink-0 items-center justify-between border-t border-violet-100 bg-white/95 px-6 py-4 shadow-[0_-8px_24px_rgba(31,20,66,.04)]">
                   <div className="flex-1" />
                   <button
                     type="button"
@@ -694,10 +694,10 @@ export function NewInvoiceForm({ onDone, onClose }: { onDone: (invoiceId: string
                   </button>
                 </div>
               </motion.div>
-            </motion.div>
+              </motion.div>
           )}
         </motion.div>
-      )}
+        )}
     </AnimatePresence>
   );
 }
@@ -788,10 +788,10 @@ export function InvoiceActions({ invoice }: { invoice: InvoiceDetail }) {
 
   return (
     <Card title="Actions" subtitle={invoice.tax_note}>
-      <div className="space-y-4 p-4">
+      <div className="space-y-5 p-5 sm:p-6">
          {isDraft && (
            <div className="space-y-3">
-             <p className="text-xs text-slate-500">
+             <p className="text-xs text-violet-600">
                This is a draft, so it has no invoice number yet. Numbers are allocated on
                issue, which keeps the series consecutive — an abandoned draft leaves no gap.
              </p>
@@ -872,15 +872,15 @@ export function InvoiceActions({ invoice }: { invoice: InvoiceDetail }) {
               )}
 
              {outcomes && (
-               <ul className="space-y-1 rounded-md bg-slate-50 p-3 text-xs ring-1 ring-inset ring-slate-200">
-{outcomes.outcomes.map((row) => (
-                   <li key={row.channel} className="flex items-start gap-2">
+               <ul className="space-y-1 rounded-md bg-violet-50 p-3 text-xs ring-1 ring-inset ring-violet-200">
+{outcomes.outcomes.map((row, outcomeIdx) => (
+                   <li key={`outcome-${outcomeIdx}`} className="flex items-start gap-2">
                      <Badge tone={row.status === "queued" ? "success" : "warning"}>
                        {row.channel}
                      </Badge>
-                     <span className="text-slate-700">
+                     <span className="text-violet-800">
                        {row.recipient ?? "no recipient"} — {row.status}
-                       {row.detail && <span className="text-slate-500"> · {row.detail}</span>}
+                       {row.detail && <span className="text-violet-600"> · {row.detail}</span>}
                      </span>
                    </li>
                  ))}
@@ -888,7 +888,7 @@ export function InvoiceActions({ invoice }: { invoice: InvoiceDetail }) {
              )}
 
              {shareUrl && (
-               <p className="break-all rounded-md bg-sky-50 p-3 text-xs text-sky-900 ring-1 ring-inset ring-sky-200">
+               <p className="break-all rounded-md bg-violet-50 p-3 text-xs text-violet-950 ring-1 ring-inset ring-violet-200">
                  Client link: <span className="font-mono">{shareUrl}</span>
                  <br />
                  Minting a new link withdraws the previous one, so a link that reached the
@@ -956,8 +956,8 @@ export function InvoiceActions({ invoice }: { invoice: InvoiceDetail }) {
               </div>
 
             {whatsappNumber && (
-              <div className="mt-3 space-y-2 rounded-md border border-slate-200 bg-slate-50 p-3">
-                <p className="text-xs font-medium text-slate-700">Send via WhatsApp</p>
+              <div className="mt-3 space-y-2 rounded-md border border-violet-200 bg-violet-50 p-3">
+                <p className="text-xs font-medium text-violet-800">Send via WhatsApp</p>
                 <div className="flex items-center gap-2">
                   <TextField
                     label="Phone number"
@@ -974,7 +974,7 @@ export function InvoiceActions({ invoice }: { invoice: InvoiceDetail }) {
                     {whatsappSend.isPending ? "Sending…" : "Send PDF"}
                   </button>
                 </div>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-violet-600">
                   The invoice PDF will be sent as a WhatsApp document to{" "}
                   <span className="font-medium">{whatsappPhone || whatsappNumber}</span>.
                 </p>
@@ -986,22 +986,22 @@ export function InvoiceActions({ invoice }: { invoice: InvoiceDetail }) {
               </div>
             )}
             {!whatsappNumber && (
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-violet-600">
                 No WhatsApp number on file for this client. Add one on the client
                 detail page to enable WhatsApp invoice sharing.
               </p>
             )}
 
             {outcomes && (
-              <ul className="space-y-1 rounded-md bg-slate-50 p-3 text-xs ring-1 ring-inset ring-slate-200">
-{outcomes.outcomes.map((row: any) => (
-                  <li key={row.channel} className="flex items-start gap-2">
+              <ul className="space-y-1 rounded-md bg-violet-50 p-3 text-xs ring-1 ring-inset ring-violet-200">
+{outcomes.outcomes.map((row: any, outcomeIdx) => (
+                  <li key={`outcome-${outcomeIdx}`} className="flex items-start gap-2">
                     <Badge tone={row.status === "queued" ? "success" : "warning"}>
                       {row.channel}
                     </Badge>
-                    <span className="text-slate-700">
+                    <span className="text-violet-800">
                       {row.recipient ?? "no recipient"} — {row.status}
-                      {row.detail && <span className="text-slate-500"> · {row.detail}</span>}
+                      {row.detail && <span className="text-violet-600"> · {row.detail}</span>}
                     </span>
                   </li>
                 ))}
@@ -1009,7 +1009,7 @@ export function InvoiceActions({ invoice }: { invoice: InvoiceDetail }) {
             )}
 
             {shareUrl && (
-              <p className="break-all rounded-md bg-sky-50 p-3 text-xs text-sky-900 ring-1 ring-inset ring-sky-200">
+              <p className="break-all rounded-md bg-violet-50 p-3 text-xs text-violet-950 ring-1 ring-inset ring-violet-200">
                 Client link: <span className="font-mono">{shareUrl}</span>
                 <br />
                 Minting a new link withdraws the previous one, so a link that reached the
@@ -1018,8 +1018,8 @@ export function InvoiceActions({ invoice }: { invoice: InvoiceDetail }) {
             )}
             {shareLink.isError && <FormError error={shareLink.error} />}
 
-            <div className="border-t border-slate-200 pt-3">
-              <p className="text-xs text-slate-500">
+            <div className="border-t border-violet-200 pt-3">
+              <p className="text-xs text-violet-600">
                 Issued invoices cannot be edited — every copy of one has already been sent to
                 someone. Cancel it and raise a corrected one instead.
               </p>
@@ -1048,7 +1048,7 @@ export function InvoiceActions({ invoice }: { invoice: InvoiceDetail }) {
         )}
 
         {isCancelled && (
-          <p className="text-sm text-slate-600">
+          <p className="text-sm text-violet-700">
             Cancelled{invoice.cancelled_reason ? `: ${invoice.cancelled_reason}` : "."} The
             number {invoice.invoice_number} stays on the record — the series has to remain
             intact — and its work is free to be billed again.
@@ -1056,7 +1056,7 @@ export function InvoiceActions({ invoice }: { invoice: InvoiceDetail }) {
         )}
 
         {invoice.share_link_active && !shareUrl && !isCancelled && (
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-violet-600">
             A client-facing link exists. Minting a new one replaces it.
           </p>
         )}
@@ -1112,7 +1112,7 @@ export function PaymentForm({ invoice }: { invoice: InvoiceDetail }) {
   if (invoice.status === "draft") {
     return (
       <Card title="Receipts" subtitle="No payments can be recorded yet.">
-        <p className="px-4 py-6 text-sm text-slate-500">
+        <p className="px-4 py-6 text-sm text-violet-600">
           This invoice is a draft and has no number, so there is nothing for a client to
           have paid against. Issue it first.
         </p>
@@ -1123,7 +1123,7 @@ export function PaymentForm({ invoice }: { invoice: InvoiceDetail }) {
   if (invoice.status === "cancelled") {
     return (
       <Card title="Receipts">
-        <p className="px-4 py-6 text-sm text-slate-500">
+        <p className="px-4 py-6 text-sm text-violet-600">
           This invoice is cancelled. Any money received against it belongs on a credit note.
         </p>
       </Card>
@@ -1145,7 +1145,7 @@ export function PaymentForm({ invoice }: { invoice: InvoiceDetail }) {
         </Badge>
       }
     >
-      <div className="space-y-4 p-4">
+      <div className="space-y-5 p-5 sm:p-6">
         {settled ? (
           <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800 ring-1 ring-inset ring-emerald-200">
             This invoice is fully paid.
@@ -1161,11 +1161,11 @@ export function PaymentForm({ invoice }: { invoice: InvoiceDetail }) {
             {record.isError && <FormError error={record.error} />}
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
               <div className="relative">
-                <label className="mb-1 block text-xs font-medium text-slate-700">
+                <label className="mb-1 block text-xs font-medium text-violet-800">
                   Amount <span className="text-rose-600">*</span>
                 </label>
                 <div className="relative">
-                  <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-xs text-slate-500">
+                  <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-xs text-violet-600">
                     ₹
                   </span>
                   <input
@@ -1178,13 +1178,13 @@ export function PaymentForm({ invoice }: { invoice: InvoiceDetail }) {
                     step="0.01"
                   />
                 </div>
-                <p className="mt-1 block text-xs text-slate-500">
+                <p className="mt-1 block text-xs text-violet-600">
                   {formatMoney(invoice.outstanding)} outstanding
                 </p>
               </div>
 
               <div>
-                <label className="mb-1 block text-xs font-medium text-slate-700">
+                <label className="mb-1 block text-xs font-medium text-violet-800">
                   Received on
                 </label>
                 <div className="relative">
@@ -1194,16 +1194,16 @@ export function PaymentForm({ invoice }: { invoice: InvoiceDetail }) {
                     value={paidOn}
                     onChange={(e) => setPaidOn(e.target.value)}
                   />
-                  <Icon name="calendar" className="absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <Icon name="calendar" className="absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-violet-400" />
                 </div>
               </div>
 
               <div>
-                <label className="mb-1 block text-xs font-medium text-slate-700">
+                <label className="mb-1 block text-xs font-medium text-violet-800">
                   Method
                 </label>
                 <div className="relative">
-                  <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                  <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-violet-400">
                     <Icon name="wallet" className="h-4 w-4" />
                   </span>
                   <select
@@ -1221,7 +1221,7 @@ export function PaymentForm({ invoice }: { invoice: InvoiceDetail }) {
               </div>
 
               <div>
-                <label className="mb-1 block text-xs font-medium text-slate-700">
+                <label className="mb-1 block text-xs font-medium text-violet-800">
                   Reference
                 </label>
                 <input
@@ -1234,8 +1234,8 @@ export function PaymentForm({ invoice }: { invoice: InvoiceDetail }) {
               </div>
 
               <div className="sm:col-span-4">
-                <label className="mb-1 block text-xs font-medium text-slate-700">
-                  Notes <span className="text-slate-400">(Optional)</span>
+                <label className="mb-1 block text-xs font-medium text-violet-800">
+                  Notes <span className="text-violet-400">(Optional)</span>
                 </label>
                 <textarea
                   className="input min-h-[80px] resize-y"
@@ -1256,7 +1256,7 @@ export function PaymentForm({ invoice }: { invoice: InvoiceDetail }) {
                 </button>
                 <button
                   type="button"
-                  className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                  className="rounded-xl border border-violet-300 px-4 py-2 text-sm font-medium text-violet-800 hover:bg-violet-50"
                   onClick={() => {
                     setAmount(String(invoice.outstanding));
                     setReference("");
@@ -1274,9 +1274,9 @@ export function PaymentForm({ invoice }: { invoice: InvoiceDetail }) {
 
         {invoice.payments.length > 0 && (
           <div className="overflow-x-auto">
-            <p className="mb-2 text-xs font-medium text-slate-700">Payments recorded</p>
+            <p className="mb-2 text-xs font-medium text-violet-800">Payments recorded</p>
             <table className="w-full min-w-[36rem]">
-              <thead className="bg-slate-50">
+              <thead className="bg-violet-50">
                 <tr>
                   <th className="th">Received</th>
                   <th className="th">Method</th>
@@ -1285,7 +1285,7 @@ export function PaymentForm({ invoice }: { invoice: InvoiceDetail }) {
                   <th className="th" />
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-violet-100">
                 {invoice.payments.map((payment) => (
                   <tr key={payment.id}>
                     <td className="td text-xs">{formatDate(payment.paid_on)}</td>
@@ -1367,7 +1367,7 @@ export function BillingSettingsForm() {
       subtitle="Printed on every invoice as the letterhead, and used to decide GST."
     >
       <form
-        className="space-y-4 p-4"
+        className="space-y-5 p-5 sm:p-6"
         onSubmit={(event) => {
           event.preventDefault();
           const payload: Record<string, string> = {};
@@ -1485,20 +1485,20 @@ export function BillingSettingsForm() {
         </div>
 
         <div>
-          <label className="mb-2 block text-xs font-medium text-slate-700">PDF template</label>
+          <label className="mb-2 block text-xs font-medium text-violet-800">PDF template</label>
           <InvoiceTemplateSelector
             value={value("invoice_template") as any}
             onChange={(t) => set("invoice_template", t)}
             scrollX
           />
-          <p className="mt-2 text-xs text-slate-500">
+          <p className="mt-2 text-xs text-violet-600">
             Choose the PDF layout for invoices. This becomes the firm default; each invoice can
             still override it when you create it.
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-3">
-          <p className="text-xs text-slate-500">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-violet-200 pt-3">
+          <p className="text-xs text-violet-600">
             Next invoice number: <span className="tabular">{current.next_invoice_number}</span>.
             Numbers are allocated on issue and never reused.
           </p>
@@ -1553,7 +1553,7 @@ function PdfTemplateDownload({ invoice }: { invoice: InvoiceDetail }) {
             className="w-full max-w-3xl rounded-xl bg-white p-5 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="mb-3 text-sm font-medium text-slate-700">Choose PDF template</h3>
+            <h3 className="mb-3 text-sm font-medium text-violet-800">Choose PDF template</h3>
             <div className="mb-4 max-h-[460px] overflow-y-auto">
               <InvoiceTemplateSelector
                 value={selectedTemplate}
@@ -1562,7 +1562,7 @@ function PdfTemplateDownload({ invoice }: { invoice: InvoiceDetail }) {
                 invoice={invoice}
               />
             </div>
-            <div className="flex justify-end gap-2 border-t border-slate-200 pt-3">
+            <div className="flex justify-end gap-2 border-t border-violet-200 pt-3">
               <button
                 type="button"
                 className="btn btn-ghost px-4 py-2"
@@ -1666,7 +1666,7 @@ export function InvoiceRowActions({
     <div ref={ref} className="relative inline-block text-right">
       <button
         type="button"
-        className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+        className="rounded p-1 text-violet-400 hover:bg-violet-100 hover:text-violet-800"
         onClick={() => setOpen(!open)}
         aria-label="Invoice actions"
       >
@@ -1674,12 +1674,12 @@ export function InvoiceRowActions({
       </button>
       {open && (
         <div
-          className="absolute right-0 z-30 mt-1 w-44 origin-top-right rounded-md border border-slate-200 bg-white shadow-lg"
+          className="absolute right-0 z-30 mt-1 w-44 origin-top-right rounded-md border border-violet-200 bg-white shadow-lg"
         >
           <div className="py-1 text-sm">
             <button
               type="button"
-              className="flex w-full items-center gap-2 px-3 py-2 text-left text-slate-700 hover:bg-slate-50"
+              className="flex w-full items-center gap-2 px-3 py-2 text-left text-violet-800 hover:bg-violet-50"
               onClick={() => {
                 setOpen(false);
                 window.open(`/api/invoices/${invoice.id}/pdf`, "_blank");
@@ -1693,7 +1693,7 @@ export function InvoiceRowActions({
               className={
                 whatsappSent === true
                   ? "flex w-full items-center gap-2 px-3 py-2 text-left text-emerald-700 bg-emerald-50"
-                  : "flex w-full items-center gap-2 px-3 py-2 text-left text-slate-700 hover:bg-slate-50"
+                  : "flex w-full items-center gap-2 px-3 py-2 text-left text-violet-800 hover:bg-violet-50"
               }
               disabled={whatsappSend.isPending}
               onClick={() => {
@@ -1712,7 +1712,7 @@ export function InvoiceRowActions({
             )}
             <button
               type="button"
-              className="flex w-full items-center gap-2 px-3 py-2 text-left text-slate-700 hover:bg-slate-50"
+              className="flex w-full items-center gap-2 px-3 py-2 text-left text-violet-800 hover:bg-violet-50"
               onClick={() => {
                 setOpen(false);
                 router.push(`/print/invoices/${invoice.id}`);
@@ -1724,7 +1724,7 @@ export function InvoiceRowActions({
             {canCredit && (
               <Link
                 href={`/invoices/${invoice.id}/credit-notes/new`}
-                className="flex w-full items-center gap-2 px-3 py-2 text-left text-slate-700 hover:bg-slate-50"
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-violet-800 hover:bg-violet-50"
                 onClick={() => {
                   setOpen(false);
                   onChanged();
@@ -1737,7 +1737,7 @@ export function InvoiceRowActions({
             {invoice.status === "draft" && (
               <button
                 type="button"
-                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sky-700 hover:bg-sky-50"
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-violet-800 hover:bg-violet-50"
                 onClick={handleIssue}
                 disabled={issuing}
               >
@@ -1753,7 +1753,7 @@ export function InvoiceRowActions({
             {invoice.status === "paid" && receiptBtn && (
               <button
                 type="button"
-                className="flex w-full items-center gap-2 px-3 py-2 text-left text-slate-700 hover:bg-slate-50"
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-violet-800 hover:bg-violet-50"
                 onClick={() => {
                   setOpen(false);
                   receiptBtn.on();
@@ -1766,7 +1766,7 @@ export function InvoiceRowActions({
             )}
             <button
               type="button"
-              className="flex w-full items-center gap-2 px-3 py-2 text-left text-slate-700 hover:bg-slate-50"
+              className="flex w-full items-center gap-2 px-3 py-2 text-left text-violet-800 hover:bg-violet-50"
               onClick={() => {
                 setOpen(false);
                 onOpen();
@@ -1868,7 +1868,7 @@ export function CreditNoteForm({
     <div>
       <button
         type="button"
-        className="btn-ghost flex items-center gap-2 text-sm text-slate-600 hover:text-sky-700"
+        className="btn-ghost flex items-center gap-2 text-sm text-violet-700 hover:text-violet-800"
         onClick={() => {
           setError(null);
           setOpen(true);
@@ -1897,7 +1897,7 @@ export function CreditNoteForm({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-none"
+            className="fixed inset-0 z-50 bg-violet-950/40 backdrop-blur-none"
             onClick={() => setOpen(false)}
           />
         )}
@@ -1910,15 +1910,15 @@ export function CreditNoteForm({
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "tween", duration: 0.3 }}
-            className="fixed right-0 top-0 z-50 h-full w-full max-w-2xl bg-white border-l border-slate-200 shadow-2xl"
+            className="fixed right-0 top-0 z-50 h-full w-full max-w-2xl bg-white border-l border-violet-200 shadow-2xl"
           >
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-              <h2 className="text-lg font-semibold text-slate-900">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-violet-100">
+              <h2 className="text-lg font-semibold text-violet-950">
                 Raise Credit Note
               </h2>
               <button
                 type="button"
-                className="text-slate-400 hover:text-slate-600"
+                className="text-violet-400 hover:text-violet-700"
                 onClick={() => setOpen(false)}
               >
                 <Icon name="x" className="h-5 w-5" />
@@ -1932,7 +1932,7 @@ export function CreditNoteForm({
               )}
               <div className="space-y-4">
                 <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">
+                  <label className="block text-xs font-medium text-violet-800 mb-1">
                     Credit note type
                   </label>
                   <select
@@ -1959,17 +1959,17 @@ export function CreditNoteForm({
                     onChange={(v) => setTaxRate(parseFloat(v) || 0)}
                   />
                   <div className="flex items-end">
-                    <span className="mr-2 text-sm font-medium text-slate-700">
+                    <span className="mr-2 text-sm font-medium text-violet-800">
                       Total:
                     </span>
-                    <span className="text-sm font-semibold text-slate-900">
+                    <span className="text-sm font-semibold text-violet-950">
                       {formatMoney(total)}
                     </span>
                   </div>
                 </div>
-                <div className="border border-slate-200 rounded-lg overflow-hidden">
+                <div className="border border-violet-200 rounded-lg overflow-hidden">
                   <table className="w-full text-sm">
-                    <thead className="bg-slate-50">
+                    <thead className="bg-violet-50">
                       <tr>
                         <th className="th text-left">Description</th>
                         <th className="th text-right">Qty</th>
@@ -1978,7 +1978,7 @@ export function CreditNoteForm({
                         <th className="th w-12" />
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100">
+                    <tbody className="divide-y divide-violet-100">
                       {items.map((item, idx) => (
                         <tr key={idx} className="group">
                           <td className="td p-2">
@@ -2017,7 +2017,7 @@ export function CreditNoteForm({
                               }}
                             />
                           </td>
-                          <td className="td p-2 text-right font-medium text-slate-900">
+                          <td className="td p-2 text-right font-medium text-violet-950">
                             {formatMoney(item.quantity * item.unit_price - (item.discount || 0))}
                           </td>
                           <td className="td p-2 text-right">
@@ -2027,8 +2027,7 @@ export function CreditNoteForm({
                               onClick={() => {
                                 setItems(items.filter((_, i) => i !== idx));
                               }}
-                              disabled={items.length === 1
-              }
+                              disabled={items.length === 1}
                             >
                               <Icon name="trash" className="h-3 w-3" />
                             </button>
@@ -2039,7 +2038,7 @@ export function CreditNoteForm({
                         <td className="td p-2" colSpan={4}>
                           <button
                             type="button"
-                            className="w-full text-left text-xs text-sky-600 hover:text-sky-700"
+                            className="w-full text-left text-xs text-violet-700 hover:text-violet-800"
                             onClick={() => {
                               setItems([
                                 ...items,
@@ -2061,7 +2060,7 @@ export function CreditNoteForm({
                   </table>
                 </div>
               </div>
-              <div className="border-t border-slate-100 pt-4 flex justify-end gap-2">
+              <div className="border-t border-violet-100 pt-4 flex justify-end gap-2">
                 <button
                   type="button"
                   className="btn btn-ghost px-5 py-2.5"
@@ -2086,4 +2085,3 @@ export function CreditNoteForm({
     </div>
   );
 }
-

@@ -5,7 +5,7 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String, Table, Text, UniqueConstraint
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, JSON, String, Table, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -74,6 +74,7 @@ class User(Base):
     department = Column(String(100), nullable=True)
     reporting_to_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     last_login_at = Column(DateTime(timezone=True), nullable=True)
+    shortcuts = Column(JSON, nullable=True)
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 

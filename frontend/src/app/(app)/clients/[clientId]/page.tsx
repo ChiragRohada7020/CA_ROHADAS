@@ -3,15 +3,15 @@
 import Link from "next/link";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
-
-import { Badge, Card, EmptyState, ErrorState, LoadingState, Modal, StatCard } from "@/components/ui";
+import { useState, useRef } from "react";
+import { Badge, Button, Card, EmptyState, ErrorState, LoadingState, Modal, StatCard } from "@/components/ui";
 import { Icon } from "@/components/Icon";
 import { PermissionGate } from "@/components/PermissionGate";
 import { ClientActions } from "@/components/ClientActions";
+import { AttachServiceModal } from "@/components/AttachServiceModal";
 import { FormActions, FormError, SelectField, TextField, TextAreaField } from "@/components/form";
 import { ApiError, api, buildQuery } from "@/lib/api";
-import { cn, formatDate, humanise } from "@/lib/format";
+import { cn, formatBytes, formatDate, humanise } from "@/lib/format";
 import {
   clientStatusTone,
   engagementTone,
@@ -25,10 +25,12 @@ import type {
   ClientDetail,
   ClientProgressSummary,
   ClientUpdatePayload,
+  DocumentDetail,
   DocumentRequestRow,
   DocumentRow,
   GenerateResult,
   Invoice,
+  KycStatus,
   Page,
   ReceivablesSummary,
   TaskListItem,
@@ -65,8 +67,11 @@ function Detail({
   );
 }
 
-const KYC_STATUSES = ["pending", "verified", "expired", "rejected"] as const;
+const KYC_STATUSES: KycStatus[] = ["not_started", "documents_pending", "in_review", "complete", "rejected"];
 const RISK_LEVELS = ["low", "medium", "high"] as const;
+
+/** Matches `MAX_INLINE_UPLOAD_BYTES` in the backend. */
+const KYC_INLINE_LIMIT_BYTES = 4 * 1024 * 1024;
 
 function ClientDetailsForm({
   client,
@@ -391,12 +396,65 @@ export default function ClientWorkCentrePage() {
   const [editMode, setEditMode] = useState<
     "none" | "details" | "assignment"
   >("none");
+  const [attachServiceOpen, setAttachServiceOpen] = useState(false);
+  const [kycOpen, setKycOpen] = useState(false);
+  const [kycError, setKycError] = useState<string | null>(null);
 
   const client = useQuery({
     queryKey: ["client", clientId],
     queryFn: () => api.get<ClientDetail>(`/clients/${clientId}`),
     enabled: Boolean(clientId),
   });
+
+  const kycDocuments = useQuery({
+    queryKey: ["client", clientId, "kyc-documents"],
+    queryFn: () =>
+      api.get<Page<DocumentRow>>(
+        `/documents${buildQuery({ client_id: clientId, limit: 50 })}`,
+      ),
+    enabled: Boolean(clientId),
+  });
+
+  const kycInputRef = useRef<HTMLInputElement>(null);
+  const uploadKyc = useMutation({
+    mutationFn: (form: FormData) =>
+      api.upload<DocumentDetail>("/documents/upload", form),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: ["client", clientId, "kyc-documents"],
+      });
+      void queryClient.invalidateQueries({ queryKey: ["documents"] });
+      if (kycInputRef.current) kycInputRef.current.value = "";
+    },
+    onError: (err) =>
+      setKycError(
+        err instanceof ApiError ? err.message : "KYC upload failed. Please try again.",
+      ),
+  });
+
+  function handleKycFiles(event: React.ChangeEvent<HTMLInputElement>) {
+    setKycError(null);
+    const files = Array.from(event.target.files ?? []);
+    if (files.length === 0) return;
+
+    const oversized = files.find((file) => file.size > KYC_INLINE_LIMIT_BYTES);
+    if (oversized) {
+      setKycError(
+        `"${oversized.name}" is ${formatBytes(oversized.size)}, above the ` +
+          `${formatBytes(KYC_INLINE_LIMIT_BYTES)} limit for an upload through the API.`,
+      );
+      return;
+    }
+
+    for (const file of files) {
+      const form = new FormData();
+      form.append("file", file);
+      form.append("client_id", clientId);
+      form.append("doc_type", "kyc");
+      form.append("category", "kyc");
+      uploadKyc.mutate(form);
+    }
+  }
 
   const progress = useQuery({
     queryKey: ["client", clientId, "progress"],
@@ -412,6 +470,22 @@ export default function ClientWorkCentrePage() {
         `/document-requests/missing${buildQuery({ client_id: clientId })}`,
       ),
     enabled: Boolean(clientId),
+  });
+
+  const detachService = useMutation({
+    mutationFn: async (serviceId: string) => {
+      return api.delete(`/clients/${clientId}/services/${serviceId}`);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["client", clientId] });
+      void queryClient.invalidateQueries({ queryKey: ["clients"] });
+      setAttachServiceOpen(false);
+      setEditMode("none");
+    },
+    onError: (error) => {
+      const msg = error instanceof ApiError ? error.message : "Failed to remove service.";
+      alert(msg);
+    },
   });
 
   const tasks = useQuery({
@@ -571,9 +645,19 @@ export default function ClientWorkCentrePage() {
               Edit Client
             </button>
 
-            <Badge tone={kycTone(row.kyc_status)}>
-              KYC: {humanise(row.kyc_status)}
-            </Badge>
+            <div
+              className="cursor-pointer group"
+              onClick={() => setKycOpen((prev) => !prev)}
+            >
+              <Badge tone={kycTone(row.kyc_status)}>
+                KYC: {humanise(row.kyc_status)}
+                <span
+                  className="ml-1 text-xs text-[#6D3AE8] group-hover:underline"
+                >
+                  {kycOpen ? "Hide documents" : "View documents"}
+                </span>
+              </Badge>
+            </div>
 
             <Badge tone={riskTone(row.risk_classification)}>
               Risk: {humanise(row.risk_classification)}
@@ -841,7 +925,17 @@ export default function ClientWorkCentrePage() {
                   <Detail label="Trade Name" value={row.trade_name ?? null} />
                   <Detail label="Type" value={humanise(row.client_type)} />
                   <Detail label="Status" value={humanise(row.status)} />
-                  <Detail label="KYC Status" value={humanise(row.kyc_status)} />
+                  <div
+                    className="cursor-pointer group"
+                    onClick={() => setKycOpen((prev) => !prev)}
+                  >
+                    <Detail label="KYC Status" value={humanise(row.kyc_status)} />
+                    <span
+                      className="ml-auto text-xs text-[#6D3AE8] group-hover:underline"
+                    >
+                      {kycOpen ? "Hide documents" : "View documents"}
+                    </span>
+                  </div>
                   <Detail label="Risk Classification" value={humanise(row.risk_classification)} />
                   <Detail label="Phone" value={primaryContact?.phone ?? null} />
                   <Detail label="Email" value={primaryContact?.email ?? null} />
@@ -863,6 +957,118 @@ export default function ClientWorkCentrePage() {
                   />
                 </dl>
               </Card>
+
+              {/* KYC Documents */}
+              {kycOpen && (
+                <Card
+                  title="KYC Documents"
+                  subtitle="Identity and address proofs for KYC verification"
+                  action={
+                    <label
+                      className="btn btn-primary px-4 py-2 text-xs"
+                      onClick={() => kycInputRef.current?.click()}
+                    >
+                      <Icon name="upload" className="h-3 w-3 mr-1" />
+                      Upload KYC Document
+                    </label>
+                  }
+                >
+                  <div className="p-4 space-y-3">
+                    <input
+                      ref={kycInputRef}
+                      type="file"
+                      multiple
+                      className="hidden"
+                      onChange={handleKycFiles}
+                    />
+
+                    {kycError && (
+                      <p
+                        role="alert"
+                        className="border border-rose-100 bg-rose-50 px-3 py-2 text-xs text-rose-700"
+                      >
+                        {kycError}
+                      </p>
+                    )}
+
+                    {kycDocuments.isPending && (
+                      <LoadingState label="Loading KYC documents…" />
+                    )}
+                    {kycDocuments.isError && (
+                      <ErrorState
+                        message={
+                          kycDocuments.error instanceof ApiError
+                            ? kycDocuments.error.message
+                            : "Could not load KYC documents."
+                        }
+                      />
+                    )}
+                    {kycDocuments.isSuccess &&
+                      ((kycDocuments.data?.items ?? []).filter(
+                        (d) =>
+                          (d.doc_type ?? "").toLowerCase().includes("kyc") ||
+                          (d.category ?? "").toLowerCase() === "kyc",
+                      ).length ?? 0) === 0 && (
+                      <EmptyState
+                        message="No KYC documents uploaded yet."
+                      />
+                    )}
+                    {kycDocuments.isSuccess &&
+                      (kycDocuments.data?.items ?? []).filter(
+                        (d) =>
+                          (d.doc_type ?? "").toLowerCase().includes("kyc") ||
+                          (d.category ?? "").toLowerCase() === "kyc",
+                      ).length > 0 && (
+                      <ul className="divide-y divide-[#EEEFF6]">
+                        {(kycDocuments.data?.items ?? [])
+                          .filter(
+                            (d) =>
+                              (d.doc_type ?? "").toLowerCase().includes("kyc") ||
+                              (d.category ?? "").toLowerCase() === "kyc",
+                          )
+                          .map((doc) => (
+                            <li
+                              key={doc.id}
+                              className="flex items-center justify-between gap-3 px-4 py-3"
+                            >
+                              <div className="flex min-w-0 items-center gap-3">
+                                <span
+                                  className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-[#FFF0F0] text-[#DC4545]"
+                                >
+                                  <Icon name="file-text" className="h-4 w-4" />
+                                </span>
+                                <div className="min-w-0">
+                                  <p className="truncate text-sm font-medium text-[#252B47]">
+                                    {doc.title}
+                                  </p>
+                                  <p className="text-xs text-[#9298AE]">
+                                    {humanise(doc.doc_type ?? "document")}
+                                    {doc.file_name
+                                      ? ` · ${formatBytes(doc.size_bytes)}`
+                                      : ""}
+                                  </p>
+                                </div>
+                              </div>
+                              <span className="text-xs text-[#737A96]">
+                                {doc.created_at ? formatDate(doc.created_at) : "—"}
+                              </span>
+                              {doc.current_version_id && (
+                                <a
+                                  href={`/api/documents/versions/${doc.current_version_id}/content`}
+                                  className="btn-icon shrink-0"
+                                  title={`Download ${doc.title}`}
+                                  aria-label={`Download ${doc.title}`}
+                                >
+                                  <Icon name="download" className="h-4 w-4" />
+                                </a>
+                              )}
+                            </li>
+                          ))}
+                      </ul>
+                    )}
+                  </div>
+                </Card>
+              )}
 
               {/* Recent Tasks */}
               <Card title="Recent Tasks" subtitle={`${taskRows.length} tasks`} action={
@@ -1140,6 +1346,15 @@ export default function ClientWorkCentrePage() {
           <Card
             title="Client Services"
             subtitle="Services currently associated with this client"
+            action={
+              <Button
+                type="button"
+                onClick={() => setAttachServiceOpen(true)}
+                className="rounded-lg bg-[#6D3AE8] px-3 py-2 text-xs font-semibold text-white hover:bg-[#5D2CCB]"
+              >
+                + Attach Service
+              </Button>
+            }
           >
             {row.services.length === 0 ? (
               <EmptyState message="No services are assigned to this client yet." />
@@ -1169,9 +1384,27 @@ export default function ClientWorkCentrePage() {
                         </p>
                       </div>
                     </div>
-                    <Badge tone={link.is_active ? "success" : "neutral"}>
-                      {link.is_active ? "Active" : "Inactive"}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      <Badge tone={link.is_active ? "success" : "neutral"}>
+                        {link.is_active ? "Active" : "Inactive"}
+                      </Badge>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (
+                            window.confirm(
+                              `Remove service "${link.service?.name}" from this client?`,
+                            )
+                          ) {
+                            detachService.mutate(link.service_id);
+                          }
+                        }}
+                        disabled={detachService.isPending}
+                        className="text-xs text-[#737A96] hover:text-[#DC2626] hover:underline"
+                      >
+                        {detachService.isPending ? "Removing…" : "Remove"}
+                      </button>
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -1459,6 +1692,16 @@ export default function ClientWorkCentrePage() {
           onClose={() => setEditMode("none")}
         />
       )}
+
+      <AttachServiceModal
+        clientId={clientId}
+        open={attachServiceOpen}
+        onClose={() => setAttachServiceOpen(false)}
+        onAttached={() => {
+          void queryClient.invalidateQueries({ queryKey: ["client", clientId] });
+          void queryClient.invalidateQueries({ queryKey: ["clients"] });
+        }}
+      />
     </div>
   );
 }

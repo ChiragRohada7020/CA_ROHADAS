@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -9,11 +10,9 @@ import {
   EmptyState,
   ErrorState,
   LoadingState,
-  PageHeader,
   Pagination,
 } from "@/components/ui";
 import { TaskDetailsPopup } from "@/components/TaskDetailsPopup";
-import { CreateTaskModal } from "@/components/CreateTaskModal";
 import { Icon, type IconName } from "@/components/Icon";
 import { ApiError, api, buildQuery } from "@/lib/api";
 import { cn, formatDate, humanise } from "@/lib/format";
@@ -463,6 +462,7 @@ export default function TasksPage() {
   const search = useDebouncedValue(filters.search ?? "");
   const directory = useUserDirectory();
   const session = useSession();
+  const router = useRouter();
 
   // Admins/owners (firm-wide scope) default to "All Tasks" so they can see and
   // manage every task in the firm. Regular staff default to "My Tasks" — they
@@ -471,7 +471,6 @@ export default function TasksPage() {
   const [tab, setTab] = useState(isAdminOrOwner ? "all" : "mine");
   const [view, setView] = useState<"list" | "kanban" | "calendar">("list");
   const [openTaskId, setOpenTaskId] = useState<string | null>(null);
-  const [creating, setCreating] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const tabQuery = tabParams(tab);
@@ -545,23 +544,23 @@ export default function TasksPage() {
   const hasFilters = Object.values(filters).some(Boolean);
 
   return (
-    <div className="min-h-full space-y-5 bg-[#F6F7FC] p-3 sm:p-4 lg:p-6">
-      <div className="overflow-hidden rounded-2xl border border-[#E7E2F5] bg-white shadow-[0_8px_30px_rgba(43,32,91,.06)]">
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#EEEAF8] bg-gradient-to-r from-[#FBF9FF] via-white to-[#F5F0FF] px-4 py-5 sm:px-6">
-          <div>
-            <div>
-              <div className="mb-1 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[.16em] text-[#8B78C5]">
-                <span className="size-1.5 rounded-full bg-[#7543E9]" />
-                Work management
+    <div className="min-h-full space-y-3 bg-[#F5F6FB] p-1 sm:p-2 lg:p-3">
+      <div className="overflow-hidden rounded-[26px] border border-[#E8E7F0] bg-white shadow-[0_18px_55px_rgba(34,26,71,.07)]">
+        <div className="relative isolate flex flex-wrap items-center justify-between gap-5 overflow-hidden border-b border-white/10 bg-[radial-gradient(ellipse_at_85%_10%,rgba(155,119,255,.35),transparent_36%),linear-gradient(115deg,#17132D_0%,#29204B_55%,#443078_100%)] px-4 py-5 text-white sm:px-5 lg:px-6">
+              <div>
+                <div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[.2em] text-violet-200">
+                  <span className="size-2 rounded-full bg-[#B9A0FF] shadow-[0_0_14px_rgba(185,160,255,.9)]" />
+                  Work management
+                </div>
+                <h2 className="mt-1 text-xl font-bold tracking-tight text-white sm:text-3xl">
+                  Tasks & Compliance
+                </h2>
+                <p className="mt-1 max-w-2xl text-sm text-violet-100">
+                  Plan, assign and monitor your firm's client work.
+                </p>
               </div>
-              <PageHeader
-                title="Tasks & Compliance"
-                subtitle="Plan, assign and monitor your firm's client work."
-              />
-            </div>
-          </div>
           <div className="flex flex-wrap items-center gap-2">
-            <div className="flex rounded-xl border border-[#E9E5F3] bg-[#F5F3FA] p-1">
+            <div className="flex rounded-xl border border-white/15 bg-white/10 p-1 backdrop-blur-md">
               {(
                 [
                   ["list", "List"],
@@ -585,13 +584,13 @@ export default function TasksPage() {
                 </button>
               ))}
             </div>
-            <Link href="/tasks/generate" className="rounded-xl border border-[#E5DDF8] bg-white px-3 py-2 text-xs font-semibold text-[#6D3AE8] shadow-sm transition hover:bg-[#F7F3FF]">
+            <Link href="/tasks/generate" className="rounded-xl border border-white/25 bg-white/10 px-4 py-2.5 text-xs font-semibold text-white backdrop-blur-md transition hover:bg-white/20">
               Generate work
             </Link>
             <button
               type="button"
-              className="inline-flex items-center rounded-xl bg-gradient-to-r from-[#7543E9] to-[#5D32D2] px-4 py-2.5 text-xs font-semibold text-white shadow-[0_5px_14px_rgba(109,58,232,.22)] transition hover:-translate-y-0.5 hover:shadow-lg"
-              onClick={() => setCreating(true)}
+              className="inline-flex items-center rounded-xl bg-white px-4 py-2.5 text-xs font-bold text-[#4D328B] shadow-[0_8px_24px_rgba(0,0,0,.18)] transition hover:-translate-y-0.5 hover:shadow-xl"
+              onClick={() => router.push("/tasks/new")}
             >
               <Icon name="plus" className="h-3 w-3 mr-1" />
               New task
@@ -600,7 +599,7 @@ export default function TasksPage() {
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-2 gap-3 px-4 py-4 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-9 sm:px-6">
+        <div className="grid grid-cols-2 gap-2 border-b border-[#EEEAF5] bg-[#FBFAFE] px-3 py-3 sm:grid-cols-3 sm:px-4 lg:grid-cols-5 2xl:grid-cols-9">
           {TABS.map((entry) => {
             const isActive = entry.key === tab;
             const meta = SUMMARY_META[entry.key];
@@ -620,8 +619,8 @@ export default function TasksPage() {
                   <Icon name={meta.icon} className="h-4 w-4" />
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-xs font-medium text-[#171A32]">{entry.label}</span>
-                  <span className="tabular-nums text-xl font-bold tracking-tight text-[#171A32]">
+                  <span className="text-[11px] font-semibold leading-tight text-[#77738B] group-hover:text-[#4D328B]">{entry.label}</span>
+                  <span className="tabular-nums text-[25px] font-bold tracking-[-.04em] text-[#211B38]">
                     {summary.data?.[entry.countKey] ?? 0}
                   </span>
                 </div>
@@ -631,11 +630,11 @@ export default function TasksPage() {
         </div>
 
         {/* Filters */}
-        <div className="grid grid-cols-1 gap-3 border-t border-[#F0EDF6] bg-[#FCFBFE] px-4 py-4 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-6 sm:px-6">
+        <div className="grid grid-cols-1 gap-3 border-b border-[#EEEAF5] bg-white px-3 py-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 sm:px-4">
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-[#737A96]">Search</label>
+            <label className="text-[10px] font-bold uppercase tracking-[.12em] text-[#8A849C]">Search</label>
             <input
-              className="input min-h-10 rounded-xl border border-[#E7E4EF] bg-white px-3 py-2 text-sm shadow-[0_1px_2px_rgba(30,25,70,.025)] outline-none transition placeholder:text-[#A4A8B8] focus:border-[#A78BFA] focus:ring-4 focus:ring-[#7543E9]/10"
+              className="input min-h-11 rounded-xl border border-[#E7E5EE] bg-[#FAFAFC] px-3.5 py-2.5 text-[13px] text-[#302A42] shadow-sm outline-none transition placeholder:text-[#A5A1B0] hover:border-[#CEC4E5] focus:border-[#9271D8] focus:bg-white focus:ring-4 focus:ring-[#7543E9]/10"
               type="search"
               value={filters.search ?? ""}
               onChange={(event) => updateFilter("search", event.target.value)}
@@ -644,9 +643,9 @@ export default function TasksPage() {
             />
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-[#737A96]">Status</label>
+            <label className="text-[10px] font-bold uppercase tracking-[.12em] text-[#8A849C]">Status</label>
             <select
-              className="input min-h-10 rounded-xl border border-[#E7E4EF] bg-white px-3 py-2 text-sm shadow-[0_1px_2px_rgba(30,25,70,.025)] outline-none transition placeholder:text-[#A4A8B8] focus:border-[#A78BFA] focus:ring-4 focus:ring-[#7543E9]/10"
+              className="input min-h-11 rounded-xl border border-[#E7E5EE] bg-[#FAFAFC] px-3.5 py-2.5 text-[13px] text-[#302A42] shadow-sm outline-none transition placeholder:text-[#A5A1B0] hover:border-[#CEC4E5] focus:border-[#9271D8] focus:bg-white focus:ring-4 focus:ring-[#7543E9]/10"
               value={filters.status ?? ""}
               onChange={(event) => updateFilter("status", event.target.value)}
               aria-label="Status"
@@ -668,9 +667,9 @@ export default function TasksPage() {
             </select>
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-[#737A96]">Service</label>
+            <label className="text-[10px] font-bold uppercase tracking-[.12em] text-[#8A849C]">Service</label>
             <select
-              className="input min-h-10 rounded-xl border border-[#E7E4EF] bg-white px-3 py-2 text-sm shadow-[0_1px_2px_rgba(30,25,70,.025)] outline-none transition placeholder:text-[#A4A8B8] focus:border-[#A78BFA] focus:ring-4 focus:ring-[#7543E9]/10"
+              className="input min-h-11 rounded-xl border border-[#E7E5EE] bg-[#FAFAFC] px-3.5 py-2.5 text-[13px] text-[#302A42] shadow-sm outline-none transition placeholder:text-[#A5A1B0] hover:border-[#CEC4E5] focus:border-[#9271D8] focus:bg-white focus:ring-4 focus:ring-[#7543E9]/10"
               value={filters.service_id ?? ""}
               onChange={(event) => updateFilter("service_id", event.target.value)}
               aria-label="Service"
@@ -684,9 +683,9 @@ export default function TasksPage() {
             </select>
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-[#737A96]">Assignee</label>
+            <label className="text-[10px] font-bold uppercase tracking-[.12em] text-[#8A849C]">Assignee</label>
             <select
-              className="input min-h-10 rounded-xl border border-[#E7E4EF] bg-white px-3 py-2 text-sm shadow-[0_1px_2px_rgba(30,25,70,.025)] outline-none transition placeholder:text-[#A4A8B8] focus:border-[#A78BFA] focus:ring-4 focus:ring-[#7543E9]/10"
+              className="input min-h-11 rounded-xl border border-[#E7E5EE] bg-[#FAFAFC] px-3.5 py-2.5 text-[13px] text-[#302A42] shadow-sm outline-none transition placeholder:text-[#A5A1B0] hover:border-[#CEC4E5] focus:border-[#9271D8] focus:bg-white focus:ring-4 focus:ring-[#7543E9]/10"
               value={filters.preparer_id ?? ""}
               onChange={(event) => updateFilter("preparer_id", event.target.value)}
               aria-label="Assignee"
@@ -700,9 +699,9 @@ export default function TasksPage() {
             </select>
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-[#737A96]">Client</label>
+            <label className="text-[10px] font-bold uppercase tracking-[.12em] text-[#8A849C]">Client</label>
             <select
-              className="input min-h-10 rounded-xl border border-[#E7E4EF] bg-white px-3 py-2 text-sm shadow-[0_1px_2px_rgba(30,25,70,.025)] outline-none transition placeholder:text-[#A4A8B8] focus:border-[#A78BFA] focus:ring-4 focus:ring-[#7543E9]/10"
+              className="input min-h-11 rounded-xl border border-[#E7E5EE] bg-[#FAFAFC] px-3.5 py-2.5 text-[13px] text-[#302A42] shadow-sm outline-none transition placeholder:text-[#A5A1B0] hover:border-[#CEC4E5] focus:border-[#9271D8] focus:bg-white focus:ring-4 focus:ring-[#7543E9]/10"
               value={filters.client_id ?? ""}
               onChange={(event) => updateFilter("client_id", event.target.value)}
               aria-label="Client"
@@ -716,9 +715,9 @@ export default function TasksPage() {
             </select>
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-[#737A96]">Priority</label>
+            <label className="text-[10px] font-bold uppercase tracking-[.12em] text-[#8A849C]">Priority</label>
             <select
-              className="input min-h-10 rounded-xl border border-[#E7E4EF] bg-white px-3 py-2 text-sm shadow-[0_1px_2px_rgba(30,25,70,.025)] outline-none transition placeholder:text-[#A4A8B8] focus:border-[#A78BFA] focus:ring-4 focus:ring-[#7543E9]/10"
+              className="input min-h-11 rounded-xl border border-[#E7E5EE] bg-[#FAFAFC] px-3.5 py-2.5 text-[13px] text-[#302A42] shadow-sm outline-none transition placeholder:text-[#A5A1B0] hover:border-[#CEC4E5] focus:border-[#9271D8] focus:bg-white focus:ring-4 focus:ring-[#7543E9]/10"
               value={filters.priority ?? ""}
               onChange={(event) => updateFilter("priority", event.target.value)}
               aria-label="Priority"
@@ -733,7 +732,7 @@ export default function TasksPage() {
         </div>
 
         {hasFilters && (
-          <div className="flex items-center justify-between gap-3 border-t border-[#E2E8F0] bg-[#F7F8FC] px-3 py-2 mt-3">
+          <div className="mx-4 mt-3 flex items-center justify-between gap-3 rounded-xl border border-[#EAE5F5] bg-[#F8F6FC] px-4 py-3 sm:mx-6">
             <p className="text-xs text-[#64748B]">
               Showing {tasks.data?.meta.total ?? 0} of {summary.data?.all_tasks ?? 0} open tasks
             </p>
@@ -771,9 +770,9 @@ export default function TasksPage() {
             )}
             {rows.length > 0 && (
               <>
-                <div className="overflow-x-auto rounded-2xl border border-[#ECEAF2] bg-white">
+                <div className="mx-4 mb-4 overflow-x-auto rounded-2xl border border-[#E9E7F0] bg-white shadow-[0_6px_24px_rgba(31,24,60,.035)] sm:mx-6">
                   <table className="w-full min-w-[68rem]">
-                    <thead className="bg-[#F8F6FC]">
+                    <thead className="bg-[#F7F5FB]">
                       <tr>
                         <th className="th w-8">
                           <input
@@ -885,7 +884,7 @@ export default function TasksPage() {
         )}
 
         {view === "kanban" && (
-          <div className="p-3">
+          <div className="bg-[#FBFAFD] p-4 sm:p-6">
             {boardTasks.isPending && <LoadingState label="Loading board…" />}
             {boardTasks.isSuccess && (
               <div className="grid grid-cols-1 gap-3 md:grid-cols-3 xl:grid-cols-5">
@@ -894,7 +893,7 @@ export default function TasksPage() {
                     (task) => task.status === column.status,
                   );
                   return (
-                    <div key={column.status} className="rounded-2xl border border-[#ECEAF2] bg-[#F8F7FB] p-3">
+                    <div key={column.status} className="rounded-2xl border border-[#E9E6F0] bg-[#F5F3F9] p-3.5">
                       <div className="mb-2 flex items-center justify-between px-1">
                         <span className="text-xs font-semibold text-[#171A32]">
                           {column.label}
@@ -909,7 +908,7 @@ export default function TasksPage() {
                             <button
                               type="button"
                               onClick={() => setOpenTaskId(task.id)}
-                              className="w-full rounded-xl border border-[#ECEAF2] bg-white p-3.5 text-left shadow-[0_2px_8px_rgba(40,35,90,.025)] transition-all hover:-translate-y-0.5 hover:border-[#CBBBF4] hover:shadow-[0_8px_18px_rgba(65,48,130,.08)]"
+                              className="w-full rounded-xl border border-[#EAE7F0] bg-white p-4 text-left shadow-[0_3px_10px_rgba(40,35,90,.035)] transition-all hover:-translate-y-1 hover:border-[#CBBBF4] hover:shadow-[0_12px_24px_rgba(65,48,130,.10)]"
                             >
                               <p className="text-sm font-medium text-[#171A32]">{task.title}</p>
                               <p className="mt-0.5 truncate text-[10px] text-[#737A96]">
@@ -949,7 +948,7 @@ export default function TasksPage() {
         )}
 
         {view === "calendar" && (
-          <div className="p-3">
+          <div className="bg-[#FBFAFD] p-4 sm:p-6">
             {boardTasks.isPending && <LoadingState label="Loading calendar…" />}
             {boardTasks.isSuccess && (
               <CalendarView
@@ -962,13 +961,6 @@ export default function TasksPage() {
       </div>
 
       <TaskDetailsPopup taskId={openTaskId} onClose={() => setOpenTaskId(null)} />
-
-      {creating && (
-        <CreateTaskModal
-          onClose={() => setCreating(false)}
-          onCreated={(task) => setOpenTaskId(task.id)}
-        />
-      )}
     </div>
   );
 }
@@ -1016,7 +1008,7 @@ function CalendarView({
       <p className="mb-2 text-sm font-semibold text-[#171A32]">
         {MONTHS[month]} {year}
       </p>
-      <div className="grid grid-cols-7 gap-1">
+      <div className="grid grid-cols-7 gap-2">
         {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => (
           <div key={day} className="px-1 py-1 text-center text-[10px] font-medium text-[#737A96]">
             {day}
@@ -1033,8 +1025,8 @@ function CalendarView({
             <div
               key={day}
               className={cn(
-                "min-h-[4.5rem] rounded border p-1",
-                isToday ? "border-[#7543E9] bg-[#F1EAFF]" : "border-[#E2E8F0] bg-white",
+                "min-h-[5.5rem] rounded-xl border p-2 transition-colors",
+                isToday ? "border-[#9271D8] bg-[#F3EEFF] shadow-sm" : "border-[#ECEAF1] bg-white hover:bg-[#FBFAFD]",
               )}
             >
               <span

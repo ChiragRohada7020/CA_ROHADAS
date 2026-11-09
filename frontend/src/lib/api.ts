@@ -8,7 +8,8 @@ import type { ApiErrorBody } from "./types";
  * "include"` is therefore required on every call.
  */
 
-const BASE = "/api";
+const BASE =
+  (typeof process !== "undefined" && process.env.NEXT_PUBLIC_API_BASE) || "/api";
 
 export class ApiError extends Error {
   readonly status: number;

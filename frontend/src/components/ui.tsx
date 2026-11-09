@@ -199,7 +199,7 @@ export function StatCard({
         </span>
         <div className="min-w-0">
           <p className="text-[10px] font-medium text-[#6b6357]">{title}</p>
-          <p className={cn("tabular mt-0.5 text-xl font-semibold leading-tight", accent[tone] || accent.neutral)}>
+          <p className={cn("tabular mt-0.5 text-xl font-semibold leading-tight truncate whitespace-nowrap overflow-hidden", accent[tone] || accent.neutral)}>
             {value}
           </p>
           {hint && <p className="mt-0.5 text-[11px] text-[#6b6357]">{hint}</p>}
@@ -613,7 +613,7 @@ export function PageHeader({
   subtitle,
   action,
 }: {
-  title: string;
+  title?: string;
   subtitle?: string;
   action?: React.ReactNode;
 }) {
@@ -621,7 +621,7 @@ export function PageHeader({
     <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
       <div className="flex flex-col gap-1">
         {subtitle && <p className="text-sm text-[#6b6357]">{subtitle}</p>}
-        <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-[#1a1814]">{title}</h1>
+        {title && <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-[#1a1814]">{title}</h1>}
       </div>
       {action && <div className="flex items-center gap-3">{action}</div>}
     </div>

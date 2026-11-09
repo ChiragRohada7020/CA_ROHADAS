@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState } from "react";
 
-import { Chip, FormError, PanelRow } from "@/components/form";
+import { Chip, FormError, PanelRow, SelectField, TextField } from "@/components/form";
 import { Icon } from "@/components/Icon";
 import { DescriptionEditor } from "@/components/TaskDescription";
 import { ApiError, api } from "@/lib/api";
@@ -14,6 +14,7 @@ import type {
   ClientListItem,
   DocumentDetail,
   FinancialYearRow,
+  Frequency,
   Page,
   Priority,
   ServiceRow,
@@ -24,32 +25,26 @@ import type {
 
 const PRIORITIES: Priority[] = ["low", "normal", "high", "urgent"];
 const MAX_TAG_LENGTH = 40;
+const FREQUENCIES: Array<{ value: Frequency; label: string }> = [
+  { value: "monthly", label: "Monthly" },
+  { value: "quarterly", label: "Quarterly" },
+  { value: "half_yearly", label: "Half-yearly" },
+  { value: "yearly", label: "Yearly" },
+];
 
 /** Matches `MAX_INLINE_UPLOAD_BYTES` in the backend. */
 const INLINE_LIMIT_BYTES = 4 * 1024 * 1024;
 
 /**
- * Raising a task.
+ * Raising a task — same shape as the task screen that follows it.
  *
- * Deliberately the same shape as the task screen that follows it — breadcrumb, title,
- * what the work is on the left, what it is set to on the right. Creating a task and
- * editing one are the same act at different times, so they should not be two different
- * mental models. A wizard that asks for the same fields in a different order, then hands
- * over to a screen that looks nothing like it, makes people re-learn the form.
+ * Left column is what the task *is*: description, attachments, checklist steps.
+ * Right column is what it is *set to*: client, assignee, deadlines, priority.
+ * Creating and editing are the same act at different times, so they share one UI.
  *
- * Two things here are *not* form fields, and are worth saying out loud because both were
- * previously collected and then silently discarded:
-
- * - **Attachments are uploaded after the task exists.** A document row needs a
- *   `task_id`, and there is no task until the create call returns. The files are held in
- *   memory and posted once it does.
- * - **Subtasks become real child tasks**, not a text blob. They are created with
- *   `parent_task_id` set, which is what makes the parent's checklist and the child's
- *   status agree later.
- *
- * Both are best-effort *after* the task is created. If an upload fails the task still
- * exists and the screen says so, because losing a correctly-created task to a failed
- * optional extra would be the worse outcome.
+ * Steps/checklist are created as real child steps after the task exists — they carry
+ * their own status (pending / in_progress / completed) so the parent's progress bar
+ * stays honest. Attachments are uploaded once the task id is returned.
  */
 export default function NewTaskPage() {
   const router = useRouter();
@@ -68,10 +63,13 @@ export default function NewTaskPage() {
   const [internalDueDate, setInternalDueDate] = useState("");
   const [statutoryDueDate, setStatutoryDueDate] = useState("");
   const [estimatedHours, setEstimatedHours] = useState("");
-  const [preparerId, setPreparerId] = useState("");
-  const [reviewerId, setReviewerId] = useState("");
-  const [subtasks, setSubtasks] = useState<string[]>([]);
-  const [subtaskInput, setSubtaskInput] = useState("");
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [recurrenceFrequency, setRecurrenceFrequency] = useState<Frequency>("monthly");
+  const [recurrenceEndDate, setRecurrenceEndDate] = useState("");
+const [preparerId, setPreparerId] = useState("");
+const [reviewerId, setReviewerId] = useState("");
+  const [steps, setSteps] = useState<{ name: string }[]>([]);
+  const [stepInput, setStepInput] = useState("");
   const [attachments, setAttachments] = useState<File[]>([]);
   const [uploadWarning, setUploadWarning] = useState<string | null>(null);
 
@@ -99,17 +97,9 @@ export default function NewTaskPage() {
     mutationFn: async (payload: TaskCreatePayload) => {
       const task = await api.post<TaskRead>("/tasks", payload);
 
-      // Children first, so a parent never briefly exists with no checklist under it.
-      for (const name of subtasks) {
-        await api.post<TaskRead>("/tasks", {
-          client_id: payload.client_id,
-          title: name,
-          parent_task_id: task.id,
-          service_id: payload.service_id,
-          financial_year_id: payload.financial_year_id,
-          period_key: payload.period_key,
-          priority: payload.priority,
-        });
+      // Steps (checklist) become real child steps after the task exists.
+      for (const step of steps) {
+        await api.post(`/tasks/${task.id}/steps`, { name: step.name });
       }
 
       const failures: string[] = [];
@@ -135,8 +125,6 @@ export default function NewTaskPage() {
       void queryClient.invalidateQueries({ queryKey: ["documents"] });
 
       if (failures.length > 0) {
-        // The task is created; only the optional extras failed. Navigating straight to
-        // it would hide that, so the warning is shown here before the user leaves.
         setUploadWarning(
           `${task.task_code} was created, but ${failures.length} file(s) could not be ` +
             `attached: ${failures.join(", ")}. Add them from the task screen.`,
@@ -150,18 +138,17 @@ export default function NewTaskPage() {
   function addTag() {
     const tag = tagInput.trim().slice(0, MAX_TAG_LENGTH);
     if (!tag) return;
-    // Case-insensitive de-duplication, matching how the API normalises tags.
     if (!tags.some((existing) => existing.toLowerCase() === tag.toLowerCase())) {
       setTags((current) => [...current, tag]);
     }
     setTagInput("");
   }
 
-  function addSubtask() {
-    const name = subtaskInput.trim();
+  function addStep() {
+    const name = stepInput.trim();
     if (!name) return;
-    setSubtasks((current) => [...current, name]);
-    setSubtaskInput("");
+    setSteps((current) => [...current, { name }]);
+    setStepInput("");
   }
 
   function handleFiles(event: React.ChangeEvent<HTMLInputElement>) {
@@ -195,6 +182,11 @@ export default function NewTaskPage() {
     if (internalDueDate) payload.internal_due_date = internalDueDate;
     if (statutoryDueDate) payload.statutory_due_date = statutoryDueDate;
     if (estimatedHours.trim()) payload.estimated_hours = Number(estimatedHours);
+    if (isRecurring) {
+      payload.is_recurring = true;
+      payload.recurrence_frequency = recurrenceFrequency;
+      if (recurrenceEndDate.trim()) payload.recurrence_end_date = recurrenceEndDate.trim();
+    }
     if (preparerId) payload.preparer_id = preparerId;
     if (reviewerId) payload.reviewer_id = reviewerId;
     create.mutate(payload);
@@ -206,61 +198,167 @@ export default function NewTaskPage() {
   const ready = clientId !== "" && title.trim().length >= 2;
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <nav
-        aria-label="Breadcrumb"
-        className="flex flex-wrap items-center gap-1.5 text-xs text-slate-500"
-      >
-        <Link href="/tasks" className="hover:underline">
-          Tasks
-        </Link>
-        <span aria-hidden="true">/</span>
-        <span className="text-slate-700">New task</span>
-      </nav>
+    <form onSubmit={handleSubmit} className="mx-auto w-full max-w-[1600px] space-y-5 pb-8">
+      <section className="relative isolate overflow-hidden rounded-2xl border border-violet-500/20 bg-gradient-to-r from-[#4c1d95] via-[#6d28d9] to-[#8b5cf6] px-5 py-5 text-white shadow-[0_12px_30px_-18px_rgba(76,29,149,0.65)] sm:px-6">
+        <div className="pointer-events-none absolute -right-12 -top-20 size-56 rounded-full bg-white/10 blur-3xl" />
+        <div className="relative flex flex-wrap items-center justify-between gap-4">
+          <div className="flex min-w-0 items-center gap-4">
+            <span className="flex size-12 shrink-0 items-center justify-center rounded-xl border border-white/20 bg-white/15 shadow-inner">
+              <Icon name="clipboard-list" className="h-6 w-6 text-white" />
+            </span>
+            <div className="min-w-0">
+              <nav aria-label="Breadcrumb" className="mb-1 flex items-center gap-2 text-xs font-medium text-violet-100">
+                <Link href="/tasks" className="transition hover:text-white">Tasks</Link>
+                <span aria-hidden="true" className="text-violet-200/70">/</span>
+                <span className="text-white">New task</span>
+              </nav>
+              <h1 className="text-xl font-bold tracking-tight sm:text-2xl">Create New Task</h1>
+              <p className="mt-1 text-xs text-violet-100 sm:text-sm">Organise client work, assign ownership and set deadlines.</p>
+            </div>
+          </div>
+          <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white">
+            <span className="size-1.5 rounded-full bg-emerald-300" /> New task
+          </span>
+        </div>
+      </section>
 
-      <header>
-        <label className="block">
-          <span className="sr-only">Task title</span>
-          <input
-            className="w-full border-0 bg-transparent p-0 text-2xl font-semibold tracking-tight text-slate-900 outline-none placeholder:text-slate-300"
-            value={title}
-            onChange={(event) => setTitle(event.target.value)}
-            placeholder="Reply to GST notice dated 12 April"
-            maxLength={300}
-            autoFocus
-          />
-        </label>
-        <p className="mt-1 text-sm text-slate-500">
-          {currentClient ? currentClient.legal_name : "No client chosen yet"}
+
+      <section className="rounded-2xl border border-violet-100 bg-white p-4 shadow-[0_8px_24px_-20px_rgba(76,29,149,0.35)] sm:p-5">
+        <div className="mb-2 flex items-center gap-2">
+          <span className="flex size-8 items-center justify-center rounded-lg bg-violet-50 text-violet-700">
+            <Icon name="file-text" className="h-4 w-4" />
+          </span>
+          <label htmlFor="new-task-title" className="text-sm font-semibold text-slate-800">Task title <span className="text-rose-500">*</span></label>
+          <span className="text-xs text-slate-400">Required</span>
+        </div>
+        <input
+          id="new-task-title"
+          className="w-full border-0 border-b border-slate-200 bg-transparent px-0 py-2 text-lg font-semibold tracking-tight text-slate-900 outline-none transition placeholder:text-slate-300 focus:border-violet-500 focus:ring-0 sm:text-xl"
+          value={title}
+          onChange={(event) => setTitle(event.target.value)}
+          placeholder="e.g. Prepare and file GSTR-1 for April"
+          maxLength={300}
+          autoFocus
+        />
+        <p className="mt-2 text-xs text-slate-500">
+          {currentClient ? currentClient.legal_name : "Select a client in Task details"}
           {periodKey.trim() ? ` · ${periodKey.trim()}` : ""}
           {statutoryDueDate ? ` · statutory due ${statutoryDueDate}` : ""}
         </p>
-      </header>
+      </section>
 
       {create.isError && <FormError error={create.error} />}
       {uploadWarning && (
         <p
           role="status"
-          className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900 ring-1 ring-inset ring-amber-200"
+          className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 shadow-sm"
         >
           {uploadWarning}
         </p>
       )}
 
-      <div className="grid grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
-        {/* ── What the work is ── */}
-        <div className="space-y-5">
-          <div className="card">
-            <header className="card-header">
+      <div className="grid grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+        {/* ── What the task is ── */}
+        <div className="min-w-0 space-y-4">
+          {/* Description */}
+          <div className="overflow-hidden rounded-2xl border border-violet-100 bg-white shadow-[0_8px_24px_-20px_rgba(76,29,149,0.35)]">
+            <div className="border-b border-violet-100/80 bg-[#faf9ff] px-4 py-3.5">
               <div className="min-w-0">
-                <h2 className="card-title">Attachments</h2>
+                <h2 className="text-sm font-bold text-slate-900">Description</h2>
+                <p className="mt-0.5 text-xs text-slate-500">
+                  Markdown: **bold**, *italic*, `code`, [link](url), - bullets
+                </p>
+              </div>
+            </div>
+            <div className="p-4">
+              <DescriptionEditor
+                value={description}
+                onChange={setDescription}
+                placeholder="What the work involves, and anything the preparer needs to know."
+                rows={8}
+              />
+            </div>
+          </div>
+
+          {/* Checklist / Steps */}
+          <div className="overflow-hidden rounded-2xl border border-violet-100 bg-white shadow-[0_8px_24px_-20px_rgba(76,29,149,0.35)]">
+            <div className="border-b border-violet-100/80 bg-[#faf9ff] px-4 py-3.5">
+              <div className="min-w-0">
+                <h2 className="text-sm font-bold text-slate-900">Checklist</h2>
+                <p className="mt-0.5 text-xs text-slate-500">
+                  Progress is computed from these steps
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  className="input min-w-0 flex-1 rounded-xl border-slate-200 text-sm focus:border-violet-400 focus:ring-4 focus:ring-violet-100"
+                  value={stepInput}
+                  placeholder="New step name…"
+                  maxLength={200}
+                  onChange={(e) => setStepInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && stepInput.trim()) {
+                      addStep();
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  className="btn-primary inline-flex shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold"
+                  disabled={!stepInput.trim()}
+                  onClick={addStep}
+                >
+                  Add step
+                </button>
+              </div>
+            </div>
+            <div className="p-4">
+              {steps.length === 0 ? (
+                <p className="text-sm italic text-slate-400">
+                  No steps yet. Add checklist items below.
+                </p>
+              ) : (
+                <div className="space-y-1">
+                  {steps.map((step, index) => (
+                    <div
+                      key={step.name}
+                      className="flex flex-wrap items-center justify-between gap-3 px-3 py-2 rounded-xl border border-violet-100 bg-[#fcfbff]"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <span className="tabular text-xs text-slate-400">{index + 1}.</span>
+                        <span className="min-w-0 truncate text-sm text-slate-800">
+                          {step.name}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        className="p-1 cursor-pointer text-slate-400 hover:text-rose-600"
+                        onClick={() =>
+                          setSteps((current) => current.filter((_, i) => i !== index))
+                        }
+                        aria-label="Remove step"
+                      >
+                        <Icon name="trash" className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Attachments */}
+          <div className="overflow-hidden rounded-2xl border border-violet-100 bg-white shadow-[0_8px_24px_-20px_rgba(76,29,149,0.35)]">
+            <header className="border-b border-violet-100/80 bg-[#faf9ff] px-4 py-3.5">
+              <div className="min-w-0">
+                <h2 className="text-sm font-bold text-slate-900">Attachments</h2>
                 <p className="mt-0.5 text-xs text-slate-500">
                   Held until the task is created, then filed against it
                 </p>
               </div>
               <button
                 type="button"
-                className="btn-ghost inline-flex items-center gap-1 text-xs"
+                className="btn-ghost inline-flex items-center gap-2 rounded-lg border border-violet-200 px-3 py-2 text-xs font-semibold text-violet-700 hover:bg-violet-50"
                 onClick={() => fileInputRef.current?.click()}
               >
                 <Icon name="plus" className="h-3.5 w-3.5" />
@@ -278,16 +376,20 @@ export default function NewTaskPage() {
             />
 
             {attachments.length === 0 ? (
-              <p className="px-4 py-6 text-center text-sm text-slate-400">
-                Nothing attached. Files up to {formatBytes(INLINE_LIMIT_BYTES)} can be added.
+              <p className="mx-5 my-5 flex flex-col items-center rounded-xl border border-dashed border-violet-200 bg-[#faf9ff] px-4 py-9 text-center text-sm text-slate-500">
+                <span className="mb-3 flex size-12 items-center justify-center rounded-2xl bg-white text-violet-600 shadow-sm ring-1 ring-violet-100">
+                  <Icon name="upload" className="h-6 w-6" />
+                </span>
+                <span className="font-semibold text-slate-700">Drop files here or add an attachment</span>
+                <span className="mt-1 text-xs text-slate-400">Files up to {formatBytes(INLINE_LIMIT_BYTES)} each</span>
               </p>
             ) : (
-              <ul className="divide-y divide-slate-100">
+              <ul className="divide-y divide-violet-100">
                 {attachments.map((file, index) => (
                   <li key={`${file.name}-${index}`} className="flex items-center gap-3 px-4 py-2.5">
                     <span
                       aria-hidden="true"
-                      className="flex size-8 shrink-0 items-center justify-center rounded bg-slate-100 text-slate-500"
+                      className="flex size-8 shrink-0 items-center justify-center rounded bg-violet-50 text-slate-500"
                     >
                       <Icon name="file-text" className="h-4 w-4" />
                     </span>
@@ -310,91 +412,26 @@ export default function NewTaskPage() {
               </ul>
             )}
           </div>
-
-          <div className="card">
-            <header className="card-header">
-              <div className="min-w-0">
-                <h2 className="card-title">Description</h2>
-                <p className="mt-0.5 text-xs text-slate-500">
-                  Markdown: **bold**, *italic*, __underline__, `code`, [link](url), - bullets
-                </p>
-              </div>
-            </header>
-            <div className="p-4">
-              <DescriptionEditor
-                value={description}
-                onChange={setDescription}
-                placeholder="What the work involves, and anything the preparer needs to know."
-                rows={8}
-              />
-            </div>
-          </div>
-
-          <div className="card">
-            <header className="card-header">
-              <div className="min-w-0">
-                <h2 className="card-title">Subtasks</h2>
-                <p className="mt-0.5 text-xs text-slate-500">
-                  Created as child tasks, so each one carries its own status
-                </p>
-              </div>
-            </header>
-            <div className="p-4">
-              {subtasks.length > 0 && (
-                <ul className="mb-3 space-y-1.5">
-                  {subtasks.map((name, index) => (
-                    <li
-                      key={`${name}-${index}`}
-                      className="flex items-center gap-2 rounded-md bg-[#f7f6f3] px-2 py-1.5"
-                    >
-                      <span className="tabular text-xs text-slate-400">{index + 1}.</span>
-                      <span className="min-w-0 flex-1 truncate text-sm text-slate-800">{name}</span>
-                      <button
-                        type="button"
-                        className="btn-icon shrink-0"
-                        aria-label={`Remove subtask ${name}`}
-                        onClick={() =>
-                          setSubtasks((current) => current.filter((_, i) => i !== index))
-                        }
-                      >
-                        <Icon name="x" className="h-3.5 w-3.5" />
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-              <div className="flex gap-2">
-                <input
-                  className="input flex-1"
-                  value={subtaskInput}
-                  placeholder="Collect the sales register"
-                  maxLength={300}
-                  aria-label="New subtask"
-                  onChange={(event) => setSubtaskInput(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                      // Enter adds a subtask rather than submitting the form — otherwise
-                      // typing the first subtask raises a half-built task.
-                      event.preventDefault();
-                      addSubtask();
-                    }
-                  }}
-                />
-                <button type="button" className="btn btn-ghost px-5 py-2.5" onClick={addSubtask}>
-                  Add
-                </button>
-              </div>
-            </div>
-          </div>
         </div>
 
         {/* ── What it is set to ── */}
-        <div className="space-y-5 xl:sticky xl:top-4">
-          <div className="card divide-y divide-slate-100">
+        <div className="space-y-4 xl:sticky xl:top-5">
+          <div className="card divide-y divide-slate-100 overflow-hidden rounded-2xl border border-violet-100 bg-white shadow-[0_8px_24px_-20px_rgba(76,29,149,0.35)]">
+            <div className="border-b border-violet-100/80 bg-[#faf9ff] px-4 py-3.5">
+              <div className="flex items-center gap-3">
+                <span className="flex size-9 items-center justify-center rounded-xl bg-violet-100 text-violet-700">
+                  <Icon name="settings" className="h-4 w-4" />
+                </span>
+                <div>
+                  <h2 className="text-sm font-bold text-slate-900">Task settings</h2>
+                  <p className="mt-0.5 text-xs text-slate-500">Client, ownership and deadlines</p>
+                </div>
+              </div>
+            </div>
             <div className="p-4">
               <PanelRow label="Client" hint="Required">
                 <select
-                  className="input w-full py-1.5 text-xs"
+                  className="input w-full rounded-xl border-slate-200 bg-white py-2.5 text-sm shadow-sm transition duration-200 hover:border-violet-300 focus:border-violet-400 focus:ring-4 focus:ring-violet-100"
                   value={clientId}
                   aria-label="Client"
                   required
@@ -421,7 +458,7 @@ export default function NewTaskPage() {
                   <div className="pb-1 text-right">
                     <Link
                       href={`/clients/${currentClient.id}`}
-                      className="inline-flex items-center gap-1 text-xs font-medium text-sky-700 hover:underline"
+                      className="inline-flex items-center gap-1 rounded-lg bg-violet-50 px-3 py-2 text-xs font-semibold text-violet-700 transition hover:bg-violet-100"
                     >
                       <Icon name="user" className="h-3.5 w-3.5" />
                       View client
@@ -433,7 +470,7 @@ export default function NewTaskPage() {
 
               <PanelRow label="Linked service">
                 <select
-                  className="input w-full py-1.5 text-xs"
+                  className="input w-full rounded-xl border-slate-200 bg-white py-2.5 text-sm shadow-sm transition duration-200 hover:border-violet-300 focus:border-violet-400 focus:ring-4 focus:ring-violet-100"
                   value={serviceId}
                   aria-label="Linked service"
                   disabled={services.isPending}
@@ -450,7 +487,7 @@ export default function NewTaskPage() {
 
               <PanelRow label="Financial year">
                 <select
-                  className="input w-full py-1.5 text-xs"
+                  className="input w-full rounded-xl border-slate-200 bg-white py-2.5 text-sm shadow-sm transition duration-200 hover:border-violet-300 focus:border-violet-400 focus:ring-4 focus:ring-violet-100"
                   value={financialYearId}
                   aria-label="Financial year"
                   disabled={years.isPending}
@@ -467,7 +504,7 @@ export default function NewTaskPage() {
 
               <PanelRow label="Period">
                 <input
-                  className="input w-full py-1.5 text-xs"
+                  className="input w-full rounded-xl border-slate-200 bg-white py-2.5 text-sm shadow-sm transition duration-200 hover:border-violet-300 focus:border-violet-400 focus:ring-4 focus:ring-violet-100"
                   value={periodKey}
                   aria-label="Period"
                   placeholder="July 2026"
@@ -475,12 +512,46 @@ export default function NewTaskPage() {
                   onChange={(event) => setPeriodKey(event.target.value)}
                 />
               </PanelRow>
+
+              <PanelRow label="Recurrence" hint="Repeat this task on a schedule">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    className="rounded border-slate-200 bg-white text-violet-600 focus:ring-violet-500 focus:ring-2"
+                    checked={isRecurring}
+                    onChange={(event) => setIsRecurring(event.target.checked)}
+                  />
+                  <span className="text-sm font-medium text-slate-700">Recurring task</span>
+                </div>
+                {isRecurring && (
+                  <div className="mt-4 rounded-xl border border-[#ECEAF2] bg-[#F8F7FB] p-3 sm:p-4">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      <SelectField
+                        label="Frequency"
+                        value={recurrenceFrequency}
+                        onChange={(value) => setRecurrenceFrequency(value as Frequency)}
+                        options={FREQUENCIES.map((option) => ({ value: option.value, label: option.label }))}
+                      />
+                      <TextField
+                        label="End date"
+                        type="date"
+                        value={recurrenceEndDate}
+                        onChange={(value) => setRecurrenceEndDate(value)}
+                        placeholder="Ongoing"
+                      />
+                    </div>
+                    <p className="mt-3 text-[10px] text-[#858BA2]">
+                      Work will regenerate on the chosen cadence until the end date.
+                    </p>
+                  </div>
+                )}
+              </PanelRow>
             </div>
 
             <div className="p-4">
               <PanelRow label="Assignee">
                 <select
-                  className="input w-full py-1.5 text-xs"
+                  className="input w-full rounded-xl border-slate-200 bg-white py-2.5 text-sm shadow-sm transition duration-200 hover:border-violet-300 focus:border-violet-400 focus:ring-4 focus:ring-violet-100"
                   value={preparerId}
                   aria-label="Assignee"
                   disabled={staff.isPending}
@@ -499,7 +570,7 @@ export default function NewTaskPage() {
 
               <PanelRow label="Reviewer">
                 <select
-                  className="input w-full py-1.5 text-xs"
+                  className="input w-full rounded-xl border-slate-200 bg-white py-2.5 text-sm shadow-sm transition duration-200 hover:border-violet-300 focus:border-violet-400 focus:ring-4 focus:ring-violet-100"
                   value={reviewerId}
                   aria-label="Reviewer"
                   disabled={staff.isPending}
@@ -518,7 +589,7 @@ export default function NewTaskPage() {
 
               <PanelRow label="Priority">
                 <select
-                  className="input w-full py-1.5 text-xs"
+                  className="input w-full rounded-xl border-slate-200 bg-white py-2.5 text-sm shadow-sm transition duration-200 hover:border-violet-300 focus:border-violet-400 focus:ring-4 focus:ring-violet-100"
                   value={priority}
                   aria-label="Priority"
                   onChange={(event) => setPriority(event.target.value as Priority)}
@@ -534,7 +605,7 @@ export default function NewTaskPage() {
               <PanelRow label="Due date" hint="The firm's own buffer">
                 <input
                   type="date"
-                  className="input w-full py-1.5 text-xs"
+                  className="input w-full rounded-xl border-slate-200 bg-white py-2.5 text-sm shadow-sm transition duration-200 hover:border-violet-300 focus:border-violet-400 focus:ring-4 focus:ring-violet-100"
                   value={internalDueDate}
                   aria-label="Internal due date"
                   onChange={(event) => setInternalDueDate(event.target.value)}
@@ -544,7 +615,7 @@ export default function NewTaskPage() {
               <PanelRow label="Statutory due" hint="Blank means unconfirmed">
                 <input
                   type="date"
-                  className="input w-full py-1.5 text-xs"
+                  className="input w-full rounded-xl border-slate-200 bg-white py-2.5 text-sm shadow-sm transition duration-200 hover:border-violet-300 focus:border-violet-400 focus:ring-4 focus:ring-violet-100"
                   value={statutoryDueDate}
                   aria-label="Statutory due date"
                   onChange={(event) => setStatutoryDueDate(event.target.value)}
@@ -557,7 +628,7 @@ export default function NewTaskPage() {
                   min={0}
                   max={1000}
                   step={0.5}
-                  className="input w-full py-1.5 text-xs"
+                  className="input w-full rounded-xl border-slate-200 bg-white py-2.5 text-sm shadow-sm transition duration-200 hover:border-violet-300 focus:border-violet-400 focus:ring-4 focus:ring-violet-100"
                   value={estimatedHours}
                   aria-label="Estimated hours"
                   placeholder="2.5"
@@ -572,7 +643,7 @@ export default function NewTaskPage() {
                   {tags.map((tag) => (
                     <span
                       key={tag}
-                      className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-1 text-[11px] text-slate-700"
+                      className="inline-flex items-center gap-1 rounded-md bg-violet-50 px-2 py-1 text-[11px] text-slate-700"
                     >
                       {tag}
                       <button
@@ -588,7 +659,7 @@ export default function NewTaskPage() {
                     </span>
                   ))}
                   <input
-                    className="w-24 border-0 border-b border-dashed border-slate-300 bg-transparent px-1 py-1 text-[11px] outline-none focus:border-slate-500"
+                    className="w-24 border-0 border-b border-dashed border-violet-200 bg-transparent px-1 py-1 text-[11px] outline-none focus:border-violet-500"
                     value={tagInput}
                     placeholder="+ tag"
                     aria-label="Add a tag"
@@ -606,11 +677,11 @@ export default function NewTaskPage() {
               </div>
             </div>
 
-            <div className="p-4">
-              <div className="flex items-center gap-2">
+            <div className="bg-[#faf9ff] p-5">
+              <div className="flex flex-wrap items-center gap-2">
                 <button
                   type="submit"
-                  className="btn-primary flex-1 inline-flex items-center justify-center gap-1.5"
+                  className="btn-primary flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-700 via-violet-600 to-purple-600 px-4 py-3 font-semibold text-white shadow-[0_10px_22px_-10px_rgba(109,40,217,0.65)] transition duration-200 hover:-translate-y-0.5 hover:shadow-lg disabled:translate-y-0 disabled:opacity-50"
                   disabled={!ready || create.isPending}
                 >
                   <Icon name="plus" className="h-4 w-4" />
@@ -618,7 +689,7 @@ export default function NewTaskPage() {
                 </button>
                 <button
                   type="button"
-                  className="btn btn-ghost px-5 py-2.5"
+                  className="btn btn-ghost rounded-xl border border-violet-200 bg-white px-5 py-3 text-violet-700 hover:bg-violet-50"
                   disabled={create.isPending}
                   onClick={() => router.push("/tasks")}
                 >

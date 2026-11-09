@@ -135,6 +135,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         collapsed={collapsed}
         setCollapsed={setCollapsed}
         onSignOut={() => signOut.mutate(undefined, { onSettled: () => router.replace("/login") })}
+        fullName={session.user.full_name}
+        email={session.user.email}
       />
 
       <div className={cn("flex min-w-0 flex-1 flex-col", collapsed ? "lg:ml-[78px]" : "lg:ml-[272px]")}>
@@ -158,6 +160,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             collapsed={collapsed}
             setCollapsed={setCollapsed}
             onSignOut={() => signOut.mutate(undefined, { onSettled: () => router.replace("/login") })}
+            fullName={session.user.full_name}
+            email={session.user.email}
           />
         </div>
       )}

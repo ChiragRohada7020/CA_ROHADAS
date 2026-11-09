@@ -7,6 +7,7 @@ import { useState, useEffect } from "react";
 
 import { Icon, type IconName } from "@/components/Icon";
 import { PageHeader } from "@/components/ui";
+import { AttachServiceModal } from "@/components/AttachServiceModal";
 import {
   CheckboxField,
   FormActions,
@@ -76,6 +77,7 @@ export default function EditClientPage() {
   const [partnerId, setPartnerId] = useState("");
   const [managerId, setManagerId] = useState("");
   const [notes, setNotes] = useState("");
+  const [attachServiceOpen, setAttachServiceOpen] = useState(false);
 
   useEffect(() => {
     if (client.data) {
@@ -506,6 +508,37 @@ export default function EditClientPage() {
               </div>
             </section>
 
+            {/* ── Compliance & Services ── */}
+            <section id="edit-compliance-services" className="overflow-hidden rounded-2xl border border-[#E7E4F0] bg-white shadow-[0_5px_20px_rgba(40,35,90,.04)] transition-shadow hover:shadow-[0_9px_26px_rgba(40,35,90,.07)]">
+              <div className="flex items-center gap-3 border-b border-[#EEEAF5] bg-gradient-to-r from-[#FCFBFF] to-white px-5 py-4">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
+                  <Icon name="briefcase-business" className="h-4 w-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold tracking-[-.01em] text-[#202440]">
+                    Compliance &amp; Services
+                  </h3>
+                  <p className="mt-0.5 text-xs leading-relaxed text-[#858BA4]">
+                    Attach services to this client.
+                  </p>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 gap-x-5 gap-y-4 p-5 sm:grid-cols-2 lg:grid-cols-3 sm:p-6">
+                <button
+                  type="button"
+                  onClick={() => setAttachServiceOpen(true)}
+                  className="flex flex-col items-center gap-2 rounded-xl border border-[#ECEAF4] bg-[#FCFBFF] p-4 transition hover:border-[#CFC0F8] hover:bg-[#F5F0FF] group"
+                >
+                  <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-[#F0EAFE] text-[#7042D8]">
+                    <Icon name="plus" className="h-5 w-5" />
+                  </span>
+                  <span className="text-xs font-medium text-[#454B68] group-hover:text-[#6032D4]">
+                    Attach Service
+                  </span>
+                </button>
+              </div>
+            </section>
+
             <div className="sticky bottom-3 z-10 rounded-2xl border border-[#DCD3F2] bg-white/95 p-3 shadow-[0_10px_35px_rgba(39,31,83,.14)] backdrop-blur-xl sm:p-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <p className="hidden text-xs text-[#858BA4] sm:block">
@@ -524,6 +557,16 @@ export default function EditClientPage() {
             </div>
           </form>
         )}
+
+        <AttachServiceModal
+          clientId={clientId}
+          open={attachServiceOpen}
+          onClose={() => setAttachServiceOpen(false)}
+          onAttached={() => {
+            void queryClient.invalidateQueries({ queryKey: ["client", clientId] });
+            void queryClient.invalidateQueries({ queryKey: ["clients"] });
+          }}
+        />
       </div>
     </div>
   );

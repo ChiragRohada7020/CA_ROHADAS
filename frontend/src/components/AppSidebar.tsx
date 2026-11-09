@@ -59,6 +59,8 @@ interface AppSidebarProps {
   collapsed: boolean;
   setCollapsed: (v: boolean) => void;
   onSignOut: () => void;
+  fullName: string | null;
+  email: string | null;
 }
 
 export function AppSidebar({
@@ -68,6 +70,8 @@ export function AppSidebar({
   signingOut,
   collapsed,
   setCollapsed,
+  fullName,
+  email,
 }: AppSidebarProps) {
   const firm = useQuery({
     queryKey: ["billing", "settings"],
@@ -250,74 +254,38 @@ export function AppSidebar({
   );
 
   const footer = (mobile = false) => (
-    <div className="space-y-3 border-t border-[#EEF0F7] p-3">
-      {(!collapsed || mobile) && (
-        <div className="rounded-xl border border-[#E3E2F2] bg-[#F1ECFF] p-3">
-          <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-[.14em] text-[#858BA2]">
-            <Icon name="calendar" className="h-3 w-3 text-[#6D3AE8]" /> Financial year
-          </div>
-          {years.isPending ? (
-            <p className="text-xs text-[#8D96B9]">Loading financial year…</p>
-          ) : years.isError ? (
-            <p className="text-xs text-rose-300">Could not load financial year</p>
-          ) : activeYear ? (
-            <>
-              <p className="text-xs font-semibold text-[#252B47]">{activeYear.label}</p>
-              {activeYear.assessment_year && <p className="mt-0.5 text-xs text-[#858BA2]">Assessment year {activeYear.assessment_year}</p>}
-            </>
-          ) : (
-            <p className="text-xs text-[#929BBE]">No financial year configured</p>
-          )}
-          {/* Financial year selector dropdown */}
-          {years.data && years.data.length > 1 && (
-            <select
-              value={activeYear?.id || ""}
-              onChange={(e) => {
-                const selectedId = e.target.value;
-                if (selectedId) {
-                  activateFY.mutate(selectedId);
-                }
-              }}
-              className="mt-2 block w-full rounded-lg border border-[#E3E2F2] bg-[#FAFAFE] px-3 py-2 text-sm text-[#252B47] focus:ring-2 focus:ring-[#6D3AE8]/50 outline-none"
-            >
-              <option value="">Select financial year</option>
-              {years.data.map((fy) => (
-                <option key={fy.id} value={fy.id}>
-                  {fy.code || fy.label}
-                </option>
-              ))}
-            </select>
-          )}
-        </div>
-      )}
-
-      <div className={cn("flex items-center gap-2 rounded-xl px-2 py-2", collapsed && !mobile && "justify-center")}>
-        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-[#E3E2F2] bg-[#F8F5FF] text-[#6D3AE8]">
-          <Icon name="building" className="h-[17px] w-[17px]" />
-        </span>
-        {(!collapsed || mobile) && (
+      <div className="space-y-2 border-t border-[#EEF0F7] p-3">
+        {/* User card */}
+        <div className="flex items-center gap-2 rounded-xl border border-[#EEF0F7] bg-[#F8F5FF] px-3 py-2">
+          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-[#EEF0F7] bg-[#FAFAFE] text-[#6D3AE8]">
+            <Icon name="user" className="h-4 w-4" />
+          </span>
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-[#252B47]">{firm.data?.legal_name || firm.data?.name || "Your firm"}</p>
-            <p className="truncate text-sm text-[#858BA2]">
-              {firm.data ? [firm.data.city, firm.data.state].filter(Boolean).join(", ") || "No address set" : firm.isError ? "Firm details unavailable" : "Loading firm…"}
+            <p className="truncate text-sm font-semibold text-[#252B47]">
+              {fullName ?? "User"}
             </p>
+            <p className="truncate text-[10px] text-[#858BA2]">{email ?? "—"}</p>
           </div>
-        )}
-      </div>
+        </div>
 
-      <button
-        type="button"
-        onClick={onSignOut}
-        disabled={signingOut}
-        className={cn(
-          "flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-rose-400/30 bg-rose-500/[0.10] px-3 text-xs font-semibold text-rose-200 transition hover:border-rose-300/50 hover:bg-rose-500/[0.18] disabled:cursor-not-allowed disabled:opacity-50",
-          collapsed && !mobile && "px-0",
-        )}
-      >
-        <LogOut className="h-6 w-6 shrink-0" />
-        {(!collapsed || mobile) && (signingOut ? "Signing out…" : "Sign out")}
-      </button>
-    </div>
+        {/* Sign out button */}
+        <button
+          type="button"
+          onClick={onSignOut}
+          disabled={signingOut}
+          className={cn(
+            "flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-[#E3E2F2] bg-[#F1ECFF] text-[#6D3AE8] font-semibold text-xs transition hover:border-[#6D3AE8]/50 hover:bg-[#F1ECFF]/80 disabled:cursor-not-allowed disabled:opacity-50",
+            collapsed && "px-0 justify-center",
+          )}
+        >
+          <LogOut className="h-5 w-5 shrink-0" />
+          {collapsed ? (
+            <span className="sr-only">Sign out</span>
+          ) : (
+            signingOut ? "Signing out…" : "Sign out"
+          )}
+        </button>
+      </div>
   );
 
   return (

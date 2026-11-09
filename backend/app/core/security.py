@@ -12,6 +12,7 @@ from datetime import datetime, timedelta
 from typing import Any, Optional
 from uuid import UUID
 
+import bcrypt as _bcrypt
 import jwt
 from fastapi import Depends, HTTPException, Request, status
 from jwt.exceptions import ExpiredSignatureError, InvalidTokenError
@@ -23,15 +24,39 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.db import get_db
 
+# bcrypt 5.x raises ValueError for passwords longer than 72 bytes, whereas
+# historic bcrypt truncated silently. passlib 1.7.4's self-test
+# (detect_wrap_bug) uses a 255-byte secret, so bcrypt backend initialization
+# crashes on the first hashing/verification call in the process. Restore the
+# silent truncation so password hashing/verification works at any length.
+_orig_hashpw = _bcrypt.hashpw
+
+
+def _hashpw_truncated(secret, salt):
+    if isinstance(secret, str):
+        secret = secret.encode()
+    return _orig_hashpw(secret[:72], salt)
+
+
+_bcrypt.hashpw = _hashpw_truncated
+
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
+# bcrypt only uses the first 72 bytes of a password; longer inputs must be
+# truncated manually, otherwise passlib raises ValueError.
+_BCRYPT_MAX_BYTES = 72
+
+
 def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+    return pwd_context.hash(password[:_BCRYPT_MAX_BYTES])
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    return pwd_context.verify(plain, hashed)
+    try:
+        return pwd_context.verify(plain[:_BCRYPT_MAX_BYTES], hashed)
+    except ValueError:
+        return False
 
 
 def hash_opaque(token: str) -> str:

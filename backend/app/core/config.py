@@ -38,7 +38,7 @@ class Settings(BaseSettings):
     AI_MODEL: str = "kilo-auto/free"
 
     # ── CORS ──
-    CORS_ORIGINS: list[str] = ["*"]
+    CORS_ORIGINS: list[str] = ["http://localhost:3000", "https://ca.rohadas.in"]
 
     # ── Storage ──
     STORAGE_BACKEND: str = "local"

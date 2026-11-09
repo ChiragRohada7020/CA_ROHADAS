@@ -10,9 +10,7 @@ import {
   EmptyState,
   ErrorState,
   LoadingState,
-  PageHeader,
   Pagination,
-  StatCard,
 } from "@/components/ui";
 import { Avatar, DonutChart, MiniBar } from "@/components/charts";
 import { Icon } from "@/components/Icon";
@@ -50,7 +48,7 @@ const TABS: Array<{ key: string; label: string }> = [
 
 /** Department colours, so a department keeps one colour across the donut and the list. */
 const DEPARTMENT_TONES: Record<string, string> = {
-  Taxation: "stroke-sky-500",
+  Taxation: "stroke-blue-500",
   Audit: "stroke-violet-500",
   Compliance: "stroke-emerald-500",
   Accounts: "stroke-amber-500",
@@ -85,56 +83,12 @@ function utilisationBarClass(percent: number): string {
 /** The four headline figures, using the shared tile so they match every other screen. */
 function SummaryTiles({ summary }: { summary: TeamSummary | undefined }) {
   const tiles = [
-    {
-      icon: "team" as const,
-      tone: "info" as const,
-      label: "Total Members",
-      value: String(summary?.total_members ?? 0),
-      hint: `${summary?.joined_this_year ?? 0} joined this year`,
-    },
-    {
-      icon: "user" as const,
-      tone: "success" as const,
-      label: "Active Members",
-      value: String(summary?.active_members ?? 0),
-      hint:
-        (summary?.inactive_members ?? 0) > 0
-          ? `${summary?.inactive_members} not active`
-          : "Everyone is active",
-    },
-    {
-      icon: "clock" as const,
-      tone: "warning" as const,
-      label: "Total Workload",
-      value: String(summary?.total_open_tasks ?? 0),
-      hint: `${summary?.total_overdue_tasks ?? 0} overdue`,
-    },
-    {
-      icon: "reports" as const,
-      tone: "danger" as const,
-      label: "Average Utilisation",
-      value: formatPercent(summary?.average_utilisation ?? 0),
-      hint:
-        (summary?.over_capacity ?? 0) > 0
-          ? `${summary?.over_capacity} over capacity`
-          : "Nobody over capacity",
-    },
+    { icon: "team" as const, label: "Total members", value: String(summary?.total_members ?? 0), hint: `${summary?.joined_this_year ?? 0} joined this year`, tint: "bg-[#F1ECFF] text-[#6D3AE8]", line: "bg-[#8D6BEE]" },
+    { icon: "user" as const, label: "Active members", value: String(summary?.active_members ?? 0), hint: (summary?.inactive_members ?? 0) > 0 ? `${summary?.inactive_members} not active` : "Everyone is active", tint: "bg-[#E9F8F1] text-[#15966A]", line: "bg-[#48C69A]" },
+    { icon: "clock" as const, label: "Open workload", value: String(summary?.total_open_tasks ?? 0), hint: `${summary?.total_overdue_tasks ?? 0} overdue tasks`, tint: "bg-[#FFF4E8] text-[#D98226]", line: "bg-[#F0B15E]" },
+    { icon: "reports" as const, label: "Average utilisation", value: formatPercent(summary?.average_utilisation ?? 0), hint: (summary?.over_capacity ?? 0) > 0 ? `${summary?.over_capacity} over capacity` : "Within team capacity", tint: "bg-[#EEF3FF] text-[#5276D9]", line: "bg-[#83A0F4]" },
   ];
-
-  return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-      {tiles.map((tile) => (
-        <StatCard
-          key={tile.label}
-          icon={<Icon name={tile.icon} className="h-5 w-5" />}
-          tone={tile.tone}
-          label={tile.label}
-          value={tile.value}
-          hint={tile.hint}
-        />
-      ))}
-    </div>
-  );
+  return <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 2xl:grid-cols-4">{tiles.map((tile) => <div key={tile.label} className="group relative overflow-hidden rounded-2xl border border-[#E7E6F1] bg-white p-4 shadow-[0_3px_14px_rgba(40,42,90,.045)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_12px_28px_rgba(40,42,90,.09)]"><div className="flex items-start justify-between"><span className={`grid h-10 w-10 place-items-center rounded-xl ${tile.tint}`}><Icon name={tile.icon} className="h-[19px] w-[19px]" /></span><span className="text-[10px] font-semibold uppercase tracking-[.12em] text-[#A0A4B8]">Team</span></div><p className="mt-4 text-[12px] font-medium text-[#747B98]">{tile.label}</p><div className="mt-1 flex items-end justify-between gap-2"><p className="text-[27px] font-bold leading-none tracking-[-.04em] text-[#171A32]">{tile.value}</p><span className="mb-0.5 text-[10px] text-[#858BA4]">{tile.hint}</span></div><div className="absolute inset-x-0 bottom-0 h-[3px] bg-[#F5F4FA]"><div className={`h-full w-1/3 rounded-r-full ${tile.line}`} /></div></div>)}</div>;
 }
 
 /** One cell of the attendance calendar. */
@@ -254,55 +208,20 @@ export default function TeamPage() {
 
   return (
     <div className="space-y-4">
-      <PageHeader
-        title="Team"
-        subtitle="Manage your team, roles, workload and performance."
-        action={
-          <div className="flex items-center gap-2">
-            {canManagePerms ? (
-              <Link
-                href="/team/permissions"
-                className="inline-flex items-center gap-1.5 rounded-lg bg-sky-600 px-3 py-1.5 text-sm font-medium text-white shadow-sm transition hover:bg-sky-700"
-              >
-                Per-User Permissions
-              </Link>
-            ) : null}
-            {canViewRoles ? (
-              <Link
-                href="/team/roles"
-                className="inline-flex items-center gap-1.5 rounded-lg bg-sky-600 px-3 py-1.5 text-sm font-medium text-white shadow-sm transition hover:bg-sky-700"
-              >
-                Roles & Permissions
-              </Link>
-            ) : (
-              <span
-                className="text-xs font-medium text-slate-400"
-                title="You do not have permission to view roles."
-              >
-                Roles & Permissions
-              </span>
-            )}
-            {canAddMember ? (
-              <button
-                type="button"
-                className="btn btn-primary px-5 py-2.5"
-                onClick={() => setShowAddMember(true)}
-              >
-                <Icon name="plus" className="h-4 w-4" />
-                Add Member
-              </button>
-            ) : (
-              <span
-                className="text-xs font-medium text-slate-400"
-                title="You do not have permission to add team members."
-              >
-                Add Member
-              </span>
-            )}
+      <section className="relative overflow-hidden rounded-[22px] border border-[#E5DDFB] bg-[radial-gradient(ellipse_at_90%_0%,rgba(157,126,245,.20),transparent_38%),linear-gradient(110deg,#FFFFFF_0%,#FBFAFF_55%,#F3EEFF_100%)] px-5 py-5 shadow-[0_5px_22px_rgba(75,55,140,.055)] md:px-6 md:py-6">
+        <div className="relative flex flex-col justify-between gap-5 lg:flex-row lg:items-center">
+          <div className="min-w-0">
+            <div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[.16em] text-[#7954D7]"><span className="h-1.5 w-1.5 rounded-full bg-[#7954D7]" /> People & operations</div>
+            <h1 className="text-[26px] font-bold tracking-[-.04em] text-[#171A32] md:text-[30px]">Team management</h1>
+            <p className="mt-1.5 max-w-xl text-[12px] leading-5 text-[#747B98]">Manage people, responsibilities and capacity across your practice from one workspace.</p>
           </div>
-        }
-      />
-
+          <div className="flex flex-wrap items-center gap-2">
+            {canManagePerms && <Link href="/team/permissions" className="inline-flex items-center gap-2 rounded-xl border border-[#E3E2F2] bg-white px-3.5 py-2.5 text-[11px] font-semibold text-[#454765] shadow-sm transition hover:border-[#C9B9FA] hover:bg-[#F8F5FF]"><Icon name="shield-check" className="h-4 w-4 text-[#6D3AE8]" /> Per-user permissions</Link>}
+            {canViewRoles ? <Link href="/team/roles" className="inline-flex items-center gap-2 rounded-xl border border-[#E3E2F2] bg-white px-3.5 py-2.5 text-[11px] font-semibold text-[#454765] shadow-sm transition hover:border-[#C9B9FA] hover:bg-[#F8F5FF]"><Icon name="settings" className="h-4 w-4 text-[#6D3AE8]" /> Roles & permissions</Link> : <span className="text-xs text-slate-400" title="You do not have permission to view roles.">Roles & permissions</span>}
+            {canAddMember && <button type="button" className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#7040E8] to-[#8058EC] px-4 py-2.5 text-[11px] font-bold text-white shadow-[0_7px_16px_rgba(109,58,232,.24)] transition hover:-translate-y-0.5 hover:shadow-lg" onClick={() => setShowAddMember(true)}><Icon name="plus" className="h-4 w-4" /> Add team member</button>}
+          </div>
+        </div>
+      </section>
       <SummaryTiles summary={s} />
 
       {summary.isError && (
@@ -315,8 +234,8 @@ export default function TeamPage() {
         />
       )}
 
-      <Card>
-        <div className="flex flex-wrap items-center gap-1 border-b border-slate-200 px-3 pt-2">
+      <section className="overflow-hidden rounded-[20px] border border-[#E5E5F0] bg-white shadow-[0_4px_18px_rgba(40,42,90,.045)]">
+        <div className="flex flex-wrap items-center gap-1 border-b border-[#EEEFF6] bg-[#FCFBFE] px-4 pt-3">
           {TABS.map((entry) => {
             const isActive = entry.key === tab;
             return (
@@ -325,17 +244,17 @@ export default function TeamPage() {
                 type="button"
                 onClick={() => changeTab(entry.key)}
                 className={cn(
-                  "-mb-px border-b-2 px-3 py-2 text-sm font-medium transition-colors",
+                  "-mb-px rounded-t-lg border-b-2 px-3.5 py-3 text-[11px] font-semibold transition-colors",
                   isActive
-                    ? "border-sky-600 text-sky-700"
+                    ? "border-[#6D3AE8] text-[#6D3AE8]"
                     : "border-transparent text-slate-500 hover:text-slate-800",
                 )}
               >
                 {entry.label}
                 <span
                   className={cn(
-                    "tabular ml-1.5 rounded px-1.5 py-0.5 text-[10px]",
-                    isActive ? "bg-sky-100 text-sky-700" : "bg-slate-100 text-slate-500",
+                    "tabular ml-1.5 rounded-md px-1.5 py-0.5 text-[10px]",
+                    isActive ? "bg-[#F1ECFF] text-[#6D3AE8]" : "bg-slate-100 text-slate-500",
                   )}
                 >
                   {s?.tab_counts[entry.key] ?? 0}
@@ -345,10 +264,10 @@ export default function TeamPage() {
           })}
         </div>
 
-        <div className="grid grid-cols-2 gap-2 border-b border-slate-200 p-3 md:grid-cols-5">
+        <div className="grid grid-cols-1 gap-2.5 border-b border-[#EEEFF6] bg-white p-4 sm:grid-cols-2 xl:grid-cols-[minmax(240px,1.6fr)_1fr_1fr_auto]">
           <label className="col-span-2 block">
             <input
-              className="input py-1.5"
+              className="input rounded-xl border-[#E5E5F0] bg-[#FCFBFE] py-2.5 text-xs focus:border-[#A88AF3] focus:ring-2 focus:ring-[#F1ECFF]"
               type="search"
               value={filters.search ?? ""}
               onChange={(event) => updateFilter("search", event.target.value)}
@@ -357,7 +276,7 @@ export default function TeamPage() {
             />
           </label>
           <select
-            className="input py-1.5"
+            className="input rounded-xl border-[#E5E5F0] bg-[#FCFBFE] py-2.5 text-xs focus:border-[#A88AF3] focus:ring-2 focus:ring-[#F1ECFF]"
             value={filters.department ?? ""}
             onChange={(event) => updateFilter("department", event.target.value)}
             aria-label="Department"
@@ -370,7 +289,7 @@ export default function TeamPage() {
             ))}
           </select>
           <select
-            className="input py-1.5"
+            className="input rounded-xl border-[#E5E5F0] bg-[#FCFBFE] py-2.5 text-xs focus:border-[#A88AF3] focus:ring-2 focus:ring-[#F1ECFF]"
             value={filters.status ?? ""}
             onChange={(event) => updateFilter("status", event.target.value)}
             aria-label="Status"
@@ -383,7 +302,7 @@ export default function TeamPage() {
           </select>
           <button
             type="button"
-            className="btn-ghost py-1.5"
+            className="rounded-xl border border-[#E5E5F0] px-4 py-2 text-xs font-semibold text-[#6D3AE8] transition hover:bg-[#F8F5FF]"
             disabled={!hasFilters}
             onClick={() => paging.clearFilters()}
           >
@@ -411,8 +330,8 @@ export default function TeamPage() {
           />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[64rem]">
-              <thead className="bg-[#f7f6f3]">
+            <table className="w-full min-w-[68rem]">
+              <thead className="bg-[#F8F7FC]">
                 <tr>
                   <th className="th w-8">
                     <input type="checkbox" aria-label="Select all members on this page" />
@@ -428,11 +347,11 @@ export default function TeamPage() {
                   <th className="th w-12" />
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-[#EEEFF6]">
                 {rows.map((person, index) => {
                   const load = loadByUser.get(person.id);
                   return (
-                    <tr key={person.id} className="hover:bg-[#f7f6f3]">
+                    <tr key={person.id} className="hover:bg-[#F8F7FC]">
                       <td className="td">
                         <input type="checkbox" aria-label={`Select ${person.full_name}`} />
                       </td>
@@ -447,7 +366,7 @@ export default function TeamPage() {
                         >
                           <Avatar name={person.full_name} size="sm" />
                           <span className="min-w-0">
-                            <span className="block font-medium text-slate-900 underline-offset-2 hover:text-sky-700 hover:underline">
+                            <span className="block font-medium text-slate-900 underline-offset-2 hover:text-[#6D3AE8] hover:underline">
                               {person.full_name}
                             </span>
                             <span className="block text-[11px] text-slate-400">
@@ -506,7 +425,7 @@ export default function TeamPage() {
                             <button
                               type="button"
                               onClick={() => setEditMemberId(person.id)}
-                              className="rounded px-2 py-1 text-xs text-sky-700 hover:bg-sky-50 border border-sky-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                              className="rounded-lg border border-[#E8E2FA] bg-white px-2.5 py-1.5 text-xs text-[#6D3AE8] transition hover:bg-[#F5F0FF] disabled:cursor-not-allowed disabled:opacity-50"
                               disabled={!canAddMember}
                               title="Edit member"
                             >
@@ -516,7 +435,7 @@ export default function TeamPage() {
                           <div className="relative inline-block">
                             <button
                               type="button"
-                              className="relative rounded px-1.5 py-0.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                              className="relative rounded-lg p-1.5 text-slate-400 transition hover:bg-[#F1ECFF] hover:text-[#6D3AE8]"
                               onClick={() => setMenuMemberId(menuMemberId === person.id ? null : person.id)}
                               aria-label={`Actions for ${person.full_name}`}
                             >
@@ -594,7 +513,7 @@ export default function TeamPage() {
           hasMore={offset + rows.length < (members.data?.meta.total ?? 0)}
           onOffsetChange={setOffset}
         />
-      </Card>
+      </section>
 
       <div className="grid gap-4 xl:grid-cols-3">
         <Card
@@ -603,7 +522,7 @@ export default function TeamPage() {
           action={
             <Link
               href="/reports"
-              className="text-xs font-medium text-sky-700 hover:underline"
+              className="text-xs font-medium text-[#6D3AE8] hover:underline"
             >
               View All
             </Link>
@@ -613,7 +532,7 @@ export default function TeamPage() {
             <EmptyState message="Nobody is carrying open work yet." />
           ) : (
             <table className="w-full">
-              <thead className="bg-[#f7f6f3]">
+              <thead className="bg-[#F8F7FC]">
                 <tr>
                   <th className="th">Name</th>
                   <th className="th text-right">Open</th>
@@ -621,9 +540,9 @@ export default function TeamPage() {
                   <th className="th">Utilisation</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-[#EEEFF6]">
                 {s?.workload.slice(0, 8).map((row) => (
-                  <tr key={row.user_id} className="hover:bg-[#f7f6f3]">
+                  <tr key={row.user_id} className="hover:bg-[#F8F7FC]">
                     <td className="td">
                       <button
                         type="button"

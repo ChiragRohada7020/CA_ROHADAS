@@ -62,6 +62,13 @@ logger = logging.getLogger("ca_software")
 async def lifespan(app: FastAPI):
     _mcp_session_mgr = get_mcp_session_manager()
     async with _mcp_session_mgr.run():
+        # Ensure shortcuts column exists on users table
+        from app.core.db import engine
+        from sqlalchemy import text
+        with engine.begin() as conn:
+            conn.execute(text(
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS shortcuts JSON"
+            ))
         yield
 
 
