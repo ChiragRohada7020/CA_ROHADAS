@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import React, { Children, cloneElement, createContext, forwardRef, useContext, useEffect, useState } from "react";
-import { AlertCircle, AlertTriangle, CheckCircle, Info } from "lucide-react";
+import { AlertCircle, AlertTriangle, CheckCircle, Info, CirclePlus, X } from "lucide-react";
 import { cn } from "@/lib/format";
 
 /** ── Button ── */
@@ -671,14 +671,27 @@ export function Modal({
         aria-modal="true"
         aria-label={title}
         className={cn(
-          "fixed left-[50%] top-[50%] z-50 grid w-full translate-x-[-50%] translate-y-[-50%] gap-4 border border-[#e5e2dc] bg-white p-6 shadow-lg rounded-xl",
+          "fixed left-[50%] top-[50%] z-50 grid w-full translate-x-[-50%] translate-y-[-50%] gap-0 border border-[#e5e2dc] bg-white shadow-lg rounded-[24px]",
           width,
         )}
       >
-        <div className="flex flex-col space-y-1.5 px-6 py-1.5 text-center sm:text-left">
-          <h2 className="text-xl font-semibold leading-none tracking-tight text-[#1a1814]">{title}</h2>
-        </div>
-        <div className="pb-4">{children}</div>
+        <header className="flex items-center justify-between border-b border-[#e5e2dc] bg-gradient-to-r from-[#F0E9FF] to-[#EDE9FF] px-6 py-3.5 rounded-t-[20px]">
+          <div className="flex items-center gap-2">
+            <span className="flex size-4 items-center justify-center rounded-full bg-[#F5F0FF] text-[#7543E9]">
+              <CirclePlus className="h-2 w-2" />
+            </span>
+            <h2 className="text-sm font-semibold leading-none tracking-tight text-[#1a1814]">{title}</h2>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded p-1.5 text-[#6b7280] hover:bg-[#f7f6f3] hover:text-[#1a1814] transition"
+            aria-label="Close"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </header>
+        <div className="pb-6 px-6">{children}</div>
       </div>
     </div>
   );
