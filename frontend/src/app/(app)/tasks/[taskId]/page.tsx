@@ -802,7 +802,34 @@ export default function TaskDetailPage() {
           </div>
         </section>
       )}
-
+ 
+      {/* Client info */}
+      {row.client_id && (
+        <section className="overflow-hidden rounded-2xl border border-[#E4E6F2] bg-white shadow-[0_8px_28px_rgba(38,35,82,.055)]">
+          <div className="flex items-center justify-between border-b border-[#EEF0F7] bg-[#F8F6FF] px-4 py-3">
+            <div className="flex items-center gap-2">
+              <Icon name="user-round" className="h-4 w-4 text-[#7543E9]" />
+              <h3 className="text-sm font-bold text-[#171A32]">Client</h3>
+            </div>
+          </div>
+          <div className="px-4 py-4">
+            <Link
+              href={`/clients/${row.client_id}`}
+              className="flex items-center gap-3 rounded-xl border border-[#ECEAF4] bg-[#FCFBFF] px-4 py-3 hover:border-[#CFC0F8] hover:bg-[#F5F0FF] transition"
+            >
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-[#F0E9FF] text-[#7543E9]">
+                <Icon name="user-round" className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <div className="text-sm font-bold text-[#171A32]">{row.client_name ?? "Client"}</div>
+                <div className="text-[10px] text-[#737A96]">Open client details</div>
+              </div>
+              <Icon name="arrow-right" className="h-4 w-4 text-[#9CA3AF] shrink-0" />
+            </Link>
+          </div>
+        </section>
+      )}
+ 
       {/* Main content */}
       <div className="grid items-start gap-5 mt-5 lg:grid-cols-[minmax(0,1fr)_360px]">
 
