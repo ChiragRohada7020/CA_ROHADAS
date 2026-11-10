@@ -1,5 +1,6 @@
 "use client";
 
+import React, { useImperativeHandle } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState } from "react";
 
@@ -25,9 +26,11 @@ const INLINE_LIMIT_BYTES = 4 * 1024 * 1024;
  * request body is capped at 4.5 MB, so a larger file would be refused upstream with a
  * less useful message, after the user had waited for the upload to finish.
  */
-export function TaskAttachments({ task }: { task: TaskDetail }) {
+export function TaskAttachments({ task }: { task: TaskDetail }, ref: React.Ref<HTMLInputElement | null>) {
   const queryClient = useQueryClient();
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useImperativeHandle(ref, () => inputRef.current as HTMLInputElement);
   const [error, setError] = useState<string | null>(null);
 
   const documents = useQuery({
@@ -91,11 +94,11 @@ export function TaskAttachments({ task }: { task: TaskDetail }) {
           />
           <button
             type="button"
-            className="btn-ghost inline-flex items-center gap-1 text-xs"
+            className="rounded-xl bg-gradient-to-r from-[#7543E9] to-[#5B31CC] px-4 py-2 text-xs font-semibold text-white shadow-[0_5px_14px_rgba(104,61,213,.22)] transition hover:-translate-y-0.5 hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed"
             disabled={upload.isPending}
             onClick={() => inputRef.current?.click()}
           >
-            <Icon name="plus" className="h-3.5 w-3.5" />
+            <Icon name="plus" className="h-3.5 w-3.5 mr-1" />
             {upload.isPending ? "Uploading…" : "Add more"}
           </button>
         </>
@@ -170,3 +173,5 @@ export function TaskAttachments({ task }: { task: TaskDetail }) {
     </Card>
   );
 }
+
+export default React.forwardRef(TaskAttachments);

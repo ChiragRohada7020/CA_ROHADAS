@@ -9,7 +9,7 @@ import { Avatar } from "@/components/charts";
 import { AssignPanel } from "@/components/AssignPanel";
 import { FilingPanel } from "@/components/FilingPanel";
 import { Icon, type IconName } from "@/components/Icon";
-import { TaskAttachments } from "@/components/TaskAttachments";
+import TaskAttachments from "@/components/TaskAttachments";
 import { DescriptionBody, DescriptionEditor } from "@/components/TaskDescription";
 import { TaskEditPanel } from "@/components/TaskEditPanel";
 import { WorkLogPanel } from "@/components/WorkLogPanel";
@@ -446,6 +446,7 @@ export default function TaskDetailPage() {
   const [savingTemplate, setSavingTemplate] = useState(false);
   const [loadingTemplate, setLoadingTemplate] = useState(false);
   const [removingSubtaskId, setRemovingSubtaskId] = useState<string | null>(null);
+  const attachmentsRef = useRef<HTMLInputElement | null>(null);
 
   const task = useQuery({
     queryKey: ["task", taskId],
@@ -643,17 +644,14 @@ export default function TaskDetailPage() {
             <Icon name="history" className="h-3 w-3" />
             <span>Updated {formatRelative(row.updated_at)}</span>
           </div>
-          <button
-            type="button"
-            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#7543E9] to-[#5B31CC] px-4 py-2.5 text-xs font-semibold text-white shadow-[0_7px_18px_rgba(104,61,213,.22)] transition hover:-translate-y-0.5 hover:shadow-lg"
-            onClick={() => {
-              const el = document.getElementById("attachments");
-              if (el) el.scrollIntoView({ behavior: "smooth" });
-            }}
-          >
-            <Icon name="upload" className="h-4 w-4" />
-            Attach file
-          </button>
+            <button
+              type="button"
+              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#7543E9] to-[#5B31CC] px-4 py-2.5 text-xs font-semibold text-white shadow-[0_7px_18px_rgba(104,61,213,.22)] transition hover:-translate-y-0.5 hover:shadow-lg"
+              onClick={() => attachmentsRef.current?.click()}
+            >
+              <Icon name="upload" className="h-4 w-4" />
+              Attach file
+            </button>
           <DocumentRequestMenu task={row} onRequested={invalidate} />
         </div>
       </div>
@@ -1150,7 +1148,7 @@ export default function TaskDetailPage() {
               </div>
             </div>
             <div className="p-4">
-              <TaskAttachments task={row} />
+              <TaskAttachments task={row} ref={attachmentsRef} />
             </div>
           </section>
         </aside>
