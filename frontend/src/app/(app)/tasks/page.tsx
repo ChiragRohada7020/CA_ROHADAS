@@ -663,431 +663,472 @@ export default function TasksPage() {
   }
 
   const hasFilters = Object.values(filters).some(Boolean);
+  const s = summary.data;
 
   return (
-    <div className="min-h-full space-y-3 bg-[#F5F6FB] p-1 sm:p-2 lg:p-3">
-      <div className="overflow-hidden rounded-[26px] border border-[#E8E7F0] bg-white shadow-[0_18px_55px_rgba(34,26,71,.07)]">
-        <div className="relative isolate flex flex-wrap items-center justify-between gap-5 overflow-hidden border-b border-white/10 bg-[radial-gradient(ellipse_at_85%_10%,rgba(155,119,255,.35),transparent_36%),linear-gradient(115deg,#17132D_0%,#29204B_55%,#443078_100%)] px-4 py-5 text-white sm:px-5 lg:px-6">
-              <div>
-                <div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[.2em] text-violet-200">
-                  <span className="size-2 rounded-full bg-[#B9A0FF] shadow-[0_0_14px_rgba(185,160,255,.9)]" />
-                  Work management
-                </div>
-                <h2 className="mt-1 text-xl font-bold tracking-tight text-white sm:text-3xl">
-                  Tasks & Compliance
-                </h2>
-                <p className="mt-1 max-w-2xl text-sm text-violet-100">
-                  Plan, assign and monitor your firm's client work.
-                </p>
-              </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="flex rounded-xl border border-white/15 bg-white/10 p-1 backdrop-blur-md">
-              {(
-                [
-                  ["list", "List"],
-                  ["kanban", "Kanban"],
-                  ["calendar", "Calendar"],
-                ] as const
-              ).map(([key, label]) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => setView(key)}
-                  className={cn(
-                    "cursor-pointer rounded-lg px-3 py-2 text-xs font-semibold transition-all",
-                    view === key
-                      ? "bg-white text-[#6336D6] shadow-sm ring-1 ring-[#E8E0FA]"
-                      : "text-[#747B95] hover:bg-white/70 hover:text-[#6032D4]",
-                  )}
-                  aria-pressed={view === key}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-            <Link href="/tasks/generate" className="rounded-xl border border-white/25 bg-white/10 px-4 py-2.5 text-xs font-semibold text-white backdrop-blur-md transition hover:bg-white/20">
+    <div className="min-h-full space-y-5 bg-[#F7F8FC] p-4 md:p-5 xl:p-6">
+
+      {/* Page heading */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <div className="mb-2 flex items-center gap-2 text-[10px] font-semibold text-[#777E9B]">
+            <span>Workspace</span>
+            <Icon name="chevron-right" className="h-3 w-3" />
+            <span className="text-[#343A58]">Tasks</span>
+          </div>
+
+          <h1 className="text-[28px] font-bold tracking-[-.045em] text-[#171A32]">
+            Tasks & Compliance
+          </h1>
+
+          <p className="mt-1 text-sm text-[#737A96]">
+            Plan, assign and monitor your firm's client work.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex rounded-xl border border-[#ECEAF4] bg-[#FCFBFF] p-1 backdrop-blur-md">
+            {(
+              [
+                ["list", "List"],
+                ["kanban", "Kanban"],
+                ["calendar", "Calendar"],
+              ] as const
+            ).map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setView(key)}
+                className={cn(
+                  "cursor-pointer rounded-lg px-3 py-2 text-xs font-semibold transition-all",
+                  view === key
+                    ? "bg-[#F4F0FF] text-[#6D3AE8] shadow-sm ring-1 ring-[#E9E0FF]"
+                    : "text-[#69718F] hover:bg-[#F8F6FF] hover:text-[#6637D7]",
+                )}
+                aria-pressed={view === key}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          {session.data?.scope === "firm" && (
+            <Link
+              href="/tasks/generate"
+              className="inline-flex items-center gap-2 rounded-xl border border-[#ECEAF4] bg-[#FCFBFF] px-5 py-3 text-xs font-semibold text-[#454B68] hover:bg-[#F5F0FF] hover:border-[#CFC0F8] transition"
+            >
+              <Icon name="plus" className="h-3 w-3" />
               Generate work
             </Link>
+          )}
+          <button
+            type="button"
+            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#7543E9] to-[#5B31CC] px-5 py-3 text-sm font-semibold text-white shadow-[0_7px_18px_rgba(104,61,213,.22)] transition hover:-translate-y-0.5 hover:shadow-lg"
+            onClick={() => router.push("/tasks/new")}
+          >
+            <Icon name="plus" className="h-4 w-4" />
+            New task
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowShortcuts(true)}
+            className="inline-flex items-center gap-2 rounded-xl border border-[#ECEAF4] bg-[#FCFBFF] px-3 py-2.5 text-xs font-semibold text-[#454B68] hover:bg-[#F5F0FF] hover:border-[#CFC0F8] transition"
+          >
+            <Icon name="settings" className="h-3 w-3" />
+            Shortcuts
+          </button>
+        </div>
+      </div>
+
+      {/* Summary cards */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+        {TABS.map((entry) => {
+          const isActive = entry.key === tab;
+          const meta = SUMMARY_META[entry.key];
+          return (
             <button
+              key={entry.key}
               type="button"
-              className="inline-flex items-center rounded-xl bg-white px-4 py-2.5 text-xs font-bold text-[#4D328B] shadow-[0_8px_24px_rgba(0,0,0,.18)] transition hover:-translate-y-0.5 hover:shadow-xl"
-              onClick={() => router.push("/tasks/new")}
+              onClick={() => changeTab(entry.key)}
+              className={cn(
+                "group relative overflow-hidden rounded-2xl border p-3.5 text-left transition-all duration-200",
+                isActive
+                  ? "border-[#BDA8F4] bg-gradient-to-br from-[#F5F0FF] to-white shadow-[0_5px_16px_rgba(109,58,232,.10)] ring-1 ring-[#E9E0FF]"
+                  : "border-[#ECEAF2] bg-white hover:-translate-y-0.5 hover:border-[#D3C4F7] hover:shadow-[0_8px_18px_rgba(55,43,100,.07)]",
+              )}
             >
-              <Icon name="plus" className="h-3 w-3 mr-1" />
-              New task
+              <div className={cn("flex size-9 shrink-0 items-center justify-center rounded-xl", meta.dot)}>
+                <Icon name={meta.icon} className="h-4 w-4" />
+              </div>
+              <div className="flex flex-col">
+                <span className="text-[11px] font-semibold leading-tight text-[#77738B] group-hover:text-[#4D328B]">{entry.label}</span>
+                <span className="tabular-nums text-[25px] font-bold tracking-[-.04em] text-[#211B38]">
+                  {summary.data?.[entry.countKey] ?? 0}
+                </span>
+              </div>
             </button>
-            <button
-              type="button"
-              onClick={() => setShowShortcuts(true)}
-              className="inline-flex items-center gap-2 rounded-xl border border-[#ECEAF4] bg-[#FCFBFF] px-3 py-2.5 text-xs font-semibold text-[#454B68] hover:bg-[#F5F0FF] hover:border-[#CFC0F8] transition"
-            >
-              <Icon name="settings" className="h-3 w-3" />
-              Shortcuts
-            </button>
+          );
+        })}
+      </div>
+
+      {/* Active filter indicator */}
+      {hasFilters && (
+        <div className="flex items-center justify-between gap-3 border-b border-[#EEF0F7] bg-[#F8F5FF] px-4 py-2.5">
+          <p className="text-xs text-[#8A90A6]">
+            Showing {tasks.data?.meta.total ?? 0} of {s?.all_tasks ?? 0} open tasks
+          </p>
+
+          <button
+            type="button"
+            className="text-xs font-semibold text-[#6D3AE8] hover:underline"
+            onClick={() => {
+              paging.clearFilters();
+              setSelected(new Set());
+            }}
+          >
+            Clear filters
+          </button>
+        </div>
+      )}
+
+      {/* Main content */}
+      <div className="grid items-start gap-5 2xl:grid-cols-[minmax(0,1fr)_300px]">
+
+        {/* Tasks table */}
+        <section className="min-w-0 overflow-hidden rounded-2xl border border-[#E4E6F2] bg-white shadow-[0_8px_28px_rgba(38,35,82,.055)]">
+
+          {/* Tabs */}
+          <div className="border-b border-[#EEF0F7] bg-white px-4 py-3">
+            <div className="flex items-center gap-1 overflow-x-auto">
+              {TABS.map((entry) => {
+                const isActive = entry.key === tab;
+                return (
+                  <button
+                    key={entry.key}
+                    type="button"
+                    onClick={() => changeTab(entry.key)}
+                    className={cn(
+                      "shrink-0 whitespace-nowrap rounded-xl px-4 py-2.5 text-xs font-semibold transition-all",
+                      isActive
+                        ? "bg-gradient-to-r from-[#7543E9] to-[#6032D4] text-white shadow-[0_5px_14px_rgba(104,61,213,.24)]"
+                        : "text-[#69718F] hover:bg-[#F5F1FF] hover:text-[#6637D7]"
+                    )}
+                  >
+                    {entry.label}
+
+                    <span
+                      className={cn(
+                        "ml-1.5 rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
+                        isActive
+                          ? "bg-white/20 text-white"
+                          : "bg-[#F0EFF8] text-[#737A96]"
+                      )}
+                    >
+                      {summary.data ? tabCount(summary.data, entry.key) : 0}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
-        </div>
 
-        {/* Summary Cards */}
-        <div className="grid grid-cols-2 gap-2 border-b border-[#EEEAF5] bg-[#FBFAFE] px-3 py-3 sm:grid-cols-3 sm:px-4 lg:grid-cols-5 2xl:grid-cols-9">
-          {TABS.map((entry) => {
-            const isActive = entry.key === tab;
-            const meta = SUMMARY_META[entry.key];
-            return (
-              <button
-                key={entry.key}
-                type="button"
-                onClick={() => changeTab(entry.key)}
-                className={cn(
-                  "group flex min-h-[108px] flex-col items-start justify-between gap-3 rounded-2xl border p-3.5 text-left transition-all duration-200",
-                  isActive
-                    ? "border-[#BDA8F4] bg-gradient-to-br from-[#F5F0FF] to-white shadow-[0_5px_16px_rgba(109,58,232,.10)] ring-1 ring-[#E9E0FF]"
-                    : "border-[#ECEAF2] bg-white hover:-translate-y-0.5 hover:border-[#D3C4F7] hover:shadow-[0_8px_18px_rgba(55,43,100,.07)]",
-                )}
-              >
-                <div className={cn("flex size-9 shrink-0 items-center justify-center rounded-xl", meta.dot)}>
-                  <Icon name={meta.icon} className="h-4 w-4" />
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-[11px] font-semibold leading-tight text-[#77738B] group-hover:text-[#4D328B]">{entry.label}</span>
-                  <span className="tabular-nums text-[25px] font-bold tracking-[-.04em] text-[#211B38]">
-                    {summary.data?.[entry.countKey] ?? 0}
-                  </span>
-                </div>
-              </button>
-            );
-          })}
-        </div>
+          {tasks.isPending && <LoadingState label="Loading tasks…" />}
 
-        {/* Filters */}
-        <div className="grid grid-cols-1 gap-3 border-b border-[#EEEAF5] bg-white px-3 py-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 sm:px-4">
-          <div className="flex flex-col gap-1">
-            <label className="text-[10px] font-bold uppercase tracking-[.12em] text-[#8A849C]">Search</label>
-            <input
-              className="input min-h-11 rounded-xl border border-[#E7E5EE] bg-[#FAFAFC] px-3.5 py-2.5 text-[13px] text-[#302A42] shadow-sm outline-none transition placeholder:text-[#A5A1B0] hover:border-[#CEC4E5] focus:border-[#9271D8] focus:bg-white focus:ring-4 focus:ring-[#7543E9]/10"
-              type="search"
-              value={filters.search ?? ""}
-              onChange={(event) => updateFilter("search", event.target.value)}
-              placeholder="Search tasks by title, code…"
-              aria-label="Search tasks"
-              ref={searchRef}
+          {tasks.isError && (
+            <ErrorState message="Could not load tasks." />
+          )}
+
+          {tasks.isSuccess && rows.length === 0 && !hasFilters && (
+            <EmptyState
+              title="No tasks here"
+              message="Nothing in this tab. Try another, or generate this year's work."
             />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-[10px] font-bold uppercase tracking-[.12em] text-[#8A849C]">Status</label>
-            <select
-              className="input min-h-11 rounded-xl border border-[#E7E5EE] bg-[#FAFAFC] px-3.5 py-2.5 text-[13px] text-[#302A42] shadow-sm outline-none transition placeholder:text-[#A5A1B0] hover:border-[#CEC4E5] focus:border-[#9271D8] focus:bg-white focus:ring-4 focus:ring-[#7543E9]/10"
-              value={filters.status ?? ""}
-              onChange={(event) => updateFilter("status", event.target.value)}
-              aria-label="Status"
-            >
-              <option value="">Status</option>
-              <option value="not_started">Not Started</option>
-              <option value="assigned">Assigned</option>
-              <option value="in_progress">In Progress</option>
-              <option value="waiting_for_client">Waiting for Client</option>
-              <option value="ready_for_review">In Review</option>
-              <option value="changes_requested">Changes Requested</option>
-              <option value="ready_for_approval">Awaiting Approval</option>
-              <option value="approved">Approved</option>
-              <option value="ready_to_file">Ready to File</option>
-              <option value="filed">Filed</option>
-              <option value="delivered">Delivered</option>
-              <option value="completed">Completed</option>
-              <option value="cancelled">Cancelled</option>
-            </select>
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-[10px] font-bold uppercase tracking-[.12em] text-[#8A849C]">Service</label>
-            <select
-              className="input min-h-11 rounded-xl border border-[#E7E5EE] bg-[#FAFAFC] px-3.5 py-2.5 text-[13px] text-[#302A42] shadow-sm outline-none transition placeholder:text-[#A5A1B0] hover:border-[#CEC4E5] focus:border-[#9271D8] focus:bg-white focus:ring-4 focus:ring-[#7543E9]/10"
-              value={filters.service_id ?? ""}
-              onChange={(event) => updateFilter("service_id", event.target.value)}
-              aria-label="Service"
-            >
-              <option value="">Service</option>
-              {(services.data?.items ?? []).map((row) => (
-                <option key={row.id} value={row.id}>
-                  {row.code}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-[10px] font-bold uppercase tracking-[.12em] text-[#8A849C]">Assignee</label>
-            <select
-              className="input min-h-11 rounded-xl border border-[#E7E5EE] bg-[#FAFAFC] px-3.5 py-2.5 text-[13px] text-[#302A42] shadow-sm outline-none transition placeholder:text-[#A5A1B0] hover:border-[#CEC4E5] focus:border-[#9271D8] focus:bg-white focus:ring-4 focus:ring-[#7543E9]/10"
-              value={filters.preparer_id ?? ""}
-              onChange={(event) => updateFilter("preparer_id", event.target.value)}
-              aria-label="Assignee"
-            >
-              <option value="">Assignee</option>
-              {directory.active.map((row) => (
-                <option key={row.id} value={row.id}>
-                  {row.full_name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-[10px] font-bold uppercase tracking-[.12em] text-[#8A849C]">Client</label>
-            <select
-              className="input min-h-11 rounded-xl border border-[#E7E5EE] bg-[#FAFAFC] px-3.5 py-2.5 text-[13px] text-[#302A42] shadow-sm outline-none transition placeholder:text-[#A5A1B0] hover:border-[#CEC4E5] focus:border-[#9271D8] focus:bg-white focus:ring-4 focus:ring-[#7543E9]/10"
-              value={filters.client_id ?? ""}
-              onChange={(event) => updateFilter("client_id", event.target.value)}
-              aria-label="Client"
-            >
-              <option value="">Client</option>
-              {(clients.data?.items ?? []).map((row) => (
-                <option key={row.id} value={row.id}>
-                  {row.legal_name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-[10px] font-bold uppercase tracking-[.12em] text-[#8A849C]">Priority</label>
-            <select
-              className="input min-h-11 rounded-xl border border-[#E7E5EE] bg-[#FAFAFC] px-3.5 py-2.5 text-[13px] text-[#302A42] shadow-sm outline-none transition placeholder:text-[#A5A1B0] hover:border-[#CEC4E5] focus:border-[#9271D8] focus:bg-white focus:ring-4 focus:ring-[#7543E9]/10"
-              value={filters.priority ?? ""}
-              onChange={(event) => updateFilter("priority", event.target.value)}
-              aria-label="Priority"
-            >
-              <option value="">Priority</option>
-              <option value="urgent">Urgent</option>
-              <option value="high">High</option>
-              <option value="normal">Normal</option>
-              <option value="low">Low</option>
-            </select>
-          </div>
-        </div>
+          )}
 
-        {hasFilters && (
-          <div className="mx-4 mt-3 flex items-center justify-between gap-3 rounded-xl border border-[#EAE5F5] bg-[#F8F6FC] px-4 py-3 sm:mx-6">
-            <p className="text-xs text-[#64748B]">
-              Showing {tasks.data?.meta.total ?? 0} of {summary.data?.all_tasks ?? 0} open tasks
-            </p>
-            <button
-              type="button"
-              className="text-xs font-medium text-[#7543E9] hover:underline"
-              onClick={() => {
-                paging.clearFilters();
-                setSelected(new Set());
-              }}
-            >
-              Clear
-            </button>
-          </div>
-        )}
+          {tasks.isSuccess && rows.length === 0 && hasFilters && (
+            <EmptyState
+              title="No tasks here"
+              message="Nothing matches these filters. Try widening them."
+            />
+          )}
 
-        {view === "list" && (
-          <>
-            {tasks.isPending && <LoadingState label="Loading tasks…" />}
-            {tasks.isError && (
-              <ErrorState
-                message={
-                  tasks.error instanceof ApiError ? tasks.error.message : "Could not load tasks."
-                }
-              />
-            )}
-            {tasks.isSuccess && rows.length === 0 && (
-              <EmptyState
-                message={
-                  hasFilters
-                    ? "No task matches those filters."
-                    : "Nothing in this tab. Try another, or generate this year's work."
-                }
-              />
-            )}
-            {rows.length > 0 && (
-              <>
-                <div className="mx-4 mb-4 overflow-x-auto rounded-2xl border border-[#E9E7F0] bg-white shadow-[0_6px_24px_rgba(31,24,60,.035)] sm:mx-6">
-                  <table className="w-full min-w-[68rem]">
-                    <thead className="bg-[#F7F5FB]">
-                      <tr>
-                        <th className="th w-8">
+          {/* Table */}
+          {tasks.isSuccess && rows.length > 0 && (
+            <>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[68rem]">
+                  <thead className="bg-[#F4F2FB]">
+                    <tr>
+                      <th className="th w-8">
+                        <input
+                          type="checkbox"
+                          checked={allSelected}
+                          onChange={toggleAll}
+                          aria-label="Select all tasks on this page"
+                        />
+                      </th>
+                      <th className="th w-10">#</th>
+                      <th className="th">Task Title</th>
+                      <th className="th">Client</th>
+                      <th className="th">Service</th>
+                      <th className="th">Period</th>
+                      <th className="th">Due Date</th>
+                      <th className="th">Status</th>
+                      <th className="th">Progress</th>
+                      <th className="th">Assignee</th>
+                      <th className="th">Priority</th>
+                      <th className="th w-10" />
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#F0EEF5]">
+                    {rows.map((task, index) => (
+                      <tr
+                        key={task.id}
+                        className={cn(
+                          "cursor-pointer transition-colors hover:bg-[#FAF8FF]",
+                          selected.has(task.id) && "bg-[#F1EAFF]",
+                        )}
+                        onClick={() => setOpenTaskId(task.id)}
+                      >
+                        <td className="td" onClick={(event) => event.stopPropagation()}>
                           <input
                             type="checkbox"
-                            checked={allSelected}
-                            onChange={toggleAll}
-                            aria-label="Select all tasks on this page"
+                            checked={selected.has(task.id)}
+                            onChange={() => toggleOne(task.id)}
+                            aria-label={`Select ${task.title}`}
                           />
-                        </th>
-                        <th className="th w-10">#</th>
-                        <th className="th">Task Title</th>
-                        <th className="th">Client</th>
-                        <th className="th">Service</th>
-                        <th className="th">Period</th>
-                        <th className="th">Due Date</th>
-                        <th className="th">Status</th>
-                        <th className="th">Progress</th>
-                        <th className="th">Assignee</th>
-                        <th className="th">Priority</th>
-                        <th className="th w-10" />
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[#F0EEF5]">
-                      {rows.map((task, index) => (
-                        <tr
-                          key={task.id}
-                          className={cn(
-                            "cursor-pointer transition-colors hover:bg-[#FAF8FF]",
-                            selected.has(task.id) && "bg-[#F1EAFF]",
-                          )}
-                          onClick={() => setOpenTaskId(task.id)}
-                        >
-                          <td className="td" onClick={(event) => event.stopPropagation()}>
-                            <input
-                              type="checkbox"
-                              checked={selected.has(task.id)}
-                              onChange={() => toggleOne(task.id)}
-                              aria-label={`Select ${task.title}`}
-                            />
-                          </td>
-                          <td className="td tabular text-xs text-[#94A3B8]">
-                            {offset + index + 1}
-                          </td>
-                          <td className="td">
-                            <span className="font-medium text-[#171A3D]">{task.title}</span>
-                            <span className="ml-2 font-mono text-[10px] text-[#94A3B8]">
-                              {task.task_code}
+                        </td>
+                        <td className="td tabular text-xs text-[#94A3B8]">
+                          {offset + index + 1}
+                        </td>
+                        <td className="td">
+                          <span className="font-medium text-[#171A3D]">{task.title}</span>
+                          <span className="ml-2 font-mono text-[10px] text-[#94A3B8]">
+                            {task.task_code}
+                          </span>
+                        </td>
+                        <td className="td text-xs text-[#64748B]">{task.client_name ?? "—"}</td>
+                        <td className="td">
+                          {task.service_code ? (
+                            <span className="rounded bg-[#F7F3FF] px-1.5 py-0.5 font-mono text-[10px] text-[#737A96]">
+                              {task.service_code}
                             </span>
-                          </td>
-                          <td className="td text-xs text-[#64748B]">{task.client_name ?? "—"}</td>
-                          <td className="td">
-                            {task.service_code ? (
-                              <span className="rounded bg-[#F7F3FF] px-1.5 py-0.5 font-mono text-[10px] text-[#737A96]">
-                                {task.service_code}
-                              </span>
-                            ) : (
-                              <span className="text-xs text-[#94A3B8]">—</span>
-                            )}
-                          </td>
-                          <td className="td tabular text-xs text-[#64748B]">
-                            {periodLabel(task.period_key)}
-                          </td>
-                          <td className="td tabular text-xs">
-                            {task.statutory_due_date ? (
-                              <span className={cn(task.is_overdue && "font-medium text-[#DC2626]")}>
-                                {formatDate(task.statutory_due_date)}
-                              </span>
-                            ) : (
-                              <span className="text-[#94A3B8]">—</span>
-                            )}
-                          </td>
-                          <td className="td" onClick={(event) => event.stopPropagation()}>
-                            <InlineStatusControl task={task} />
-                          </td>
-                          <td className="td">
-                            <ProgressBar percent={task.progress_percent} />
-                          </td>
-                          <td className="td">
-                            <Avatar
-                              name={
-                                task.preparer_id
-                                  ? (directory.byId.get(task.preparer_id)?.full_name ?? null)
-                                  : null
-                              }
-                            />
-                          </td>
-                          <td className="td">
-                            <PriorityDot priority={task.priority} />
-                          </td>
-                          <td className="td" onClick={(event) => event.stopPropagation()}>
-                            <RowActionsMenu task={task} onOpen={() => setOpenTaskId(task.id)} />
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                <Pagination
-                  page={page}
-                  limit={limit}
-                  total={tasks.data?.meta.total ?? 0}
-                  hasMore={tasks.data?.meta.has_more ?? false}
-                  offset={offset}
-                  onOffsetChange={setOffset}
-                />
-              </>
-            )}
-          </>
-        )}
-
-        {view === "kanban" && (
-          <div className="bg-[#FBFAFD] p-4 sm:p-6">
-            {boardTasks.isPending && <LoadingState label="Loading board…" />}
-            {boardTasks.isSuccess && (
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-3 xl:grid-cols-5">
-                {BOARD.map((column) => {
-                  const cards = (boardTasks.data?.items ?? []).filter(
-                    (task) => task.status === column.status,
-                  );
-                  return (
-                    <div key={column.status} className="rounded-2xl border border-[#E9E6F0] bg-[#F5F3F9] p-3.5">
-                      <div className="mb-2 flex items-center justify-between px-1">
-                        <span className="text-xs font-semibold text-[#171A32]">
-                          {column.label}
-                        </span>
-                        <span className="tabular rounded bg-white px-1.5 py-0.5 text-[10px] font-bold text-[#64748B] border border-[#E2E8F0]">
-                          {cards.length}
-                        </span>
-                      </div>
-                      <ul className="space-y-2">
-                        {cards.map((task) => (
-                          <li key={task.id}>
-                            <button
-                              type="button"
-                              onClick={() => setOpenTaskId(task.id)}
-                              className="w-full rounded-xl border border-[#EAE7F0] bg-white p-4 text-left shadow-[0_3px_10px_rgba(40,35,90,.035)] transition-all hover:-translate-y-1 hover:border-[#CBBBF4] hover:shadow-[0_12px_24px_rgba(65,48,130,.10)]"
-                            >
-                              <p className="text-sm font-medium text-[#171A32]">{task.title}</p>
-                              <p className="mt-0.5 truncate text-[10px] text-[#737A96]">
-                                {task.client_name ?? "—"}
-                              </p>
-                              <div className="mt-1.5 flex items-center justify-between">
-                                <span className="tabular text-[10px] text-[#64748B]">
-                                  {periodLabel(task.period_key)}
-                                </span>
-                                <span
-                                  className={cn(
-                                    "tabular text-[10px]",
-                                    task.is_overdue ? "font-medium text-[#DC2626]" : "text-[#64748B]",
-                                  )}
-                                >
-                                  {task.statutory_due_date
-                                    ? formatDate(task.statutory_due_date)
-                                    : "—"}
-                                </span>
-                              </div>
-                            </button>
-                          </li>
-                        ))}
-                        {cards.length === 0 && (
-                          <li className="px-1 py-2 text-[10px] text-[#94A3B8]">Nothing here.</li>
-                        )}
-                      </ul>
-                    </div>
-                  );
-                })}
+                          ) : (
+                            <span className="text-xs text-[#94A3B8]">—</span>
+                          )}
+                        </td>
+                        <td className="td tabular text-xs text-[#64748B]">
+                          {periodLabel(task.period_key)}
+                        </td>
+                        <td className="td tabular text-xs">
+                          {task.statutory_due_date ? (
+                            <span className={cn(task.is_overdue && "font-medium text-[#DC2626]")}>
+                              {formatDate(task.statutory_due_date)}
+                            </span>
+                          ) : (
+                            <span className="text-[#94A3B8]">—</span>
+                          )}
+                        </td>
+                        <td className="td" onClick={(event) => event.stopPropagation()}>
+                          <InlineStatusControl task={task} />
+                        </td>
+                        <td className="td">
+                          <ProgressBar percent={task.progress_percent} />
+                        </td>
+                        <td className="td">
+                          <Avatar
+                            name={
+                              task.preparer_id
+                                ? (directory.byId.get(task.preparer_id)?.full_name ?? null)
+                                : null
+                            }
+                          />
+                        </td>
+                        <td className="td">
+                          <PriorityDot priority={task.priority} />
+                        </td>
+                        <td className="td" onClick={(event) => event.stopPropagation()}>
+                          <RowActionsMenu task={task} onOpen={() => setOpenTaskId(task.id)} />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-            )}
-            <p className="mt-2 text-xs text-[#64748B]">
-              Showing five workflow stages. Tasks in other states appear on the List tab.
-            </p>
-          </div>
-        )}
-
-        {view === "calendar" && (
-          <div className="bg-[#FBFAFD] p-4 sm:p-6">
-            {boardTasks.isPending && <LoadingState label="Loading calendar…" />}
-            {boardTasks.isSuccess && (
-              <CalendarView
-                tasks={boardTasks.data?.items ?? []}
-                onOpen={(id) => setOpenTaskId(id)}
+              <Pagination
+                page={page}
+                limit={limit}
+                total={tasks.data?.meta.total ?? 0}
+                hasMore={tasks.data?.meta.has_more ?? false}
+                offset={offset}
+                onOffsetChange={setOffset}
               />
-            )}
-          </div>
-        )}
+            </>
+          )}
+        </section>
+
+        {/* Filters and quick actions */}
+        <aside className="space-y-4">
+
+          <section className="overflow-hidden rounded-2xl border border-[#E4E2F3] bg-white shadow-[0_5px_18px_rgba(40,38,90,.05)]">
+            <div className="flex items-center justify-between border-b border-[#EEF0F7] px-4 py-4">
+              <h2 className="flex items-center gap-2 text-sm font-bold text-[#171A32]">
+                <Icon name="reports" className="h-4 w-4 text-[#713FE6]" />
+                Filters
+              </h2>
+
+              {hasFilters && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    paging.clearFilters();
+                    setSelected(new Set());
+                  }}
+                  className="text-[10px] font-semibold text-[#6D3AE8] hover:underline"
+                >
+                  Clear all
+                </button>
+              )}
+            </div>
+
+            <div className="space-y-3 p-4">
+              <label className="block text-[11px] font-semibold text-[#424966]">
+                Search tasks
+                <input
+                  className="input mt-1.5 h-10 w-full rounded-xl border-[#E3E5F0] bg-white px-3 text-xs focus:border-[#9A7AEF] focus:ring-4 focus:ring-[#EEE8FF]"
+                  type="search"
+                  value={filters.search ?? ""}
+                  onChange={(event) => updateFilter("search", event.target.value)}
+                  placeholder="Title, code, client…"
+                  ref={searchRef}
+                />
+              </label>
+
+              <label className="block text-[11px] font-semibold text-[#424966]">
+                Status
+                <select
+                  className="input mt-1.5 h-10 w-full rounded-xl border-[#E3E5F0] bg-white px-3 text-xs focus:border-[#9A7AEF] focus:ring-4 focus:ring-[#EEE8FF]"
+                  value={filters.status ?? ""}
+                  onChange={(event) => updateFilter("status", event.target.value)}
+                >
+                  <option value="">Status</option>
+                  <option value="not_started">Not Started</option>
+                  <option value="assigned">Assigned</option>
+                  <option value="in_progress">In Progress</option>
+                  <option value="waiting_for_client">Waiting for Client</option>
+                  <option value="ready_for_review">In Review</option>
+                  <option value="changes_requested">Changes Requested</option>
+                  <option value="ready_for_approval">Awaiting Approval</option>
+                  <option value="approved">Approved</option>
+                  <option value="ready_to_file">Ready to File</option>
+                  <option value="filed">Filed</option>
+                  <option value="delivered">Delivered</option>
+                  <option value="completed">Completed</option>
+                  <option value="cancelled">Cancelled</option>
+                </select>
+              </label>
+
+              <label className="block text-[11px] font-semibold text-[#424966]">
+                Service
+                <select
+                  className="input mt-1.5 h-10 w-full rounded-xl border-[#E3E5F0] bg-white px-3 text-xs focus:border-[#9A7AEF] focus:ring-4 focus:ring-[#EEE8FF]"
+                  value={filters.service_id ?? ""}
+                  onChange={(event) => updateFilter("service_id", event.target.value)}
+                >
+                  <option value="">Service</option>
+                  {(services.data?.items ?? []).map((row) => (
+                    <option key={row.id} value={row.id}>
+                      {row.code}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="block text-[11px] font-semibold text-[#424966]">
+                Assignee
+                <select
+                  className="input mt-1.5 h-10 w-full rounded-xl border-[#E3E5F0] bg-white px-3 text-xs focus:border-[#9A7AEF] focus:ring-4 focus:ring-[#EEE8FF]"
+                  value={filters.preparer_id ?? ""}
+                  onChange={(event) => updateFilter("preparer_id", event.target.value)}
+                >
+                  <option value="">Assignee</option>
+                  {directory.active.map((row) => (
+                    <option key={row.id} value={row.id}>
+                      {row.full_name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="block text-[11px] font-semibold text-[#424966]">
+                Client
+                <select
+                  className="input mt-1.5 h-10 w-full rounded-xl border-[#E3E5F0] bg-white px-3 text-xs focus:border-[#9A7AEF] focus:ring-4 focus:ring-[#EEE8FF]"
+                  value={filters.client_id ?? ""}
+                  onChange={(event) => updateFilter("client_id", event.target.value)}
+                >
+                  <option value="">Client</option>
+                  {(clients.data?.items ?? []).map((row) => (
+                    <option key={row.id} value={row.id}>
+                      {row.legal_name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="block text-[11px] font-semibold text-[#424966]">
+                Priority
+                <select
+                  className="input mt-1.5 h-10 w-full rounded-xl border-[#E3E5F0] bg-white px-3 text-xs focus:border-[#9A7AEF] focus:ring-4 focus:ring-[#EEE8FF]"
+                  value={filters.priority ?? ""}
+                  onChange={(event) => updateFilter("priority", event.target.value)}
+                >
+                  <option value="">Priority</option>
+                  <option value="urgent">Urgent</option>
+                  <option value="high">High</option>
+                  <option value="normal">Normal</option>
+                  <option value="low">Low</option>
+                </select>
+              </label>
+
+              <p className="rounded-lg bg-[#F7F4FF] px-3 py-2 text-[10px] text-[#77718F]">
+                Filters update the task list automatically.
+              </p>
+            </div>
+          </section>
+
+          {/* Quick actions */}
+          <section className="overflow-hidden rounded-2xl border border-[#E4E2F3] bg-white shadow-[0_5px_18px_rgba(40,38,90,.05)]">
+            <div className="flex items-center gap-2 border-b border-[#EEF0F7] bg-gradient-to-r from-[#FBF9FF] to-[#F1EBFF] px-4 py-4">
+              <Icon name="check-circle" className="h-4 w-4 text-[#713FE6]" />
+              <h2 className="text-sm font-bold text-[#171A32]">
+                Quick Actions
+              </h2>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 p-3">
+              <button
+                type="button"
+                className="flex min-h-[82px] flex-col items-center justify-center gap-2 rounded-xl border border-[#E8E0FF] bg-[#FBF9FF] px-2 py-3 text-center text-[10px] font-semibold text-[#343653] transition hover:border-[#C9B7FF] hover:bg-[#F4EEFF]"
+                onClick={() => router.push("/tasks/new")}
+              >
+                <Icon name="plus" className="h-5 w-5 text-[#713FE6]" />
+                New task
+              </button>
+
+              <button
+                type="button"
+                className="flex min-h-[82px] flex-col items-center justify-center gap-2 rounded-xl border border-[#E8E0FF] bg-[#FBF9FF] px-2 py-3 text-center text-[10px] font-semibold text-[#343653] transition hover:border-[#C9B7FF] hover:bg-[#F4EEFF]"
+                onClick={() => {
+                  paging.clearFilters();
+                  setSelected(new Set());
+                }}
+              >
+                <Icon name="check-circle" className="h-5 w-5 text-[#713FE6]" />
+                Reset List
+              </button>
+            </div>
+          </section>
+        </aside>
       </div>
 
       <TaskDetailsPopup taskId={openTaskId} onClose={() => setOpenTaskId(null)} />
@@ -1297,4 +1338,20 @@ function CalendarView({
       </div>
     </div>
   );
+}
+
+function tabCount(summary: TaskSummary | undefined, key: string): number {
+  if (!summary) return 0;
+  const map: Record<string, keyof TaskSummary> = {
+    all: "all_tasks",
+    mine: "my_tasks",
+    review: "awaiting_review",
+    approval: "awaiting_approval",
+    "my-blocked": "my_blocked",
+    overdue: "overdue",
+    week: "due_this_week",
+    completed: "completed",
+    waiting: "waiting_for_client",
+  };
+  return summary[map[key]] ?? 0;
 }
