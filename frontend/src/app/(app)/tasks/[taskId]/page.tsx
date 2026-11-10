@@ -438,7 +438,6 @@ export default function TaskDetailPage() {
   const [titleDraft, setTitleDraft] = useState("");
   const [editingDescription, setEditingDescription] = useState(false);
   const [descriptionDraft, setDescriptionDraft] = useState("");
-  const [editingTaskDetails, setEditingTaskDetails] = useState(false);
   const [editingAssignments, setEditingAssignments] = useState(false);
   const [editingStepId, setEditingStepId] = useState<string | null>(null);
   const [stepNameDraft, setStepNameDraft] = useState("");
@@ -707,24 +706,6 @@ export default function TaskDetailPage() {
           </div>
 
           <div className="mt-4 flex flex-wrap items-center gap-3">
-            {canEdit && (
-              <button
-                type="button"
-                onClick={() => {
-                  setEditingTaskDetails(true);
-                  setEditingAssignments(true);
-                }}
-                className={cn(
-                  "inline-flex items-center gap-2 rounded-xl border border-[#ECEAF4] bg-[#FCFBFF] px-4 py-2.5 text-xs font-semibold text-[#454B68] transition",
-                  editingTaskDetails || editingAssignments
-                    ? "border-[#CFC0F8] bg-[#F4F0FF] text-[#6D3AE8]"
-                    : "hover:bg-[#F5F0FF] hover:border-[#CFC0F8]",
-                )}
-              >
-                <Icon name="settings" className="h-3 w-3" />
-                {editingTaskDetails || editingAssignments ? "Edit mode on" : "Edit task"}
-              </button>
-            )}
             <StatusTransitionMenu task={row} onTransition={invalidate} />
             <Badge tone={approvalTone(row.approval_status)} className="text-[10px]">
               <span className="mr-1">
@@ -792,35 +773,54 @@ export default function TaskDetailPage() {
         const field = ROLE_TO_FIELD[role as keyof typeof ROLE_TO_FIELD];
         return Boolean(field && row[field as keyof TaskDetail]);
       }) && (
-        <section className="overflow-hidden rounded-2xl border border-[#E4E6F2] bg-white shadow-[0_8px_28px_rgba(38,35,82,.055)] mt-5">
-          <div className="flex items-center gap-2 border-b border-[#EEF0F7] bg-[#F5F1FF] px-4 py-3">
-            <Icon name="user-round" className="h-4 w-4 text-[#7543E9]" />
-            <h3 className="text-sm font-bold text-[#171A32]">Assignees</h3>
-          </div>
-          <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {ASSIGNMENT_ROLES.map((role) => {
-              const field = ROLE_TO_FIELD[role as keyof typeof ROLE_TO_FIELD] as keyof TaskDetail;
-              const userId = (row[field] as string | null) ?? null;
-              const name = userName(directory.byId, userId);
-              const isUnassigned = !userId;
-              return (
-                <div key={role} className="flex items-center gap-3 rounded-xl border border-[#ECEAF4] bg-[#FCFBFF] p-3 hover:border-[#CFC0F8] transition">
-                  <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-[#F0E9FF] text-[#7543E9]">
-                    <Avatar name={name} size="sm" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-xs text-[#737A96]">{roleLabel(role)}</div>
-                    <div className={cn("text-sm font-medium", isUnassigned ? "text-[#9CA3AF] italic" : "text-[#171A32]")}>
-                      {isUnassigned ? "Unassigned" : name}
+        <>
+          <section className="overflow-hidden rounded-2xl border border-[#E4E6F2] bg-white shadow-[0_8px_28px_rgba(38,35,82,.055)] mt-5">
+            <div className="flex items-center justify-between border-b border-[#EEF0F7] bg-[#F5F1FF] px-4 py-3">
+              <div className="flex items-center gap-2">
+                <Icon name="user-round" className="h-4 w-4 text-[#7543E9]" />
+                <h3 className="text-sm font-bold text-[#171A32]">Assignees</h3>
+              </div>
+              {canAssign && (
+                <button
+                  type="button"
+                  className="p-1.5 cursor-pointer text-[#9CA3AF] hover:text-[#6D3AE8] hover:bg-[#F5F1FF] rounded-lg transition"
+                  onClick={() => setEditingAssignments((current) => !current)}
+                  aria-label="Edit assignees"
+                >
+                  <Icon name="pencil" className="h-4 w-4 text-[#6D3AE8]" />
+                </button>
+              )}
+            </div>
+            <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {ASSIGNMENT_ROLES.map((role) => {
+                const field = ROLE_TO_FIELD[role as keyof typeof ROLE_TO_FIELD] as keyof TaskDetail;
+                const userId = (row[field] as string | null) ?? null;
+                const name = userName(directory.byId, userId);
+                const isUnassigned = !userId;
+                return (
+                  <div key={role} className="flex items-center gap-3 rounded-xl border border-[#ECEAF4] bg-[#FCFBFF] p-3 hover:border-[#CFC0F8] transition">
+                    <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-[#F0E9FF] text-[#7543E9]">
+                      <Avatar name={name} size="sm" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-xs text-[#737A96]">{roleLabel(role)}</div>
+                      <div className={cn("text-sm font-medium", isUnassigned ? "text-[#9CA3AF] italic" : "text-[#171A32]")}>
+                        {isUnassigned ? "Unassigned" : name}
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
-        </section>
+                );
+              })}
+            </div>
+          </section>
+          {canAssign && editingAssignments && (
+            <section className="mt-4 overflow-hidden rounded-2xl border border-[#E4E6F2] bg-white shadow-[0_8px_28px_rgba(38,35,82,.055)]">
+              <AssignPanel task={row} onChanged={invalidate} />
+            </section>
+          )}
+        </>
       )}
- 
+  
       {/* Client info */}
       {row.client_id && (
         <section className="overflow-hidden rounded-2xl border border-[#E4E6F2] bg-white shadow-[0_8px_28px_rgba(38,35,82,.055)]">
@@ -919,6 +919,16 @@ export default function TaskDetailPage() {
                 <Icon name="check-circle" className="h-4 w-4 text-[#16A34A]" />
                 <h3 className="text-sm font-bold text-[#171A32]">Checklist</h3>
               </div>
+              {canEdit && (
+                <button
+                  type="button"
+                  className="p-1.5 cursor-pointer text-[#9CA3AF] hover:text-[#6D3AE8] hover:bg-[#F5F1FF] rounded-lg transition"
+                  onClick={() => setEditingStepId(null)}
+                  aria-label="Edit checklist"
+                >
+                  <Icon name="pencil" className="h-4 w-4 text-[#6D3AE8]" />
+                </button>
+              )}
               <div className="flex items-center gap-2">
                 {templates.data && templates.data.items.length > 0 && (
                   <button
@@ -1264,25 +1274,6 @@ export default function TaskDetailPage() {
           </div>
         )}
       </section>
-
-      {/* Edit mode panels */}
-      {(editingTaskDetails || editingAssignments) && (
-        <section className="mt-5 space-y-4">
-          {canAssign && editingAssignments && (
-            <section className="overflow-hidden rounded-2xl border border-[#E4E6F2] bg-white shadow-[0_8px_28px_rgba(38,35,82,.055)]">
-              <AssignPanel task={row} onChanged={invalidate} />
-            </section>
-          )}
-          {canEdit && editingTaskDetails && (
-            <section className="overflow-hidden rounded-2xl border border-[#E4E6F2] bg-white shadow-[0_8px_28px_rgba(38,35,82,.055)]">
-              <TaskEditPanel task={row} onSaved={invalidate} onCancel={() => setEditingTaskDetails(false)} />
-            </section>
-          )}
-          <section className="overflow-hidden rounded-2xl border border-[#E4E6F2] bg-white shadow-[0_8px_28px_rgba(38,35,82,.055)]">
-            <FilingPanel task={row} onChanged={invalidate} />
-          </section>
-        </section>
-      )}
     </div>
   );
 }
