@@ -10,6 +10,7 @@ import {
   EmptyState,
   ErrorState,
   LoadingState,
+  Modal,
   Pagination,
 } from "@/components/ui";
 import { TaskDetailsPopup } from "@/components/TaskDetailsPopup";
@@ -28,6 +29,22 @@ import type {
   TaskStatus,
   TaskSummary,
 } from "@/lib/types";
+
+type ShortcutModifiers = { ctrl: boolean; alt: boolean; shift: boolean; meta: boolean };
+
+type Shortcut = { modifiers: ShortcutModifiers; key: string; target: string };
+
+const defaultShortcuts: Record<string, Shortcut> = {
+  "1": { modifiers: { ctrl: true, alt: false, shift: true, meta: false }, key: "1", target: "new" },
+  "2": { modifiers: { ctrl: true, alt: false, shift: true, meta: false }, key: "2", target: "list" },
+  "3": { modifiers: { ctrl: true, alt: false, shift: true, meta: false }, key: "3", target: "kanban" },
+  "4": { modifiers: { ctrl: true, alt: false, shift: true, meta: false }, key: "4", target: "calendar" },
+  "5": { modifiers: { ctrl: true, alt: false, shift: true, meta: false }, key: "5", target: "all" },
+  "6": { modifiers: { ctrl: true, alt: false, shift: true, meta: false }, key: "6", target: "mine" },
+  "7": { modifiers: { ctrl: true, alt: false, shift: true, meta: false }, key: "7", target: "review" },
+  "8": { modifiers: { ctrl: true, alt: false, shift: true, meta: false }, key: "8", target: "search" },
+  "9": { modifiers: { ctrl: true, alt: false, shift: true, meta: false }, key: "9", target: "clear" },
+};
 
 /**
  * The tabs, and the count each shows.
@@ -473,6 +490,110 @@ export default function TasksPage() {
   const [openTaskId, setOpenTaskId] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
+  // ============================================================================
+  // KEYBOARD SHORTCUTS
+  // ============================================================================
+  const searchRef = useRef<HTMLInputElement>(null);
+  const shortcutsRef = useRef<Record<string, Shortcut>>(defaultShortcuts);
+
+  const [localShortcuts, setLocalShortcuts] = useState<Record<string, Shortcut>>(() => {
+    try {
+      const raw = localStorage.getItem("task-shortcuts");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        return { ...defaultShortcuts, ...parsed };
+      }
+    } catch {}
+    return defaultShortcuts;
+  });
+  const [editingShortcutId, setEditingShortcutId] = useState<string | null>(null);
+  const [showShortcuts, setShowShortcuts] = useState(false);
+
+  function formatShortcut(s: Shortcut): string {
+    const parts: string[] = [];
+    if (s.modifiers.ctrl) parts.push("Ctrl");
+    if (s.modifiers.alt) parts.push("Alt");
+    if (s.modifiers.shift) parts.push("Shift");
+    if (s.modifiers.meta) parts.push("Cmd");
+    parts.push(s.key.toUpperCase());
+    return parts.join("+");
+  }
+
+  function matchesShortcut(event: KeyboardEvent, s: Shortcut): boolean {
+    return (
+      event.ctrlKey === s.modifiers.ctrl &&
+      event.altKey === s.modifiers.alt &&
+      event.shiftKey === s.modifiers.shift &&
+      event.metaKey === s.modifiers.meta &&
+      event.key.toLowerCase() === s.key.toLowerCase()
+    );
+  }
+
+  function handleShortcut(target: string) {
+    switch (target) {
+      case "new":
+        router.push("/tasks/new");
+        break;
+      case "list":
+        setView("list");
+        break;
+      case "kanban":
+        setView("kanban");
+        break;
+      case "calendar":
+        setView("calendar");
+        break;
+      case "all":
+        changeTab("all");
+        break;
+      case "mine":
+        changeTab("mine");
+        break;
+      case "review":
+        changeTab("review");
+        break;
+      case "search":
+        searchRef.current?.focus();
+        break;
+      case "clear":
+        paging.clearFilters();
+        setSelected(new Set());
+        break;
+    }
+  }
+
+  // Single keyboard listener added ONCE on mount
+  useEffect(() => {
+    function onKey(event: KeyboardEvent) {
+      const key = event.key.toLowerCase();
+
+      // Ignore modifier-only keys
+      if (["control", "alt", "shift", "meta"].includes(key)) return;
+
+      Object.values(shortcutsRef.current).forEach((s) => {
+        if (matchesShortcut(event, s)) {
+          event.preventDefault();
+          event.stopPropagation();
+          handleShortcut(s.target);
+        }
+      });
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
+
+  // Sync ref with local state whenever it changes
+  useEffect(() => {
+    shortcutsRef.current = localShortcuts;
+  }, [localShortcuts]);
+
+  // Persist shortcuts to localStorage so they survive refreshes
+  useEffect(() => {
+    try {
+      localStorage.setItem("task-shortcuts", JSON.stringify(localShortcuts));
+    } catch {}
+  }, [localShortcuts]);
+
   const tabQuery = tabParams(tab);
 
   // Filters that narrow *what is being looked at*, as opposed to which slice the tab
@@ -595,6 +716,14 @@ export default function TasksPage() {
               <Icon name="plus" className="h-3 w-3 mr-1" />
               New task
             </button>
+            <button
+              type="button"
+              onClick={() => setShowShortcuts(true)}
+              className="inline-flex items-center gap-2 rounded-xl border border-[#ECEAF4] bg-[#FCFBFF] px-3 py-2.5 text-xs font-semibold text-[#454B68] hover:bg-[#F5F0FF] hover:border-[#CFC0F8] transition"
+            >
+              <Icon name="settings" className="h-3 w-3" />
+              Shortcuts
+            </button>
           </div>
         </div>
 
@@ -640,6 +769,7 @@ export default function TasksPage() {
               onChange={(event) => updateFilter("search", event.target.value)}
               placeholder="Search tasks by title, code…"
               aria-label="Search tasks"
+              ref={searchRef}
             />
           </div>
           <div className="flex flex-col gap-1">
@@ -961,6 +1091,108 @@ export default function TasksPage() {
       </div>
 
       <TaskDetailsPopup taskId={openTaskId} onClose={() => setOpenTaskId(null)} />
+
+      <Modal open={showShortcuts} onClose={() => setShowShortcuts(false)} title="Keyboard shortcuts" size="md">
+        <div className="space-y-4 p-6">
+          <div className="flex items-center justify-between">
+            <button
+              type="button"
+              onClick={() => setShowShortcuts(false)}
+              className="inline-flex items-center gap-2 text-xs font-semibold text-[#737A96] hover:text-[#6637D7]"
+            >
+              <Icon name="arrow-left" className="h-3.5 w-3.5" />
+              Back
+            </button>
+          </div>
+          <p className="text-xs text-[#858BA4]">
+            Click a row, then press any key combination (e.g. <span className="font-semibold">Alt+K</span>, <span className="font-semibold">Ctrl+Shift+S</span>, <span className="font-semibold">F2</span>).
+          </p>
+          <div className="space-y-3">
+            {[
+              { key: "1", label: "New task", target: "new" },
+              { key: "2", label: "List view", target: "list" },
+              { key: "3", label: "Kanban view", target: "kanban" },
+              { key: "4", label: "Calendar view", target: "calendar" },
+              { key: "5", label: "All tasks", target: "all" },
+              { key: "6", label: "My tasks", target: "mine" },
+              { key: "7", label: "Awaiting review", target: "review" },
+              { key: "8", label: "Focus search", target: "search" },
+              { key: "9", label: "Clear filters", target: "clear" },
+            ].map((item) => {
+              const s = shortcutsRef.current[item.key];
+              const isEditing = editingShortcutId === item.key;
+              return (
+                <div key={item.key} className="flex items-center justify-between gap-2">
+                  <span className="text-sm font-medium text-[#252B47]">{item.label}</span>
+                  <div className="flex items-center gap-1">
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        autoFocus
+                        maxLength={1}
+                        className="w-8 h-6 text-center text-xs font-mono border border-[#7042D8] bg-[#F0EAFE] px-1 outline-none focus:ring-1 focus:ring-[#7042D8]/30"
+                        onKeyDown={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          const key = e.key.toLowerCase();
+                          if (["control", "alt", "shift", "meta"].includes(key)) return;
+                          const next = {
+                            ...shortcutsRef.current,
+                            [item.key]: {
+                              modifiers: {
+                                ctrl: e.ctrlKey,
+                                alt: e.altKey,
+                                shift: e.shiftKey,
+                                meta: e.metaKey,
+                              },
+                              key,
+                              target: item.target,
+                            },
+                          };
+                          shortcutsRef.current = next;
+                          setLocalShortcuts(next);
+                          setEditingShortcutId(null);
+                        }}
+                      />
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setEditingShortcutId(item.key)}
+                        className={`flex items-center gap-1 px-3 py-1.5 text-xs font-mono rounded-lg border transition-colors ${isEditing ? "bg-[#F0EAFE] border-[#7042D8] text-[#7042D8]" : "bg-[#FAFAFE] border-[#E3E2F2] text-[#6B7280] hover:border-[#C0ADE8]"}`}
+                      >
+                        {formatShortcut(s)}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const next = {
+                          ...shortcutsRef.current,
+                          [item.key]: {
+                            modifiers: { ctrl: true, alt: false, shift: true, meta: false },
+                            key: item.key,
+                            target: item.target,
+                          },
+                        };
+                        shortcutsRef.current = next;
+                        setLocalShortcuts(next);
+                        setEditingShortcutId(null);
+                      }}
+                      className="text-xs text-[#858BA4] hover:text-[#DC2626] p-1"
+                      title="Reset"
+                    >
+                      ↺
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <p className="text-xs text-[#858BA4]">
+            Use <span className="font-semibold">Tab</span> to move between fields.
+          </p>
+        </div>
+      </Modal>
     </div>
   );
 }
