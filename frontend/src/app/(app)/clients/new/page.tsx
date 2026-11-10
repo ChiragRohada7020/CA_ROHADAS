@@ -152,44 +152,35 @@ export default function NewClientPage() {
   }));
   const isPersonal = PERSONAL_TYPES.has(clientType);
 
+  // ============================================================================
+  // KEYBOARD SHORTCUTS - Single source of truth
+  // All shortcuts live in shortcutsRef.current
+  // Keyboard listener reads from this ref on every keypress
+  // ============================================================================
   const defaultShortcuts: Record<string, Shortcut> = {
-    "1": { modifiers: { ctrl: true, alt: false, shift: false, meta: false }, key: "1", target: "basics" },
-    "2": { modifiers: { ctrl: true, alt: false, shift: false, meta: false }, key: "2", target: "identifiers" },
-    "3": { modifiers: { ctrl: true, alt: false, shift: false, meta: false }, key: "3", target: "address" },
-    "4": { modifiers: { ctrl: true, alt: false, shift: false, meta: false }, key: "4", target: "mis" },
-    "5": { modifiers: { ctrl: true, alt: false, shift: false, meta: false }, key: "5", target: "team" },
+    "1": { modifiers: { ctrl: true, alt: false, shift: true, meta: false }, key: "1", target: "basics" },
+    "2": { modifiers: { ctrl: true, alt: false, shift: true, meta: false }, key: "2", target: "identifiers" },
+    "3": { modifiers: { ctrl: true, alt: false, shift: true, meta: false }, key: "3", target: "address" },
+    "4": { modifiers: { ctrl: true, alt: false, shift: true, meta: false }, key: "4", target: "mis" },
+    "5": { modifiers: { ctrl: true, alt: false, shift: true, meta: false }, key: "5", target: "team" },
   };
 
+  const shortcutsRef = useRef<Record<string, Shortcut>>(defaultShortcuts);
+
+  // Local state for rendering the shortcut editor UI
+  const [localShortcuts, setLocalShortcuts] = useState<Record<string, Shortcut>>(() => {
+    try {
+      const raw = localStorage.getItem("client-shortcuts");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        return { ...defaultShortcuts, ...parsed };
+      }
+    } catch {}
+    return defaultShortcuts;
+  });
   const isLoading = create.isPending;
+  const [editingShortcutId, setEditingShortcutId] = useState<string | null>(null);
   const [showShortcuts, setShowShortcuts] = useState(false);
-  const [editingShortcut, setEditingShortcut] = useState<string | null>(null);
-  const [customShortcuts, setCustomShortcuts] = useState<Record<string, Shortcut>>(defaultShortcuts);
-
-  const shortcutsQuery = useQuery({
-    queryKey: ["users", "me", "shortcuts"],
-    queryFn: () => api.get<Record<string, Shortcut>>("/users/me/shortcuts"),
-    select: (data) => {
-      if (!data || Object.keys(data).length === 0) return defaultShortcuts;
-      return {
-        "1": { ...defaultShortcuts["1"], ...(data["1"] as Shortcut) },
-        "2": { ...defaultShortcuts["2"], ...(data["2"] as Shortcut) },
-        "3": { ...defaultShortcuts["3"], ...(data["3"] as Shortcut) },
-        "4": { ...defaultShortcuts["4"], ...(data["4"] as Shortcut) },
-        "5": { ...defaultShortcuts["5"], ...(data["5"] as Shortcut) },
-      };
-    },
-  });
-
-  const saveShortcuts = useMutation({
-    mutationFn: (sc: Record<string, Shortcut>) =>
-      api.patch("/users/me/shortcuts", { shortcuts: sc }),
-  });
-
-  useEffect(() => {
-    if (shortcutsQuery.data) {
-      setCustomShortcuts(shortcutsQuery.data);
-    }
-  }, [shortcutsQuery.data]);
 
   function formatShortcut(s: Shortcut): string {
     const parts: string[] = [];
@@ -211,48 +202,45 @@ export default function NewClientPage() {
     );
   }
 
-  const shortcutsRef = useRef(customShortcuts);
-  shortcutsRef.current = customShortcuts;
-
+  // Single keyboard listener added ONCE on mount
+  // Always reads latest shortcuts from ref (never stale)
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
-      if (editingShortcut) {
-        event.preventDefault();
-        const key = event.key;
-        if (["Control", "Alt", "Shift", "Meta"].includes(key)) return;
-        setCustomShortcuts((prev) => {
-          const next = {
-            ...prev,
-            [editingShortcut]: {
-              modifiers: {
-                ctrl: event.ctrlKey,
-                alt: event.altKey,
-                shift: event.shiftKey,
-                meta: event.metaKey,
-              },
-              key,
-              target: shortcutsRef.current[editingShortcut].target,
-            },
-          };
-          saveShortcuts.mutate(next);
-          return next;
-        });
-        setEditingShortcut(null);
-        return;
-      }
+      const key = event.key.toLowerCase();
+
+      // Ignore modifier-only keys
+      if (["control", "alt", "shift", "meta"].includes(key)) return;
+
       Object.values(shortcutsRef.current).forEach((s) => {
         if (matchesShortcut(event, s)) {
+          console.log("[Shortcuts] MATCHED:", s.key, "->", s.target);
           event.preventDefault();
+          event.stopPropagation();
           const el = document.getElementById(`new-${s.target}`);
           if (el) {
+            console.log("[Shortcuts] Scrolling to:", s.target);
             el.scrollIntoView({ behavior: "smooth", block: "start" });
+          } else {
+            console.log("[Shortcuts] Element NOT found:", `new-${s.target}`);
           }
         }
       });
     }
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [editingShortcut]);
+  }, []);
+
+  // Sync ref with local state whenever it changes
+  useEffect(() => {
+    shortcutsRef.current = localShortcuts;
+  }, [localShortcuts]);
+
+  // Persist shortcuts to localStorage so they survive refreshes
+  useEffect(() => {
+    try {
+      localStorage.setItem("client-shortcuts", JSON.stringify(localShortcuts));
+    } catch {}
+  }, [localShortcuts]);
 
   return (
     <div className="min-h-full space-y-5 rounded-2xl bg-[#F7F8FC] p-3 sm:p-5 lg:p-6">
@@ -318,7 +306,6 @@ export default function NewClientPage() {
             ].map((item, index) => (
               <a
                 key={item.target}
-                id={item.target}
                 href={`#${item.target}`}
                 className="group flex items-center gap-2 rounded-xl border border-[#ECEAF4] bg-[#FCFBFF] px-3 py-2.5 transition hover:border-[#CFC0F8] hover:bg-[#F5F0FF]"
               >
@@ -429,43 +416,11 @@ export default function NewClientPage() {
                 </div>
               </div>
               <div className="grid grid-cols-1 gap-x-5 gap-y-4 p-5 sm:grid-cols-2 lg:grid-cols-4 sm:p-6">
-                <TextField
-                  label="PAN"
-                  value={pan}
-                  onChange={setPan}
-                  maxLength={10}
-                  placeholder="AAACB1234C"
-                  hint="10 characters"
-                />
-                <TextField
-                  label="TAN"
-                  value={tan}
-                  onChange={setTan}
-                  maxLength={10}
-                  placeholder="MUMA12345B"
-                />
-                <TextField
-                  label="CIN"
-                  value={cin}
-                  onChange={setCin}
-                  maxLength={21}
-                  placeholder="U12345MH2020PTC123456"
-                />
-                <TextField
-                  label="GSTIN"
-                  value={gstin}
-                  onChange={setGstin}
-                  maxLength={15}
-                  placeholder="27AAACB1234C1Z5"
-                  hint="A wrong check digit is a warning, not a rejection"
-                />
-                <TextField
-                  label="LLPIN"
-                  value={llpin}
-                  onChange={setLlpin}
-                  maxLength={8}
-                  placeholder="AAB1234"
-                />
+                <TextField label="PAN" value={pan} onChange={setPan} maxLength={10} placeholder="AAACB1234C" hint="10 characters" />
+                <TextField label="TAN" value={tan} onChange={setTan} maxLength={10} placeholder="MUMA12345B" />
+                <TextField label="CIN" value={cin} onChange={setCin} maxLength={21} placeholder="U12345MH2020PTC123456" />
+                <TextField label="GSTIN" value={gstin} onChange={setGstin} maxLength={15} placeholder="27AAACB1234C1Z5" hint="A wrong check digit is a warning, not a rejection" />
+                <TextField label="LLPIN" value={llpin} onChange={setLlpin} maxLength={8} placeholder="AAB1234" />
               </div>
             </section>
 
@@ -486,34 +441,17 @@ export default function NewClientPage() {
               </div>
               <div className="grid grid-cols-1 gap-x-5 gap-y-4 p-5 sm:grid-cols-2 lg:grid-cols-3 sm:p-6">
                 <div className="sm:col-span-3">
-                  <TextField
-                    label="Address line 1"
-                    value={addressLine1}
-                    onChange={setAddressLine1}
-                    placeholder="123, Main Street, Mumbai"
-                  />
+                  <TextField label="Address line 1" value={addressLine1} onChange={setAddressLine1} placeholder="123, Main Street, Mumbai" />
                 </div>
                 <div className="sm:col-span-3">
-                  <TextField
-                    label="Address line 2"
-                    value={addressLine2}
-                    onChange={setAddressLine2}
-                    placeholder="Near the main square"
-                  />
+                  <TextField label="Address line 2" value={addressLine2} onChange={setAddressLine2} placeholder="Near the main square" />
                 </div>
                 <TextField label="City" value={city} onChange={setCity} placeholder="Mumbai" />
                 <TextField label="District" value={district} onChange={setDistrict} />
                 <div className="sm:col-span-2">
                   <TextField label="State" value={state} onChange={setState} placeholder="Maharashtra" />
                 </div>
-                <TextField
-                  label="State code"
-                  value={stateCode}
-                  onChange={setStateCode}
-                  maxLength={2}
-                  placeholder="27"
-                  hint="Used to derive place of supply"
-                />
+                <TextField label="State code" value={stateCode} onChange={setStateCode} maxLength={2} placeholder="27" hint="Used to derive place of supply" />
                 <TextField label="PIN code" value={pincode} onChange={setPincode} maxLength={10} placeholder="400001" />
               </div>
             </section>
@@ -540,13 +478,7 @@ export default function NewClientPage() {
                 <TextField label="Area / locality" value={locality} onChange={setLocality} maxLength={255} placeholder="Sindhi Colony" />
                 <TextField label="Father name" value={fatherName} onChange={setFatherName} maxLength={200} />
                 <TextField label="Aadhaar number" value={aadhaarNo} onChange={setAadhaarNo} maxLength={20} placeholder="507041227510" />
-                <SelectField
-                  label="Residential status"
-                  value={residentialStatus}
-                  onChange={setResidentialStatus}
-                  options={["Resident", "Non-Resident", "Not Available"].map((v) => ({ value: v, label: v }))}
-                  placeholder="Choose one"
-                />
+                <SelectField label="Residential status" value={residentialStatus} onChange={setResidentialStatus} options={["Resident", "Non-Resident", "Not Available"].map((v) => ({ value: v, label: v }))} placeholder="Choose one" />
                 <TextField label="Passport number" value={passportNo} onChange={setPassportNo} maxLength={20} />
                 <TextField label="File number" value={fileNo} onChange={setFileNo} maxLength={100} />
               </div>
@@ -568,35 +500,13 @@ export default function NewClientPage() {
                 </div>
               </div>
               <div className="grid grid-cols-1 gap-x-5 gap-y-4 p-5 sm:grid-cols-2 sm:p-6">
-                <SelectField
-                  label="Partner"
-                  value={partnerId}
-                  onChange={setPartnerId}
-                  options={staffOptions}
-                  placeholder="Not assigned"
-                />
-                <SelectField
-                  label="Manager"
-                  value={managerId}
-                  onChange={setManagerId}
-                  options={staffOptions}
-                  placeholder="Not assigned"
-                />
+                <SelectField label="Partner" value={partnerId} onChange={setPartnerId} options={staffOptions} placeholder="Not assigned" />
+                <SelectField label="Manager" value={managerId} onChange={setManagerId} options={staffOptions} placeholder="Not assigned" />
                 <div className="sm:col-span-2">
-                  <TextAreaField
-                    label="Relationship notes"
-                    value={notes}
-                    onChange={setNotes}
-                    placeholder="How the firm came to act for them, and anything worth remembering."
-                  />
+                  <TextAreaField label="Relationship notes" value={notes} onChange={setNotes} placeholder="How the firm came to act for them, and anything worth remembering." />
                 </div>
                 <div className="sm:col-span-2 flex items-end">
-                  <CheckboxField
-                    label="Activate this client now"
-                    checked={activateNow}
-                    onChange={setActivateNow}
-                    hint="Recurring compliance work is only generated for active clients. Without this the client stays a prospect."
-                  />
+                  <CheckboxField label="Activate this client now" checked={activateNow} onChange={setActivateNow} hint="Recurring compliance work is only generated for active clients. Without this the client stays a prospect." />
                 </div>
               </div>
             </section>
@@ -607,13 +517,7 @@ export default function NewClientPage() {
                   Review your entries before creating the client profile.
                 </p>
                 <div className="ml-auto">
-                  <FormActions
-                    submitLabel="Create client"
-                    busy={create.isPending}
-                    onCancel={() => router.push(`/clients`)}
-                    disabled={!legalName.trim()}
-                    className="bg-[#6D3AE8] hover:bg-[#5D2CCB]"
-                  />
+                  <FormActions submitLabel="Create client" busy={create.isPending} onCancel={() => router.push(`/clients`)} disabled={!legalName.trim()} className="bg-[#6D3AE8] hover:bg-[#5D2CCB]" />
                 </div>
               </div>
             </div>
@@ -621,12 +525,7 @@ export default function NewClientPage() {
         )}
       </div>
 
-      <Modal
-        open={showShortcuts}
-        onClose={() => setShowShortcuts(false)}
-        title="Keyboard shortcuts"
-        size="md"
-      >
+      <Modal open={showShortcuts} onClose={() => setShowShortcuts(false)} title="Keyboard shortcuts" size="md">
         <div className="space-y-4 p-6">
           <div className="flex items-center justify-between">
             <button
@@ -649,38 +548,64 @@ export default function NewClientPage() {
               { key: "4", label: "MIS details", target: "mis" },
               { key: "5", label: "Team & notes", target: "team" },
             ].map((item) => {
-              const s = customShortcuts[item.key];
-              const isEditing = editingShortcut === item.key;
+              const s = shortcutsRef.current[item.key];
+              const isEditing = editingShortcutId === item.key;
               return (
-                <div
-                  key={item.key}
-                  className="flex items-center justify-between gap-2"
-                >
+                <div key={item.key} className="flex items-center justify-between gap-2">
                   <span className="text-sm font-medium text-[#252B47]">{item.label}</span>
                   <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={() => setEditingShortcut(item.key)}
-                      className={`flex items-center gap-1 px-3 py-1.5 text-xs font-mono rounded-lg border transition-colors ${
-                        isEditing
-                          ? "bg-[#F0EAFE] border-[#7042D8] text-[#7042D8]"
-                          : "bg-[#FAFAFE] border-[#E3E2F2] text-[#6B7280] hover:border-[#C0ADE8]"
-                      }`}
-                    >
-                      {isEditing ? "Press any key…" : formatShortcut(s)}
-                    </button>
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        autoFocus
+                        maxLength={1}
+                        className="w-8 h-6 text-center text-xs font-mono border border-[#7042D8] bg-[#F0EAFE] px-1 outline-none focus:ring-1 focus:ring-[#7042D8]/30"
+                        onKeyDown={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          const key = e.key.toLowerCase();
+                          if (["control", "alt", "shift", "meta"].includes(key)) return;
+                          const next = {
+                            ...shortcutsRef.current,
+                            [item.key]: {
+                              modifiers: {
+                                ctrl: e.ctrlKey,
+                                alt: e.altKey,
+                                shift: e.shiftKey,
+                                meta: e.metaKey,
+                              },
+                              key,
+                              target: item.target,
+                            },
+                          };
+                          shortcutsRef.current = next;
+                          setLocalShortcuts(next);
+                          setEditingShortcutId(null);
+                        }}
+                      />
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setEditingShortcutId(item.key)}
+                        className={`flex items-center gap-1 px-3 py-1.5 text-xs font-mono rounded-lg border transition-colors ${isEditing ? "bg-[#F0EAFE] border-[#7042D8] text-[#7042D8]" : "bg-[#FAFAFE] border-[#E3E2F2] text-[#6B7280] hover:border-[#C0ADE8]"}`}
+                      >
+                        {formatShortcut(s)}
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => {
-                        setCustomShortcuts((prev) => ({
-                          ...prev,
+                        const next = {
+                          ...shortcutsRef.current,
                           [item.key]: {
-                            modifiers: { ctrl: true, alt: false, shift: false, meta: false },
+                            modifiers: { ctrl: true, alt: false, shift: true, meta: false },
                             key: item.key,
                             target: item.target,
                           },
-                        }));
-                        setEditingShortcut(null);
+                        };
+                        shortcutsRef.current = next;
+                        setLocalShortcuts(next);
+                        setEditingShortcutId(null);
                       }}
                       className="text-xs text-[#858BA4] hover:text-[#DC2626] p-1"
                       title="Reset"
