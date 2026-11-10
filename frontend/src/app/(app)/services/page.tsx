@@ -4,30 +4,23 @@ import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 
+import { AddServiceForm, FREQUENCIES } from "@/components/ServiceForms";
+import { ServiceDetailDrawer } from "@/components/ServiceDetailDrawer";
+import { Icon } from "@/components/Icon";
 import {
   Badge,
-  Button,
   Card,
   ConfirmDialog,
   EmptyState,
   ErrorState,
-  PageHeader,
+  LoadingState,
   Pagination,
-  Select,
-  SearchInput,
   Skeleton,
   StatCard,
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableHead,
-  TableRow,
+  Select,
+  SearchInput,
   useToast,
 } from "@/components/ui";
-import { AddServiceForm, FREQUENCIES } from "@/components/ServiceForms";
-import { ServiceDetailDrawer } from "@/components/ServiceDetailDrawer";
-import { Icon } from "@/components/Icon";
 import { ApiError, api, buildQuery } from "@/lib/api";
 import { cn, humanise } from "@/lib/format";
 import { useDebouncedValue, usePaging } from "@/lib/hooks";
@@ -39,13 +32,6 @@ import type {
   ServiceSummary,
 } from "@/lib/types";
 
-/**
- * The tabs, as groups of categories.
- *
- * `categories` is empty for "All" and computed for "Other" — a new category added to the
- * enum lands in Other rather than vanishing from every tab. The counts come from
- * `/services/summary`, which groups them the same way.
- */
 const TABS: Array<{ key: string; label: string; categories: ServiceCategory[] }> = [
   { key: "all", label: "All Services", categories: [] },
   { key: "taxation", label: "Taxation", categories: ["income_tax", "tds"] },
@@ -59,8 +45,6 @@ const TABS: Array<{ key: string; label: string; categories: ServiceCategory[] }>
   },
 ];
 
-/** Fallback wording if `/services/categories` has not answered yet. The server is the
- *  source; this only stops the first paint showing raw slugs. */
 const CATEGORY_FALLBACK: Record<string, string> = {
   gst: "GST",
   income_tax: "Income tax",
@@ -73,7 +57,6 @@ const CATEGORY_FALLBACK: Record<string, string> = {
   other: "Other",
 };
 
-/** ₹42,50,000 — Indian grouping, which is how a fee is read here. */
 function rupees(value: number, compact = false): string {
   if (compact && value >= 10_000_000) return `₹${(value / 10_000_000).toFixed(2)} Cr`;
   if (compact && value >= 100_000) return `₹${(value / 100_000).toFixed(2)} L`;
@@ -81,28 +64,22 @@ function rupees(value: number, compact = false): string {
 }
 
 const CATEGORY_TONE: Record<string, string> = {
-  gst: "bg-sky-50 text-sky-700",
-  income_tax: "bg-violet-50 text-violet-700",
-  tds: "bg-amber-50 text-amber-700",
-  audit: "bg-indigo-50 text-indigo-700",
-  roc: "bg-rose-50 text-rose-700",
-  accounting: "bg-cyan-50 text-cyan-700",
-  payroll: "bg-emerald-50 text-emerald-700",
-  advisory: "bg-orange-50 text-orange-700",
+  gst: "bg-[#F0F7FF] text-[#1D4ED8]",
+  income_tax: "bg-[#F5F0FF] text-[#7543E9]",
+  tds: "bg-[#FFF4DE] text-[#D97736]",
+  audit: "bg-[#EEF2FF] text-[#4F46E5]",
+  roc: "bg-[#FFF1F2] text-[#BE123C]",
+  accounting: "bg-[#F0FDFA] text-[#0E7490]",
+  payroll: "bg-[#F0FDF4] text-[#15803D]",
+  advisory: "bg-[#FFFBEB] text-[#B45309]",
 };
 
-function CategoryBadge({
-  category,
-  labels,
-}: {
-  category: string;
-  labels: Record<string, string>;
-}) {
+function CategoryBadge({ category, labels }: { category: string; labels: Record<string, string> }) {
   return (
     <span
       className={cn(
         "rounded px-1.5 py-0.5 text-[10px] font-medium",
-        CATEGORY_TONE[category] ?? "bg-slate-100 text-slate-600",
+        CATEGORY_TONE[category] ?? "bg-[#F1F3F5] text-[#6B7280]",
       )}
     >
       {labels[category] ?? CATEGORY_FALLBACK[category] ?? humanise(category)}
@@ -110,25 +87,12 @@ function CategoryBadge({
   );
 }
 
-/**
- * The four headline figures.
- *
- * These use the shared `StatCard` with an icon rather than a local tile: the same shape
- * appears on the dashboard, the client list and the team screen, and a copy per screen is
- * how four subtly different tiles end up in one product.
- */
-function SummaryTiles({
-  summary,
-  pending,
-}: {
-  summary: ServiceSummary | undefined;
-  pending: boolean;
-}) {
+function SummaryTiles({ summary, pending }: { summary: ServiceSummary | undefined; pending: boolean }) {
   if (pending) {
     return (
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {Array.from({ length: 4 }).map((_, index) => (
-          <Skeleton key={index} className="h-20 w-full rounded-xl" />
+          <Skeleton key={index} className="h-24 w-full rounded-xl" />
         ))}
       </div>
     );
@@ -136,68 +100,69 @@ function SummaryTiles({
 
   const tiles = [
     {
-      icon: "check-circle" as const,
-      tone: "info" as const,
+      icon: "check-circle",
+      tone: "violet",
       label: "Total Services",
       value: String(summary?.total_services ?? 0),
-      hint: `${summary?.active_services ?? 0} active in firm library`,
+      hint: `${summary?.active_services ?? 0} active`,
     },
     {
-      icon: "clients" as const,
-      tone: "progress" as const,
+      icon: "clients",
+      tone: "indigo",
       label: "Assigned to Clients",
       value: String(summary?.total_assignments ?? 0),
       hint: "Service instances",
     },
     {
-      icon: "billing" as const,
-      tone: "success" as const,
+      icon: "billing",
+      tone: "progress",
       label: "Total Annual Fees",
       value: rupees(summary?.total_annual_fees ?? 0, true),
       hint: "Across all clients",
     },
     {
-      icon: "calendar" as const,
-      tone: "warning" as const,
+      icon: "calendar",
+      tone: "amber",
       label: "Recurring Services",
       value: String(summary?.recurring_services ?? 0),
       hint: "Auto-generate tasks",
     },
   ];
 
+  const TONE_BG: Record<string, string> = {
+    violet: "bg-[#F0E9FF] text-[#713FE6]",
+    indigo: "bg-[#EBEEFF] text-[#5B31CC]",
+    progress: "bg-[#F1ECFF] text-[#6D3AE8]",
+    amber: "bg-[#FFF1DF] text-[#D97736]",
+  };
+
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
       {tiles.map((tile) => (
-        <StatCard
+        <div
           key={tile.label}
-          icon={<Icon name={tile.icon} className="h-5 w-5" />}
-          tone={tile.tone}
-          label={tile.label}
-          value={tile.value}
-          hint={tile.hint}
-        />
+          className="group relative overflow-hidden rounded-2xl border border-[#E5E4F4] bg-white p-4 shadow-[0_4px_16px_rgba(40,38,90,.045)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_9px_24px_rgba(65,48,130,.09]]"
+        >
+          <div className="flex items-center gap-3">
+            <span className={cn("grid h-12 w-12 shrink-0 place-items-center rounded-xl", TONE_BG[tile.tone])}>
+              <Icon name={tile.icon as any} className="h-6 w-6" />
+            </span>
+            <div className="min-w-0">
+              <span className="text-[11px] font-semibold text-[#59617E]">{tile.label}</span>
+              <span className="tabular-nums text-[25px] font-bold leading-none tracking-[-.04em] text-[#171A32]">
+                {tile.value}
+              </span>
+              <span className="mt-1 text-[10px] text-[#9298AE]">{tile.hint}</span>
+            </div>
+          </div>
+          <span className="pointer-events-none absolute -bottom-5 -right-3 h-16 w-16 rounded-full bg-[#F2EEFF] opacity-70 blur-xl" />
+        </div>
       ))}
     </div>
   );
 }
 
-/**
- * The row's overflow menu. Mirrors `tasks/RowActionsMenu`: a `more-vertical` button that
- * opens a `role="menu"` dropdown, closes on outside click or Escape, and offers the
- * actions a catalogue row actually supports. Retire is a PATCH setting `is_active: false`
- * on the catalogue service — there is no DELETE endpoint for a service row.
- */
-function RowActionsMenu({
-  row,
-  onOpen,
-  onRetire,
-  onView,
-}: {
-  row: ServiceRow;
-  onOpen: () => void;
-  onRetire: () => void;
-  onView: (id: string) => void;
-}) {
+function RowActionsMenu({ row, onOpen, onRetire, onView }: { row: ServiceRow; onOpen: () => void; onRetire: () => void; onView: (id: string) => void }) {
   const [open, setOpen] = useState(false);
   const [confirmRetire, setConfirmRetire] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -222,7 +187,7 @@ function RowActionsMenu({
     <div ref={ref} className="relative inline-block">
       <button
         type="button"
-        className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+        className="rounded p-1 text-[#94A3B8] hover:bg-[#F5F1FF] hover:text-[#454B68]"
         onClick={(event) => {
           event.stopPropagation();
           setOpen((current) => !current);
@@ -234,12 +199,12 @@ function RowActionsMenu({
       {open && (
         <div
           role="menu"
-          className="absolute right-0 top-full z-30 mt-1 w-44 overflow-hidden rounded-md border border-slate-200 bg-white py-1 shadow-lg"
+          className="absolute right-0 top-full z-30 mt-1 w-48 overflow-hidden rounded-lg border border-[#E4E6F2] bg-white shadow-[0_8px_28px_rgba(38,35,82,.055)]"
         >
           <button
             type="button"
             role="menuitem"
-            className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-slate-700 hover:bg-[#f7f6f3]"
+            className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-[#454B68] hover:bg-[#F5F1FF]"
             onClick={(event) => {
               event.stopPropagation();
               setOpen(false);
@@ -252,7 +217,7 @@ function RowActionsMenu({
           <Link
             href={`/services/${row.id}`}
             role="menuitem"
-            className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-slate-700 hover:bg-[#f7f6f3]"
+            className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-[#454B68] hover:bg-[#F5F1FF]"
             onClick={() => {
               setOpen(false);
               onView(row.id);
@@ -261,11 +226,11 @@ function RowActionsMenu({
             <Icon name="file-text" className="h-3 w-3" />
             View full page
           </Link>
-          <div className="my-1 border-t border-slate-100" />
+          <div className="my-1 border-t border-[#EEF0F7]" />
           <button
             type="button"
             role="menuitem"
-            className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-rose-700 hover:bg-rose-50"
+            className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-[#DC2626] hover:bg-[#FEF2F2]"
             onClick={(event) => {
               event.stopPropagation();
               setOpen(false);
@@ -297,7 +262,7 @@ function RowActionsMenu({
 export default function ServicesPage() {
   const queryClient = useQueryClient();
   const toast = useToast();
-  const paging = usePaging(10);
+  const paging = usePaging(25);
   const { filters, updateFilter, offset, setOffset, limit, page } = paging;
   const search = useDebouncedValue(filters.search ?? "");
 
@@ -312,8 +277,6 @@ export default function ServicesPage() {
 
   const activeTab = TABS.find((row) => row.key === tab) ?? TABS[0];
 
-  // `buildQuery` is flat, but a tab spans several categories, so that one is repeated
-  // by hand rather than dropped.
   const tabQuery = activeTab.categories.map((value) => `categories=${value}`).join("&");
 
   const summary = useQuery({
@@ -321,8 +284,6 @@ export default function ServicesPage() {
     queryFn: () => api.get<ServiceSummary>(`/services/summary${buildQuery({ search })}`),
   });
 
-  // The wording for a category lives on the server (`_CATEGORY_LABELS`). Reading it from
-  // there rather than copying it means a renamed category cannot drift between the two.
   const categories = useQuery({
     queryKey: ["services", "categories"],
     queryFn: () => api.get<ServiceCategoryOption[]>("/services/categories"),
@@ -375,8 +336,6 @@ export default function ServicesPage() {
     setSelected(new Set());
   }
 
-  /** Retire a catalogue service by PATCHing `is_active: false`. The backend has no
- *  DELETE endpoint for a service row — retiring is an update, not a removal. */
   async function retireOne(id: string): Promise<boolean> {
     try {
       await api.patch(`/services/${id}`, { is_active: false });
@@ -395,12 +354,7 @@ export default function ServicesPage() {
     setSelected(new Set());
   }
 
-  /** Change the category of every selected service. Uses `Promise.allSettled` so a single
-   *  failure does not block the others, then reports successes and failures in a toast. */
-  async function bulkChangeCategory(
-    selectedIds: Set<string>,
-    newCategory: string,
-  ) {
+  async function bulkChangeCategory(selectedIds: Set<string>, newCategory: string) {
     if (!newCategory || selectedIds.size === 0) return;
     const ids = Array.from(selectedIds);
     const results = await Promise.allSettled(
@@ -449,455 +403,467 @@ export default function ServicesPage() {
   }, [bulkMenuOpen]);
 
   return (
-    <div className="space-y-4">
-      <PageHeader
-        title="Services"
-        subtitle="Manage your service catalogue, client assignments and recurring work."
-        action={
-          <Button icon={<Icon name="plus" className="h-4 w-4" />} onClick={() => setAdding(true)}>
-            Add Service
-          </Button>
-        }
-      />
+    <div className="min-h-full space-y-5 bg-[#F7F8FC] p-4 md:p-5 xl:p-6">
+      {/* Page heading */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <div className="mb-2 flex items-center gap-2 text-[10px] font-semibold text-[#777E9B]">
+            <span>Workspace</span>
+            <Icon name="chevron-right" className="h-3 w-3" />
+            <span className="text-[#343A58]">Services</span>
+          </div>
 
-      <SummaryTiles summary={s} pending={summary.isPending} />
+          <h1 className="text-[28px] font-bold tracking-[-.045em] text-[#171A32]">
+            Services
+          </h1>
+
+          <p className="mt-1 text-sm text-[#737A96]">
+            Manage your service catalogue, client assignments and recurring work.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#7543E9] to-[#5B31CC] px-5 py-3 text-sm font-semibold text-white shadow-[0_7px_18px_rgba(104,61,213,.22)] transition hover:-translate-y-0.5 hover:shadow-lg"
+            onClick={() => setAdding(true)}
+          >
+            <Icon name="plus" className="h-4 w-4" />
+            Add service
+          </button>
+        </div>
+      </div>
+
+      {/* Summary tiles */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <SummaryTiles summary={s} pending={summary.isPending} />
+      </div>
 
       {adding && (
-        <Card title="Add a service" subtitle="It joins the catalogue and every picker">
-          <AddServiceForm onDone={() => setAdding(false)} />
-        </Card>
-      )}
-
-      <Card>
-        <div
-          role="tablist"
-          aria-label="Service catalogue tabs"
-          className="flex flex-wrap items-center gap-1 border-b border-slate-200 px-3 pt-2"
-          onKeyDown={onTabKeyDown}
-        >
-          {TABS.map((entry) => {
-            const isActive = entry.key === tab;
-            return (
-              <button
-                key={entry.key}
-                type="button"
-                role="tab"
-                aria-selected={isActive}
-                tabIndex={isActive ? 0 : -1}
-                onClick={() => changeTab(entry.key)}
-                className={cn(
-                  "-mb-px border-b-2 px-3 py-2 text-sm font-medium transition-colors",
-                  isActive
-                    ? "border-sky-600 text-sky-700"
-                    : "border-transparent text-slate-500 hover:text-slate-800",
-                )}
-              >
-                {entry.label}
-                <span
-                  className={cn(
-                    "tabular ml-1.5 rounded px-1.5 py-0.5 text-[10px]",
-                    isActive ? "bg-sky-100 text-sky-700" : "bg-slate-100 text-slate-500",
-                  )}
-                >
-                  {s?.tab_counts[entry.key] ?? 0}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="grid grid-cols-2 gap-2 border-b border-slate-200 p-3 md:grid-cols-4">
-          <div className="col-span-2 block">
-            <SearchInput
-              value={filters.search ?? ""}
-              onChange={(value) => updateFilter("search", value)}
-              placeholder="Search services…"
-              hideLabel
-              aria-label="Search services"
-            />
-          </div>
-          <Select
-            label="Category"
-            value={filters.category ?? ""}
-            onChange={(value) => updateFilter("category", value)}
-            options={categories.data ?? []}
-            placeholder="Category"
-            hideLabel
-          />
-          <Select
-            label="Frequency"
-            value={filters.frequency ?? ""}
-            onChange={(value) => updateFilter("frequency", value)}
-            options={FREQUENCIES}
-            placeholder="Frequency"
-            hideLabel
-          />
-          <Select
-            label="Status"
-            value={filters.status ?? ""}
-            onChange={(value) => updateFilter("status", value)}
-            options={[
-              { value: "active", label: "Active" },
-              { value: "inactive", label: "Inactive" },
-            ]}
-            placeholder="Status"
-            hideLabel
-          />
-        </div>
-
-        {hasFilters && (
-          <div className="flex items-center justify-between gap-3 border-b border-slate-200 bg-[#f7f6f3] px-3 py-2">
-            <p className="text-xs text-slate-600">
-              Showing {services.data?.meta.total ?? 0} of {s?.total_services ?? 0} services
-            </p>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                paging.clearFilters();
-                setSelected(new Set());
-              }}
-            >
-              Clear
-            </Button>
-          </div>
-        )}
-
-        {selected.size > 0 && (
-          <div className="flex items-center justify-between gap-3 border-b border-slate-200 bg-sky-50 px-3 py-2">
-            <p className="text-xs font-medium text-sky-900">{selected.size} selected</p>
+        <section className="overflow-hidden rounded-2xl border border-[#E4E6F2] bg-white shadow-[0_8px_28px_rgba(38,35,82,.055)]">
+          <div className="flex items-center justify-between border-b border-[#EEF0F7] bg-[#F8F6FF] px-4 py-3">
             <div className="flex items-center gap-2">
-              <div ref={bulkMenuRef} className="relative">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  icon={<Icon name="chevron-down" className="h-3 w-3" />}
-                  iconPosition="right"
-                  onClick={() => setBulkMenuOpen((open) => !open)}
-                >
-                  Bulk actions
-                </Button>
-                {bulkMenuOpen && (
-                  <div
-                    role="menu"
-                    className="absolute right-0 top-full z-30 mt-1 w-48 overflow-hidden rounded-md border border-slate-200 bg-white py-1 shadow-lg"
-                  >
-                    <button
-                      type="button"
-                      role="menuitem"
-                      disabled={selected.size === 0}
-                      className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-slate-700 hover:bg-[#f7f6f3] disabled:cursor-not-allowed disabled:opacity-50"
-                      onClick={() => {
-                        setBulkMenuOpen(false);
-                        setBulkRetireOpen(true);
-                      }}
-                    >
-                      Retire…
-                    </button>
-                    <div className="px-3 py-1.5">
-                      <Select
-                        label="Change category"
-                        value={bulkCategory}
-                        onChange={(value) => bulkChangeCategory(selected, value)}
-                        options={categories.data ?? []}
-                        placeholder="Change category…"
-                        hideLabel
-                      />
-                    </div>
-                    <button
-                      type="button"
-                      role="menuitem"
-                      disabled
-                      aria-label="Export not available yet"
-                      className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-slate-400 disabled:cursor-not-allowed"
-                    >
-                      Export codes
-                    </button>
-                  </div>
-                )}
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setSelected(new Set())}
-              >
-                Clear selection
-              </Button>
+              <Icon name="file-text" className="h-4 w-4 text-[#7543E9]" />
+              <h3 className="text-sm font-bold text-[#171A32]">Add a service</h3>
             </div>
           </div>
-        )}
-
-        {services.isPending ? (
-          <div className="divide-y divide-slate-100">
-            {Array.from({ length: 6 }).map((_, index) => (
-              <div key={index} className="flex items-center gap-3 px-4 py-3">
-                <Skeleton className="size-4 rounded" variant="rectangular" />
-                <Skeleton className="h-3 w-10" variant="text" />
-                <Skeleton className="h-4 w-40" variant="text" />
-                <Skeleton className="h-3 w-16" variant="text" />
-                <Skeleton className="h-3 w-12" variant="text" />
-                <Skeleton className="h-3 w-16" variant="text" />
-                <Skeleton className="size-4 rounded-full" variant="circular" />
-                <Skeleton className="h-3 w-8" variant="text" />
-              </div>
-            ))}
+          <div className="p-4">
+            <AddServiceForm onDone={() => setAdding(false)} />
           </div>
-        ) : services.isError ? (
-          <ErrorState
-            message={
-              services.error instanceof ApiError
-                ? services.error.message
-                : "Could not load the service catalogue."
-            }
-            action={
-              <Button variant="ghost" size="sm" onClick={() => services.refetch()}>
-                Retry
-              </Button>
-            }
-          />
-        ) : rows.length === 0 ? (
-          <EmptyState
-            title={
-              hasFilters || tab !== "all" ? undefined : "No services in the catalogue yet."
-            }
-            message={
-              hasFilters || tab !== "all"
-                ? "No services match those filters. Try another tab, or clear them."
-                : "Add your first one to start attaching it to clients."
-            }
-            action={
-              hasFilters || tab !== "all" ? (
-                <Button variant="ghost" size="sm" onClick={() => paging.clearFilters()}>
-                  Clear filters
-                </Button>
-              ) : (
-                <Button
-                  icon={<Icon name="plus" className="h-4 w-4" />}
-                  onClick={() => setAdding(true)}
+        </section>
+      )}
+
+      {/* Main card */}
+      <section className="overflow-hidden rounded-2xl border border-[#E4E6F2] bg-white shadow-[0_8px_28px_rgba(38,35,82,.055)]">
+        {/* Tabs */}
+        <div className="border-b border-[#EEF0F7] bg-white px-4 py-3">
+          <div className="flex items-center gap-1 overflow-x-auto">
+            {TABS.map((entry) => {
+              const isActive = entry.key === tab;
+              return (
+                <button
+                  key={entry.key}
+                  type="button"
+                  onClick={() => changeTab(entry.key)}
+                  className={cn(
+                    "shrink-0 whitespace-nowrap rounded-xl px-4 py-2.5 text-xs font-semibold transition-all",
+                    isActive
+                      ? "bg-gradient-to-r from-[#7543E9] to-[#6032D4] text-white shadow-[0_5px_14px_rgba(104,61,213,.24)]"
+                      : "text-[#69718F] hover:bg-[#F5F1FF] hover:text-[#6637D7]"
+                  )}
                 >
-                  Add service
-                </Button>
-              )
-            }
-          />
-        ) : (
-          <div className="overflow-x-auto">
-            <Table className="min-w-[64rem]">
-              <TableHeader>
-                <tr>
-                  <TableHead className="w-8">
-                    <input
-                      type="checkbox"
-                      checked={allSelected}
-                      onChange={toggleAll}
-                      aria-label="Select all services on this page"
-                    />
-                  </TableHead>
-                  <TableHead className="w-10">#</TableHead>
-                  <TableHead>Service Name</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Frequency</TableHead>
-                  <TableHead className="text-right">Default Fee</TableHead>
-                  <TableHead className="text-right">Assigned Clients</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="w-12" />
-                </tr>
-              </TableHeader>
-              <TableBody>
-                {rows.map((row, index) => (
-                  <TableRow
-                    key={row.id}
+                  {entry.label}
+
+                  <span
                     className={cn(
-                      "hover:bg-[#f7f6f3]",
-                      selected.has(row.id) && "bg-[#F0F9FF]",
+                      "ml-1.5 rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
+                      isActive
+                        ? "bg-white/20 text-white"
+                        : "bg-[#F0EFF8] text-[#737A96]"
                     )}
                   >
-                    <TableCell>
-                      <input
-                        type="checkbox"
-                        checked={selected.has(row.id)}
-                        onChange={() => toggleOne(row.id)}
-                        aria-label={`Select ${row.name}`}
-                      />
-                    </TableCell>
-                    <TableCell className="tabular text-xs text-slate-400">
-                      {offset + index + 1}
-                    </TableCell>
-                    <TableCell>
-                      <button
-                        type="button"
-                        className="text-left font-medium text-slate-900 underline-offset-2 hover:text-sky-700 hover:underline"
-                        onClick={() => setOpenServiceId(row.id)}
-                      >
-                        {row.name}
-                      </button>
-                      <span className="block font-mono text-[10px] text-slate-400">
-                        {row.code}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <CategoryBadge category={row.category} labels={categoryLabels} />
-                    </TableCell>
-                    <TableCell className="text-xs text-slate-600">
-                      {row.default_frequency ? humanise(row.default_frequency) : "One-off"}
-                    </TableCell>
-                    <TableCell className="tabular text-right text-slate-700">
-                      {row.standard_fee == null ? (
-                        <span className="text-slate-300">—</span>
-                      ) : (
-                        rupees(row.standard_fee)
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <span
-                        className={cn(
-                          "tabular inline-block min-w-7 rounded px-1.5 py-0.5 text-xs",
-                          row.client_count > 0
-                            ? "bg-slate-100 font-medium text-slate-700"
-                            : "text-slate-300",
-                        )}
-                      >
-                        {row.client_count}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <Badge tone={row.is_active ? "success" : "neutral"}>
-                        {row.is_active ? "Active" : "Inactive"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <RowActionsMenu
-                        row={row}
-                        onOpen={() => setOpenServiceId(row.id)}
-                        onRetire={() => retireOne(row.id)}
-                        onView={() => {}}
-                      />
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                    {s?.tab_counts[entry.key] ?? 0}
+                  </span>
+                </button>
+              );
+            })}
           </div>
-        )}
-
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 px-3 py-2">
-          <p className="text-xs text-slate-500">
-            {services.data
-              ? `Showing ${services.data.meta.total === 0 ? 0 : offset + 1} to ${offset + rows.length} of ${services.data.meta.total} services`
-              : "—"}
-          </p>
-          <Pagination
-            total={services.data?.meta.total ?? 0}
-            limit={limit}
-            offset={offset}
-            page={page}
-            hasMore={offset + rows.length < (services.data?.meta.total ?? 0)}
-            onOffsetChange={setOffset}
-          />
         </div>
-      </Card>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card
-          title="Service Categories"
-          subtitle="How the catalogue is spread"
-        >
-          {(s?.by_category.length ?? 0) === 0 ? (
-            <EmptyState message="No categories in use yet." />
-          ) : (
-            <ul className="divide-y divide-slate-100">
-              {s?.by_category.map((row) => (
-                <li key={row.value}>
+        <div className="space-y-4">
+          {/* Filters */}
+          <div className="grid grid-cols-2 gap-3 border-b border-[#EEF0F7] px-4 py-3 sm:grid-cols-4">
+            <div className="col-span-2">
+              <SearchInput
+                value={filters.search ?? ""}
+                onChange={(value) => updateFilter("search", value)}
+                placeholder="Search services…"
+                hideLabel
+                aria-label="Search services"
+              />
+            </div>
+            <Select
+              label="Category"
+              value={filters.category ?? ""}
+              onChange={(value) => updateFilter("category", value)}
+              options={categories.data ?? []}
+              placeholder="Category"
+              hideLabel
+            />
+            <Select
+              label="Frequency"
+              value={filters.frequency ?? ""}
+              onChange={(value) => updateFilter("frequency", value)}
+              options={FREQUENCIES}
+              placeholder="Frequency"
+              hideLabel
+            />
+            <Select
+              label="Status"
+              value={filters.status ?? ""}
+              onChange={(value) => updateFilter("status", value)}
+              options={[
+                { value: "active", label: "Active" },
+                { value: "inactive", label: "Inactive" },
+              ]}
+              placeholder="Status"
+              hideLabel
+            />
+          </div>
+
+          {hasFilters && (
+            <div className="flex items-center justify-between gap-3 border-b border-[#EEF0F7] bg-[#F8F5FF] px-4 py-2.5">
+              <p className="text-xs text-[#8A90A6]">
+                Showing {services.data?.meta.total ?? 0} of {s?.total_services ?? 0} services
+              </p>
+              <button
+                type="button"
+                className="text-xs font-semibold text-[#6D3AE8] hover:underline"
+                onClick={() => {
+                  paging.clearFilters();
+                  setSelected(new Set());
+                }}
+              >
+                Clear filters
+              </button>
+            </div>
+          )}
+
+          {selected.size > 0 && (
+            <div className="flex items-center justify-between gap-3 border-b border-[#EEF0F7] bg-[#F0E9FF] px-4 py-2.5">
+              <p className="text-xs font-medium text-[#713FE6]">{selected.size} selected</p>
+              <div className="flex items-center gap-2">
+                <div ref={bulkMenuRef} className="relative">
                   <button
                     type="button"
-                    className="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-[#f7f6f3]"
-                    onClick={() => updateFilter("category", row.value)}
+                    className="flex items-center gap-2 rounded-xl border border-[#ECEAF4] bg-[#FCFBFF] px-4 py-2.5 text-xs font-semibold text-[#454B68] hover:bg-[#F5F0FF] hover:border-[#CFC0F8] transition"
+                    onClick={() => setBulkMenuOpen((open) => !open)}
                   >
-                    <CategoryBadge category={row.value} labels={categoryLabels} />
-                    <span className="flex-1 text-sm text-slate-700">{row.label}</span>
-                    <span className="tabular text-xs text-slate-500">
-                      {row.service_count} service{row.service_count === 1 ? "" : "s"}
-                    </span>
-                    <span className="tabular w-20 text-right text-xs text-slate-500">
-                      {row.client_count} clients
-                    </span>
-                    <span className="text-slate-300" aria-hidden>
-                      →
-                    </span>
+                    Bulk actions
+                    <Icon name="chevron-down" className="h-3 w-3" />
                   </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Card>
-
-        <Card
-          title="Assignment Summary"
-          subtitle="What each service is worth a year"
-          action={
-            <Button
-              variant="ghost"
-              size="sm"
-              disabled={!s?.assignments.length}
-              aria-label={s?.assignments.length ? "View all assignments" : "No assignments to view"}
-              onClick={() => setOpenServiceId(s?.assignments[0]?.service_id ?? null)}
-            >
-              View All
-            </Button>
-          }
-        >
-          <div className="overflow-x-auto">
-            <Table className="min-w-[32rem]">
-              <TableHeader>
-                <tr>
-                  <TableHead>Service</TableHead>
-                  <TableHead className="text-right">Total Clients</TableHead>
-                  <TableHead className="text-right">Active</TableHead>
-                  <TableHead className="text-right">Inactive</TableHead>
-                  <TableHead className="text-right">Annual Fees</TableHead>
-                </tr>
-              </TableHeader>
-              <TableBody>
-                {s?.assignments.slice(0, 6).map((row) => (
-                  <TableRow key={row.service_id} className="hover:bg-[#f7f6f3]">
-                    <TableCell>
+                  {bulkMenuOpen && (
+                    <div
+                      role="menu"
+                      className="absolute right-0 top-full z-30 mt-1 w-64 overflow-hidden rounded-lg border border-[#E4E6F2] bg-white shadow-[0_10px_28px_rgba(38,35,82,.08)]"
+                    >
                       <button
                         type="button"
-                        className="font-medium text-slate-900 underline-offset-2 hover:text-sky-700 hover:underline"
-                        onClick={() => setOpenServiceId(row.service_id)}
+                        role="menuitem"
+                        disabled={selected.size === 0}
+                        className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-[#454B68] hover:bg-[#F5F1FF] disabled:cursor-not-allowed disabled:opacity-50"
+                        onClick={() => {
+                          setBulkMenuOpen(false);
+                          setBulkRetireOpen(true);
+                        }}
                       >
-                        {row.code}
+                        <Icon name="trash" className="h-3 w-3" />
+                        Retire…
                       </button>
-                    </TableCell>
-                    <TableCell className="tabular text-right text-slate-700">
-                      {row.total_clients}
-                    </TableCell>
-                    <TableCell className="tabular text-right font-medium text-emerald-700">
-                      {row.active_clients}
-                    </TableCell>
-                    <TableCell className="tabular text-right text-slate-500">
-                      {row.inactive_clients}
-                    </TableCell>
-                    <TableCell className="tabular text-right text-slate-700">
-                      {row.annual_fees === 0 ? (
-                        <span className="text-slate-300">—</span>
-                      ) : (
-                        rupees(row.annual_fees)
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {(s?.assignments.length ?? 0) === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={5} className="py-6">
-                      <EmptyState message="Nothing in the catalogue yet." />
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
+                      <div className="px-3 py-2">
+                        <Select
+                          label="Change category"
+                          value={bulkCategory}
+                          onChange={(value) => bulkChangeCategory(selected, value)}
+                          options={categories.data ?? []}
+                          placeholder="Change category…"
+                          hideLabel
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        disabled
+                        aria-label="Export not available yet"
+                        className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-[#9CA3AF] disabled:cursor-not-allowed"
+                      >
+                        <Icon name="download" className="h-3 w-3" />
+                        Export codes
+                      </button>
+                    </div>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  className="text-xs font-semibold text-[#6D3AE8] hover:underline"
+                  onClick={() => setSelected(new Set())}
+                >
+                  Clear selection
+                </button>
+              </div>
+            </div>
+          )}
+
+          {services.isPending && <LoadingState label="Loading services…" />}
+
+          {services.isError && (
+            <ErrorState message="Could not load the service catalogue." />
+          )}
+
+          {rows.length === 0 && (
+            <EmptyState
+              title={hasFilters || tab !== "all" ? undefined : "No services in the catalogue yet."}
+              message={
+                hasFilters || tab !== "all"
+                  ? "No services match those filters. Try another tab, or clear them."
+                  : "Add your first one to start attaching it to clients."
+              }
+              action={
+                hasFilters || tab !== "all" ? (
+                  <button
+                    type="button"
+                    className="rounded-xl border border-[#ECEAF4] bg-[#FCFBFF] px-4 py-2 text-xs font-semibold text-[#454B68] hover:bg-[#F5F0FF] hover:border-[#CFC0F8] transition"
+                    onClick={() => paging.clearFilters()}
+                  >
+                    Clear filters
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="rounded-xl bg-gradient-to-r from-[#7543E9] to-[#5B31CC] px-4 py-2 text-xs font-semibold text-white shadow-[0_5px_14px_rgba(104,61,213,.22)] hover:-translate-y-0.5 hover:shadow-lg"
+                    onClick={() => setAdding(true)}
+                  >
+                    <Icon name="plus" className="h-4 w-4 mr-1" />
+                    Add service
+                  </button>
+                )
+              }
+            />
+          )}
+
+          {rows.length > 0 && (
+            <div>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[68rem]">
+                  <thead className="bg-[#F4F2FB]">
+                    <tr>
+                      <th className="th w-8">
+                        <input
+                          type="checkbox"
+                          checked={allSelected}
+                          onChange={toggleAll}
+                          aria-label="Select all services on this page"
+                        />
+                      </th>
+                      <th className="th w-10">#</th>
+                      <th className="th">Service Name</th>
+                      <th className="th">Category</th>
+                      <th className="th">Frequency</th>
+                      <th className="th text-right">Default Fee</th>
+                      <th className="th">Clients</th>
+                      <th className="th">Status</th>
+                      <th className="th w-10" />
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#F0EEF5]">
+                    {rows.map((row, index) => (
+                      <tr
+                        key={row.id}
+                        className={cn(
+                          "cursor-pointer transition-colors hover:bg-[#FAF8FF]",
+                          selected.has(row.id) && "bg-[#F1EAFF]",
+                        )}
+                        onClick={() => setOpenServiceId(row.id)}
+                      >
+                        <td className="td">
+                          <input
+                            type="checkbox"
+                            checked={selected.has(row.id)}
+                            onChange={() => toggleOne(row.id)}
+                            aria-label={`Select ${row.name}`}
+                          />
+                        </td>
+                        <td className="td tabular text-xs text-[#94A3B8]">
+                          {offset + index + 1}
+                        </td>
+                        <td className="td">
+                          <button
+                            type="button"
+                            className="font-medium text-[#171A3D] hover:underline"
+                            onClick={() => setOpenServiceId(row.id)}
+                          >
+                            {row.name}
+                          </button>
+                          <span className="block font-mono text-[10px] text-[#94A3B8]">
+                            {row.code}
+                          </span>
+                        </td>
+                        <td className="td">
+                          <CategoryBadge category={row.category} labels={categoryLabels} />
+                        </td>
+                        <td className="td text-xs text-[#64748B]">
+                          {row.default_frequency ? humanise(row.default_frequency) : "One-off"}
+                        </td>
+                        <td className="td tabular text-right text-[#64748B]">
+                          {row.standard_fee == null ? (
+                            <span className="text-[#94A3B8]">—</span>
+                          ) : (
+                            rupees(row.standard_fee)
+                          )}
+                        </td>
+                        <td className="td tabular text-right text-xs text-[#64748B]">
+                          {row.client_count}
+                        </td>
+                        <td className="td">
+                          <Badge tone={row.is_active ? "success" : "neutral"} className="text-[10px]">
+                            {row.is_active ? "Active" : "Inactive"}
+                          </Badge>
+                        </td>
+                        <td className="td" onClick={(event) => event.stopPropagation()}>
+                          <RowActionsMenu
+                            row={row}
+                            onOpen={() => setOpenServiceId(row.id)}
+                            onRetire={() => retireOne(row.id)}
+                            onView={() => {}}
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <Pagination
+                total={services.data?.meta.total ?? 0}
+                limit={limit}
+                offset={offset}
+                page={page}
+                hasMore={offset + rows.length < (services.data?.meta.total ?? 0)}
+                onOffsetChange={setOffset}
+              />
+            </div>
+          )}
+        </div>
+      </section>
+
+      <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
+        {/* Service Categories */}
+        <section className="overflow-hidden rounded-2xl border border-[#E4E6F2] bg-white shadow-[0_8px_28px_rgba(38,35,82,.055)]">
+          <div className="flex items-center justify-between border-b border-[#EEF0F7] bg-[#F8F6FF] px-4 py-3">
+            <div className="flex items-center gap-2">
+              <Icon name="receipt" className="h-4 w-4 text-[#7543E9]" />
+              <h3 className="text-sm font-bold text-[#171A32]">Service Categories</h3>
+            </div>
           </div>
-        </Card>
+          <div className="p-4">
+            {(s?.by_category.length ?? 0) === 0 ? (
+              <EmptyState message="No categories in use yet." />
+            ) : (
+              <ul className="divide-y divide-[#EEF0F7]">
+                {s?.by_category.map((row) => (
+                  <li key={row.value}>
+                    <button
+                      type="button"
+                      className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left hover:bg-[#F8F6FF] transition-colors"
+                      onClick={() => updateFilter("category", row.value)}
+                    >
+                      <div className="flex items-center gap-2">
+                        <CategoryBadge category={row.value} labels={categoryLabels} />
+                        <span className="flex-1 text-sm text-[#171A32]">{row.label}</span>
+                        <span className="tabular text-xs text-[#6D3AE8] font-semibold">{row.service_count}</span>
+                      </div>
+                      <span className="tabular text-xs text-[#9CA3AF]">{row.client_count} clients</span>
+                      <Icon name="chevron-right" className="h-3 w-3 text-[#9CA3AF]" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </section>
+
+        {/* Assignment Summary */}
+        <section className="overflow-hidden rounded-2xl border border-[#E4E6F2] bg-white shadow-[0_8px_28px_rgba(38,35,82,.055)]">
+          <div className="flex items-center justify-between border-b border-[#EEF0F7] bg-[#F8F6FF] px-4 py-3">
+            <div className="flex items-center gap-2">
+              <Icon name="clients" className="h-4 w-4 text-[#7543E9]" />
+              <h3 className="text-sm font-bold text-[#171A32]">Assignment Summary</h3>
+            </div>
+            <button
+              type="button"
+              className="p-1.5 cursor-pointer text-[#9CA3AF] hover:text-[#6D3AE8] hover:bg-[#F5F1FF] rounded-lg transition"
+              disabled={!(s?.assignments.length ?? 0)}
+              aria-label={s?.assignments.length ? "View all assignments" : "No assignments to view"}
+            >
+              <Icon name="chevron-right" className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="p-4">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[32rem]">
+                <thead className="bg-[#F4F2FB]">
+                  <tr>
+                    <th className="th">Service</th>
+                    <th className="th text-right">Clients</th>
+                    <th className="th text-right">Active</th>
+                    <th className="th text-right">Annual Fees</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#F0EEF5]">
+                  {s?.assignments.slice(0, 6).map((row) => (
+                    <tr
+                      key={row.service_id}
+                      className="cursor-pointer transition-colors hover:bg-[#FAF8FF]"
+                      onClick={() => setOpenServiceId(row.service_id)}
+                    >
+                      <td className="td">
+                        <span className="font-medium text-[#171A3D]">{row.code}</span>
+                      </td>
+                      <td className="td tabular text-right text-[#64748B]">{row.total_clients}</td>
+                      <td className="td tabular text-right font-medium text-[#16A34A]">
+                        {row.active_clients}
+                      </td>
+                      <td className="td tabular text-right text-[#64748B]">
+                        {row.annual_fees === 0 ? (
+                          <span className="text-[#94A3B8]">—</span>
+                        ) : (
+                          rupees(row.annual_fees)
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                  {(s?.assignments.length ?? 0) === 0 && (
+                    <tr>
+                      <td colSpan={4} className="py-6">
+                        <EmptyState message="Nothing in the catalogue yet." />
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+            {(s?.assignments.length ?? 0) > 6 && (
+              <div className="pt-3 text-right">
+                <button
+                  type="button"
+                  className="text-xs font-semibold text-[#6D3AE8] hover:underline"
+                  onClick={() => setOpenServiceId(s?.assignments[0]?.service_id ?? null)}
+                >
+                  View all assignments
+                </button>
+              </div>
+            )}
+          </div>
+        </section>
       </div>
 
       <ConfirmDialog
@@ -920,5 +886,3 @@ export default function ServicesPage() {
     </div>
   );
 }
-
-
