@@ -502,6 +502,17 @@ export default function TaskDetailPage() {
     },
   });
 
+  const assignField = useMutation({
+    mutationFn: (payload: { role: "preparer" | "reviewer" | "approver" | "filer"; userId: string | null }) =>
+      api.post<TaskDetail>(`/tasks/${taskId}/assign`, {
+        [payload.role === "preparer" ? "preparer_id" : payload.role === "reviewer" ? "reviewer_id" : payload.role === "approver" ? "approver_id" : "filer_id"]:
+          payload.userId,
+      }),
+    onSuccess: () => {
+      invalidate();
+    },
+  });
+
   const updateStepName = useMutation({
     mutationFn: ({ stepId, name, is_mandatory }: { stepId: string; name: string; is_mandatory?: boolean }) =>
       api.post(`/tasks/${taskId}/steps/${stepId}`, { name, ...(is_mandatory !== undefined ? { is_mandatory } : {}) }),
@@ -1282,7 +1293,120 @@ export default function TaskDetailPage() {
           <p className="text-xs text-[#737A96]">
             Choose who is responsible for each role. Reassignment closes the previous holder's record and opens a new one — nothing is deleted.
           </p>
-          <AssignPanel task={row} onChanged={invalidate} />
+          <div className="space-y-4 p-2">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <Icon name="user-round" className="h-3 w-3 text-[#7543E9]" />
+                  <span className="text-[11px] font-bold uppercase tracking-[.1em] text-[#737A96]">
+                    Preparer
+                  </span>
+                </div>
+                <select
+                  className="input w-full h-10 rounded-xl border-[#E3E5F0] bg-white px-3 text-xs focus:border-[#9A7AEF] focus:ring-4 focus:ring-[#EEE8FF]"
+                  defaultValue={row.preparer_id ?? ""}
+                  onChange={(event) => {
+                    if (!event.target.value) {
+                      assignField.mutate({ role: "preparer", userId: null });
+                    } else {
+                      assignField.mutate({ role: "preparer", userId: event.target.value });
+                    }
+                  }}
+                >
+                  <option value="">Unassigned</option>
+                  {directory.active.map((user) => (
+                    <option key={user.id} value={user.id}>
+                      {user.full_name}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-[10px] text-[#737A96]">Does the work</p>
+              </div>
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <Icon name="user-round" className="h-3 w-3 text-[#7543E9]" />
+                  <span className="text-[11px] font-bold uppercase tracking-[.1em] text-[#737A96]">
+                    Reviewer
+                  </span>
+                </div>
+                <select
+                  className="input w-full h-10 rounded-xl border-[#E3E5F0] bg-white px-3 text-xs focus:border-[#9A7AEF] focus:ring-4 focus:ring-[#EEE8FF]"
+                  defaultValue={row.reviewer_id ?? ""}
+                  onChange={(event) => {
+                    if (!event.target.value) {
+                      assignField.mutate({ role: "reviewer", userId: null });
+                    } else {
+                      assignField.mutate({ role: "reviewer", userId: event.target.value });
+                    }
+                  }}
+                >
+                  <option value="">Unassigned</option>
+                  {directory.active.map((user) => (
+                    <option key={user.id} value={user.id}>
+                      {user.full_name}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-[10px] text-[#737A96]">Checks it before approval</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <Icon name="user-round" className="h-3 w-3 text-[#7543E9]" />
+                  <span className="text-[11px] font-bold uppercase tracking-[.1em] text-[#737A96]">
+                    Approver
+                  </span>
+                </div>
+                <select
+                  className="input w-full h-10 rounded-xl border-[#E3E5F0] bg-white px-3 text-xs focus:border-[#9A7AEF] focus:ring-4 focus:ring-[#EEE8FF]"
+                  defaultValue={row.approver_id ?? ""}
+                  onChange={(event) => {
+                    if (!event.target.value) {
+                      assignField.mutate({ role: "approver", userId: null });
+                    } else {
+                      assignField.mutate({ role: "approver", userId: event.target.value });
+                    }
+                  }}
+                >
+                  <option value="">Unassigned</option>
+                  {directory.active.map((user) => (
+                    <option key={user.id} value={user.id}>
+                      {user.full_name}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-[10px] text-[#737A96]">Signs it off internally</p>
+              </div>
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <Icon name="user-round" className="h-3 w-3 text-[#7543E9]" />
+                  <span className="text-[11px] font-bold uppercase tracking-[.1em] text-[#737A96]">
+                    Filer
+                  </span>
+                </div>
+                <select
+                  className="input w-full h-10 rounded-xl border-[#E3E5F0] bg-white px-3 text-xs focus:border-[#9A7AEF] focus:ring-4 focus:ring-[#EEE8FF]"
+                  defaultValue={row.filer_id ?? ""}
+                  onChange={(event) => {
+                    if (!event.target.value) {
+                      assignField.mutate({ role: "filer", userId: null });
+                    } else {
+                      assignField.mutate({ role: "filer", userId: event.target.value });
+                    }
+                  }}
+                >
+                  <option value="">Unassigned</option>
+                  {directory.active.map((user) => (
+                    <option key={user.id} value={user.id}>
+                      {user.full_name}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-[10px] text-[#737A96]">Files it with the authority</p>
+              </div>
+            </div>
+          </div>
         </div>
         <div className="mt-5 flex justify-end gap-2">
           <button
