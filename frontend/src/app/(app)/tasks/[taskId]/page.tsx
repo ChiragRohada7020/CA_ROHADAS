@@ -707,6 +707,24 @@ export default function TaskDetailPage() {
           </div>
 
           <div className="mt-4 flex flex-wrap items-center gap-3">
+            {canEdit && (
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingTaskDetails(true);
+                  setEditingAssignments(true);
+                }}
+                className={cn(
+                  "inline-flex items-center gap-2 rounded-xl border border-[#ECEAF4] bg-[#FCFBFF] px-4 py-2.5 text-xs font-semibold text-[#454B68] transition",
+                  editingTaskDetails || editingAssignments
+                    ? "border-[#CFC0F8] bg-[#F4F0FF] text-[#6D3AE8]"
+                    : "hover:bg-[#F5F0FF] hover:border-[#CFC0F8]",
+                )}
+              >
+                <Icon name="settings" className="h-3 w-3" />
+                {editingTaskDetails || editingAssignments ? "Edit mode on" : "Edit task"}
+              </button>
+            )}
             <StatusTransitionMenu task={row} onTransition={invalidate} />
             <Badge tone={approvalTone(row.approval_status)} className="text-[10px]">
               <span className="mr-1">
@@ -1247,18 +1265,24 @@ export default function TaskDetailPage() {
         )}
       </section>
 
-      {/* Assign panel (right column - write operations) */}
-      {canAssign && (
-        <section className="mt-5 lg:hidden">
-          <AssignPanel task={row} onChanged={invalidate} />
+      {/* Edit mode panels */}
+      {(editingTaskDetails || editingAssignments) && (
+        <section className="mt-5 space-y-4">
+          {canAssign && editingAssignments && (
+            <section className="overflow-hidden rounded-2xl border border-[#E4E6F2] bg-white shadow-[0_8px_28px_rgba(38,35,82,.055)]">
+              <AssignPanel task={row} onChanged={invalidate} />
+            </section>
+          )}
+          {canEdit && editingTaskDetails && (
+            <section className="overflow-hidden rounded-2xl border border-[#E4E6F2] bg-white shadow-[0_8px_28px_rgba(38,35,82,.055)]">
+              <TaskEditPanel task={row} onSaved={invalidate} onCancel={() => setEditingTaskDetails(false)} />
+            </section>
+          )}
+          <section className="overflow-hidden rounded-2xl border border-[#E4E6F2] bg-white shadow-[0_8px_28px_rgba(38,35,82,.055)]">
+            <FilingPanel task={row} onChanged={invalidate} />
+          </section>
         </section>
       )}
-      {canEdit && (
-        <section className="mt-5 lg:hidden">
-          <TaskEditPanel task={row} onSaved={invalidate} onCancel={() => {}} />
-        </section>
-      )}
-      <FilingPanel task={row} onChanged={invalidate} />
     </div>
   );
 }
