@@ -3,25 +3,24 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 
+import Link from "next/link";
+
 import { DocumentDetailDrawer } from "@/components/DocumentDetailDrawer";
 import { DocumentUploadModal } from "@/components/DocumentUploadModal";
 import { Icon } from "@/components/Icon";
 import {
   Badge,
-  Card,
   EmptyState,
   ErrorState,
   LoadingState,
-  PageHeader,
   Pagination,
   SearchInput,
   Select,
-  StatCard,
 } from "@/components/ui";
 import { ApiError, api, buildQuery } from "@/lib/api";
 import { cn, formatBytes, formatDate, formatRelative, humanise } from "@/lib/format";
-import { usePaging } from "@/lib/hooks";
 import { hasPermission, useSession } from "@/lib/session";
+import { usePaging } from "@/lib/hooks";
 import { documentRequestTone, documentStatusTone } from "@/lib/status";
 import type {
   ClientListItem,
@@ -31,14 +30,6 @@ import type {
   Page,
 } from "@/lib/types";
 
-/**
- * The tabs, and the status each slices by.
- *
- * Every tab is a real filter on `GET /documents`, and its count comes from
- * `/documents/summary`, which is built from the same conditions function the list uses.
- * That is what stops a tab from claiming more rows than the table beneath it can show —
- * they cannot drift, because there is only one definition of each filter.
- */
 const TABS: Array<{ key: string; label: string }> = [
   { key: "all", label: "All documents" },
   { key: "requested", label: "Requested" },
@@ -48,12 +39,10 @@ const TABS: Array<{ key: string; label: string }> = [
   { key: "rejected", label: "Rejected" },
 ];
 
-/** The list parameters for a tab. `all` means "every status". */
 function tabParams(key: string): Record<string, string> {
   return key === "all" ? {} : { status: key };
 }
 
-/** A tab's count. `all` is the unfiltered total; the rest come from the status map. */
 function tabCount(summary: DocumentSummary | undefined, key: string): number {
   if (!summary) return 0;
   return key === "all" ? summary.total_files : (summary.status_counts[key] ?? 0);
@@ -70,6 +59,78 @@ const DOC_TYPES = [
   "other",
 ];
 
+const DOC_TILES: Array<{
+  icon: string;
+  label: string;
+  tone: string;
+  trend: string;
+}> = [
+  {
+    icon: "documents",
+    label: "Total files",
+    tone: "violet",
+    trend: "In this view",
+  },
+  {
+    icon: "clients",
+    label: "Clients",
+    tone: "indigo",
+    trend: "In the firm",
+  },
+  {
+    icon: "folder",
+    label: "Storage used",
+    tone: "progress",
+    trend: "Current versions only",
+  },
+  {
+    icon: "clock",
+    label: "Pending from clients",
+    tone: "amber",
+    trend: "Awaiting review",
+  },
+  {
+    icon: "share",
+    label: "Shared with client",
+    tone: "emerald",
+    trend: "Live links",
+  },
+];
+
+const DOC_TONE_BG: Record<string, string> = {
+  violet: "bg-[#F0E9FF] text-[#713FE6]",
+  indigo: "bg-[#EBEEFF] text-[#5B31CC]",
+  progress: "bg-[#F1ECFF] text-[#6D3AE8]",
+  amber: "bg-[#FFF1DF] text-[#E58A24]",
+  emerald: "bg-[#F0FAF4] text-[#39845A]",
+};
+
+function DocumentTile({
+  tile,
+  value,
+}: {
+  tile: typeof DOC_TILES[number];
+  value: number | string;
+}) {
+  return (
+    <div className="group relative overflow-hidden rounded-2xl border border-[#E5E4F4] bg-white p-4 shadow-[0_4px_16px_rgba(40,38,90,.045)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_9px_24px_rgba(65,48,130,.09)]">
+      <div className="flex items-center gap-3">
+        <span className={cn("grid h-12 w-12 shrink-0 place-items-center rounded-xl", DOC_TONE_BG[tile.tone])}>
+          <Icon name={tile.icon as any} className="h-6 w-6" />
+        </span>
+        <div className="min-w-0">
+          <p className="text-xs font-semibold text-[#59617E]">{tile.label}</p>
+          <p className="mt-1 text-[27px] font-bold leading-none tracking-[-.04em] text-[#171A32]">
+            {typeof value === "number" ? value.toLocaleString("en-IN") : value}
+          </p>
+          <p className="mt-1 text-[10px] text-[#9298AE]">{tile.trend}</p>
+        </div>
+      </div>
+      <span className="pointer-events-none absolute -bottom-5 -right-3 h-16 w-16 rounded-full bg-[#F2EEFF] opacity-70 blur-xl" />
+    </div>
+  );
+}
+
 export default function DocumentsPage() {
   const session = useSession();
   const paging = usePaging(50);
@@ -84,11 +145,6 @@ export default function DocumentsPage() {
   const [uploadOpen, setUploadOpen] = useState(false);
   const [openDocumentId, setOpenDocumentId] = useState<string | null>(null);
 
-  /**
-   * The filters that narrow *what is being looked at*, as opposed to which slice the tab
-   * shows. The summary is built from these alone, so the tab counts keep describing the
-   * whole filtered set rather than collapsing to the tab you are standing on.
-   */
   const scope: Record<string, string> = {
     client_id: clientId,
     doc_type: docType,
@@ -180,100 +236,114 @@ export default function DocumentsPage() {
   const canSubmitRequest =
     requestTitle.trim().length >= 2 && !!requestClient && !requestMutate.isPending;
 
-  return (
-    <div className="space-y-4">
-      <PageHeader
-        title="Documents"
-        subtitle="Store, organise and manage client documents securely"
-        action={
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-                type="button"
-                className={cn(
-                  "btn-ghost",
-                  showPending && "bg-amber-50/60",
-                )}
-                onClick={() => setShowPending((current) => !current)}
-            >
-              <Icon name="clock" className="h-4 w-4" />
-              Pending from clients
-              {summary.data ? (
-                <span className="tabular ml-1 rounded bg-slate-100 px-1.5 text-[10px] text-slate-600">
-                  {summary.data.pending_from_clients}
-                </span>
-              ) : null}
-            </button>
-            {canUpload && (
-              <button type="button" className="btn btn-primary px-5 py-2.5" onClick={() => setUploadOpen(true)}>
-                <Icon name="upload" className="h-4 w-4" />
-                Upload document
-              </button>
-            )}
-            {canRequest && (
-              <button type="button" className="btn btn-ghost px-5 py-2.5" onClick={() => setRequestOpen(true)}>
-                <Icon name="file-text" className="h-4 w-4" />
-                Request from client
-              </button>
-            )}
-          </div>
-        }
-      />
+  const s = summary.data;
+  const hasFilters = Boolean(clientId || docType || search || confidentialOnly);
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-        <StatCard
-          label="Total files"
-          value={summary.data?.total_files ?? 0}
-          hint="In this view"
-          icon={<Icon name="documents" className="h-5 w-5" />}
-        />
-        <StatCard
-          label="Clients"
-          value={summary.data?.clients_count ?? 0}
-          hint="In the firm"
-          tone="info"
-          icon={<Icon name="clients" className="h-5 w-5" />}
-        />
-        <StatCard
-          label="Storage used"
-          value={summary.data?.storage_used_display ?? "0 B"}
-          hint="Current versions only"
-          tone="progress"
-          icon={<Icon name="folder" className="h-5 w-5" />}
-        />
-        <StatCard
-          label="Pending from clients"
-          value={summary.data?.pending_from_clients ?? 0}
-          hint="Awaiting review"
-          tone="warning"
-          icon={<Icon name="clock" className="h-5 w-5" />}
-        />
-        <StatCard
-          label="Shared with client"
-          value={summary.data?.shared_with_client ?? 0}
-          hint="Live links"
-          tone="success"
-          icon={<Icon name="share" className="h-5 w-5" />}
-        />
+  return (
+    <div className="min-h-full space-y-5 bg-[#F7F8FC] p-4 md:p-5 xl:p-6">
+
+      {/* Page heading */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <div className="mb-2 flex items-center gap-2 text-[10px] font-semibold text-[#777E9B]">
+            <span>Workspace</span>
+            <Icon name="chevron-right" className="h-3 w-3" />
+            <span className="text-[#343A58]">Documents</span>
+          </div>
+
+          <h1 className="text-[28px] font-bold tracking-[-.045em] text-[#171A32]">
+            Documents
+          </h1>
+
+          <p className="mt-1 text-sm text-[#737A96]">
+            Store, organise and manage client documents securely.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            className={cn(
+              "inline-flex items-center gap-2 rounded-xl border border-[#ECEAF4] bg-[#FCFBFF] px-5 py-3 text-sm font-semibold text-[#454B68] transition hover:bg-[#F5F0FF] hover:border-[#CFC0F8]",
+              showPending && "bg-amber-50/60 border-amber-100 text-[#9A5A0F]",
+            )}
+            onClick={() => setShowPending((current) => !current)}
+            aria-pressed={showPending}
+          >
+            <Icon name="clock" className="h-4 w-4" />
+            Pending from clients
+            {s ? (
+              <span className="tabular ml-1 rounded bg-amber-100 px-1.5 text-[10px] font-semibold text-[#9A5A0F]">
+                {s.pending_from_clients}
+              </span>
+            ) : null}
+          </button>
+          {canUpload && (
+            <button
+              type="button"
+              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#7543E9] to-[#5B31CC] px-5 py-3 text-sm font-semibold text-white shadow-[0_7px_18px_rgba(104,61,213,.22)] transition hover:-translate-y-0.5 hover:shadow-lg"
+              onClick={() => setUploadOpen(true)}
+            >
+              <Icon name="upload" className="h-4 w-4" />
+              Upload document
+            </button>
+          )}
+          {canRequest && (
+            <button
+              type="button"
+              className="inline-flex items-center gap-2 rounded-xl border border-[#ECEAF4] bg-[#FCFBFF] px-5 py-3 text-sm font-semibold text-[#454B68] transition hover:bg-[#F5F0FF] hover:border-[#CFC0F8]"
+              onClick={() => setRequestOpen(true)}
+            >
+              <Icon name="file-text" className="h-4 w-4" />
+              Request from client
+            </button>
+          )}
+        </div>
       </div>
 
-        {showPending && (
-          <Card>
-            <div className="flex items-center justify-between border-b border-slate-200 px-3 py-2">
-              <h3 className="text-sm font-semibold text-slate-800">
-                Pending from clients
-                <span className="ml-2 text-xs font-normal text-slate-500">
-                  What the firm is still waiting on, and from whom
-                </span>
-              </h3>
-              <button
-                type="button"
-                className="btn-icon"
-                aria-label="Hide pending documents"
-                onClick={() => setShowPending(false)}
-              >
-                ✕
-              </button>
-            </div>
+      {/* Summary tiles */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+        {DOC_TILES.map((tile) => {
+          let value: number | string = 0;
+          switch (tile.label) {
+            case "Total files":
+              value = s?.total_files ?? 0;
+              break;
+            case "Clients":
+              value = s?.clients_count ?? 0;
+              break;
+            case "Storage used":
+              value = s?.storage_used_display ?? "0 B";
+              break;
+            case "Pending from clients":
+              value = s?.pending_from_clients ?? 0;
+              break;
+            case "Shared with client":
+              value = s?.shared_with_client ?? 0;
+              break;
+          }
+          return <DocumentTile key={tile.label} tile={tile} value={value} />;
+        })}
+      </div>
+
+      {/* Pending from clients panel */}
+      {showPending && (
+        <section className="overflow-hidden rounded-2xl border border-[#E4E6F2] bg-white shadow-[0_8px_28px_rgba(38,35,82,.055)]">
+          <div className="flex items-center justify-between border-b border-[#EEF0F7] px-4 py-3">
+            <h3 className="flex items-center gap-2 text-sm font-bold text-[#171A32]">
+              <Icon name="clock" className="h-4 w-4 text-[#9A5A0F]" />
+              Pending from clients
+            </h3>
+            <button
+              type="button"
+              className="rounded-lg p-1.5 text-[#69718F] transition hover:bg-[#F3F3FA] hover:text-[#252B47]"
+              aria-label="Hide pending documents"
+              onClick={() => setShowPending(false)}
+            >
+              <Icon name="x" className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="p-3">
             {pending.isPending || clientDocs.isPending ? (
               <LoadingState label="Loading what is outstanding…" />
             ) : pending.isError || clientDocs.isError ? (
@@ -287,12 +357,12 @@ export default function DocumentsPage() {
               <>
                 {(clientDocs.data?.items ?? []).length > 0 && (
                   <div>
-                    <div className="border-b border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600">
+                    <div className="border-b border-[#EEF0F7] px-2 py-1.5 text-xs font-semibold text-[#59617E] uppercase tracking-[.1em]">
                       Documents from clients
                     </div>
                     <div className="table-wrap">
                       <table className="w-full min-w-[52rem]">
-                        <thead className="bg-[#f7f6f3]">
+                        <thead className="bg-[#F4F2FB]">
                           <tr>
                             <th className="th">Document</th>
                             <th className="th">Client</th>
@@ -300,23 +370,23 @@ export default function DocumentsPage() {
                             <th className="th">Added</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-100">
+                        <tbody className="divide-y divide-[#EEF0F7]">
                           {(clientDocs.data?.items ?? []).map((doc) => (
                             <tr
                               key={doc.id}
-                              className="cursor-pointer hover:bg-[#f7f6f3]"
+                              className="cursor-pointer transition-colors hover:bg-[#F8F6FF]"
                               onClick={() => {
                                 setShowPending(false);
                                 setOpenDocumentId(doc.id);
                               }}
                             >
                               <td className="td">
-                                <span className="font-medium text-slate-800">{doc.title}</span>
+                                <span className="font-medium text-[#252B47]">{doc.title}</span>
                                 {doc.file_name && (
-                                  <span className="ml-1 text-[11px] text-slate-400">{doc.file_name}</span>
+                                  <span className="ml-1 text-[11px] text-[#8A90A6]">{doc.file_name}</span>
                                 )}
                               </td>
-                              <td className="td text-xs text-slate-600">
+                              <td className="td text-xs text-[#8A90A6]">
                                 {clientNames.get(doc.client_id ?? "") ?? "—"}
                               </td>
                               <td className="td">
@@ -324,7 +394,7 @@ export default function DocumentsPage() {
                                   {humanise(doc.status)}
                                 </Badge>
                               </td>
-                              <td className="td text-xs text-slate-500">
+                              <td className="td text-xs text-[#59617E]">
                                 {formatRelative(doc.created_at)}
                               </td>
                             </tr>
@@ -336,13 +406,13 @@ export default function DocumentsPage() {
                 )}
 
                 {(pending.data?.length ?? 0) > 0 && (
-                  <div>
-                    <div className="border-b border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600">
+                  <div className="mt-4">
+                    <div className="border-b border-[#EEF0F7] px-2 py-1.5 text-xs font-semibold text-[#59617E] uppercase tracking-[.1em]">
                       Outstanding requests
                     </div>
                     <div className="table-wrap">
                       <table className="w-full min-w-[52rem]">
-                        <thead className="bg-[#f7f6f3]">
+                        <thead className="bg-[#F4F2FB]">
                           <tr>
                             <th className="th">Requested</th>
                             <th className="th">Client</th>
@@ -351,23 +421,26 @@ export default function DocumentsPage() {
                             <th className="th text-right">Reminders</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-100">
+                        <tbody className="divide-y divide-[#EEF0F7]">
                           {pending.data.map((request) => (
-                            <tr key={request.id} className="hover:bg-[#f7f6f3]">
-                              <td className="td text-xs font-medium text-slate-800">{request.title}</td>
-                              <td className="td text-xs text-slate-600">
+                            <tr key={request.id} className="transition-colors hover:bg-[#F8F6FF]">
+                              <td className="td text-xs font-medium text-[#252B47]">{request.title}</td>
+                              <td className="td text-xs text-[#8A90A6]">
                                 {clientNames.get(request.client_id) ?? "—"}
                               </td>
                               <td className="td text-xs">
                                 {request.due_date ? (
                                   <span
-                                    className={request.is_overdue ? "text-rose-700" : "text-slate-600"}
+                                    className={cn(
+                                      "text-xs",
+                                      request.is_overdue ? "text-rose-700" : "text-[#8A90A6]",
+                                    )}
                                   >
                                     {formatDate(request.due_date)}
-                                    {request.is_overdue && " · overdue"}
+                                    {request.is_overdue && <span className="text-[#B91C1C]"> · overdue</span>}
                                   </span>
                                 ) : (
-                                  <span className="text-slate-400">No date</span>
+                                  <span className="text-xs text-[#A1A1AA]">No date</span>
                                 )}
                               </td>
                               <td className="td">
@@ -375,7 +448,7 @@ export default function DocumentsPage() {
                                   {humanise(request.status)}
                                 </Badge>
                               </td>
-                              <td className="td tabular text-right text-xs text-slate-500">
+                              <td className="td tabular text-right text-xs text-[#59617E]">
                                 {request.reminder_count}
                               </td>
                             </tr>
@@ -387,234 +460,330 @@ export default function DocumentsPage() {
                 )}
               </>
             )}
-          </Card>
-        )}
+          </div>
+        </section>
+      )}
 
+      {/* Main content */}
+      <div className="grid items-start gap-5 2xl:grid-cols-[minmax(0,1fr)_300px]">
 
-      <Card>
-        <div className="flex flex-wrap items-center gap-1 border-b border-slate-200 px-3 pt-2">
-          {TABS.map((entry) => {
-            const isActive = entry.key === tab;
-            return (
+        {/* Documents table */}
+        <section className="min-w-0 overflow-hidden rounded-2xl border border-[#E4E6F2] bg-white shadow-[0_8px_28px_rgba(38,35,82,.055)]">
+
+          {/* Tabs */}
+          <div className="border-b border-[#EEF0F7] bg-white px-4 py-3">
+            <div className="flex items-center gap-1 overflow-x-auto">
+              {TABS.map((entry) => {
+                const isActive = entry.key === tab;
+                return (
+                  <button
+                    key={entry.key}
+                    type="button"
+                    onClick={() => changeTab(entry.key)}
+                    className={cn(
+                      "shrink-0 whitespace-nowrap rounded-xl px-4 py-2.5 text-xs font-semibold transition-all",
+                      isActive
+                        ? "bg-gradient-to-r from-[#7543E9] to-[#6032D4] text-white shadow-[0_5px_14px_rgba(104,61,213,.24)]"
+                        : "text-[#69718F] hover:bg-[#F5F1FF] hover:text-[#6637D7]"
+                    )}
+                  >
+                    {entry.label}
+
+                    <span
+                      className={cn(
+                        "ml-1.5 rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
+                        isActive
+                          ? "bg-white/20 text-white"
+                          : "bg-[#F0EFF8] text-[#737A96]"
+                      )}
+                    >
+                      {tabCount(s, entry.key)}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Active filter indicator */}
+          {hasFilters && (
+            <div className="flex items-center justify-between gap-3 border-b border-[#EEF0F7] bg-[#F8F5FF] px-4 py-2.5">
+              <p className="text-xs text-[#8A90A6]">
+                Showing {documents.data?.meta.total ?? 0} of {s?.total_files ?? 0} documents
+              </p>
+
               <button
-                key={entry.key}
                 type="button"
-                onClick={() => changeTab(entry.key)}
-                className={cn(
-                  "-mb-px border-b-2 px-3 py-2 text-sm font-medium transition-colors",
-                  isActive
-                    ? "border-sky-600 text-sky-700"
-                    : "border-transparent text-slate-500 hover:text-slate-800",
-                )}
+                className="text-xs font-semibold text-[#6D3AE8] hover:underline"
+                onClick={() => {
+                  paging.clearFilters();
+                  setClientId("");
+                  setDocType("");
+                  setSearch("");
+                  setConfidentialOnly(false);
+                  setOffset(0);
+                }}
               >
-                {entry.label}
-                <span
-                  className={cn(
-                    "tabular ml-1.5 rounded px-1.5 py-0.5 text-[10px]",
-                    isActive ? "bg-sky-100 text-sky-700" : "bg-slate-100 text-slate-500",
-                  )}
-                >
-                  {tabCount(summary.data, entry.key)}
-                </span>
+                Clear filters
               </button>
-            );
-          })}
-        </div>
-
-        <div className="flex flex-wrap items-end gap-2 border-b border-slate-100 px-3 py-2">
-          <div className="min-w-[14rem] flex-1">
-            <SearchInput
-              value={search}
-              onChange={(value) => changeFilter(setSearch, value)}
-              placeholder="Search by title or type…"
-              hideLabel
-            />
-          </div>
-          <div className="w-52">
-            <Select
-              label="Client"
-              value={clientId}
-              onChange={(value) => changeFilter(setClientId, value)}
-              placeholder="All clients"
-              hideLabel
-              options={(clients.data?.items ?? []).map((entry) => ({
-                value: entry.id,
-                label: entry.trade_name || entry.legal_name,
-              }))}
-            />
-          </div>
-          <div className="w-44">
-            <Select
-              label="Document type"
-              value={docType}
-              onChange={(value) => changeFilter(setDocType, value)}
-              placeholder="All types"
-              hideLabel
-              options={DOC_TYPES.map((entry) => ({ value: entry, label: humanise(entry) }))}
-            />
-          </div>
-          <button
-            type="button"
-            onClick={() => {
-              setConfidentialOnly((current) => !current);
-              setOffset(0);
-            }}
-            className={cn(
-              "btn-ghost",
-              confidentialOnly && "border-rose-300 bg-rose-50 text-rose-700",
-            )}
-            aria-pressed={confidentialOnly}
-          >
-            <Icon name="eye" className="h-3.5 w-3.5" />
-            Confidential only
-          </button>
-          {(clientId || docType || search || confidentialOnly) && (
-            <button
-              type="button"
-              className="btn btn-ghost px-5 py-2.5"
-              onClick={() => {
-                setClientId("");
-                setDocType("");
-                setSearch("");
-                setConfidentialOnly(false);
-                setOffset(0);
-              }}
-            >
-              Clear filters
-            </button>
+            </div>
           )}
-        </div>
 
+          {documents.isPending && <LoadingState label="Loading documents…" />}
 
-        <div className="grid gap-4 p-3 lg:grid-cols-[15rem_1fr]">
-          <ClientRail
-            summary={summary.data}
-            clientId={clientId}
-            onSelect={(value) => changeFilter(setClientId, value)}
-            loading={summary.isPending}
-          />
+          {documents.isError && (
+            <ErrorState message="Could not load the documents." />
+          )}
 
-          <div className="min-w-0">
-            {documents.isPending ? (
-              <LoadingState label="Loading documents…" />
-            ) : documents.isError ? (
-              <ErrorState message="Could not load the documents." />
-            ) : documents.data.items.length === 0 ? (
-              <EmptyState
-                title="No documents here"
-                message={
-                  clientId || docType || search || confidentialOnly
-                    ? "Nothing matches these filters. Try widening them."
-                    : "Upload a document, or ask a client for one."
-                }
-              />
-            ) : (
-              <>
-                <div className="table-wrap">
-                  <table className="w-full min-w-[62rem]">
-                    <thead className="bg-[#f7f6f3]">
-                      <tr>
-                        <th className="th">Name</th>
-                        <th className="th">Client</th>
-                        <th className="th">Type</th>
-                        <th className="th">Period</th>
-                        <th className="th">Status</th>
-                        <th className="th text-right">Size</th>
-                        <th className="th">Uploaded by</th>
-                        <th className="th">Uploaded</th>
-                        <th className="th" />
+          {documents.isSuccess && documents.data.items.length === 0 && !hasFilters && (
+            <EmptyState
+              title="No documents here"
+              message="Upload a document, or ask a client for one."
+            />
+          )}
+
+          {documents.isSuccess && documents.data.items.length === 0 && hasFilters && (
+            <EmptyState
+              title="No documents here"
+              message="Nothing matches these filters. Try widening them."
+            />
+          )}
+
+          {/* Table */}
+          {documents.isSuccess && documents.data.items.length > 0 && (
+            <>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[62rem]">
+                  <thead className="bg-[#F4F2FB]">
+                    <tr>
+                      <th className="th">Name</th>
+                      <th className="th">Client</th>
+                      <th className="th">Type</th>
+                      <th className="th">Period</th>
+                      <th className="th">Status</th>
+                      <th className="th text-right">Size</th>
+                      <th className="th">Uploaded by</th>
+                      <th className="th">Uploaded</th>
+                      <th className="th" />
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#EEF0F7]">
+                    {documents.data.items.map((document) => (
+                      <tr
+                        key={document.id}
+                        className="cursor-pointer transition-colors hover:bg-[#F8F6FF]"
+                        onClick={() => setOpenDocumentId(document.id)}
+                      >
+                        <td className="td">
+                          <span className="font-medium text-[#252B47]">{document.title}</span>
+                          <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
+                            {document.file_name && (
+                              <span className="text-[11px] text-[#8A90A6]">
+                                {document.file_name}
+                              </span>
+                            )}
+                            {document.version_count > 1 && (
+                              <span className="rounded border border-[#E5E4F4] px-1 py-0.5 text-[10px] text-[#59617E]">
+                                v{document.version_count}
+                              </span>
+                            )}
+                            {document.is_confidential && (
+                              <Badge tone="danger">Confidential</Badge>
+                            )}
+                            {document.from_client && <Badge tone="info">From client</Badge>}
+                          </div>
+                        </td>
+                        <td className="td text-xs text-[#8A90A6]">
+                          {document.client_id ? (
+                            (clientNames.get(document.client_id) ?? "—")
+                          ) : (
+                            <span className="text-[#A1A1AA]">Unfiled</span>
+                          )}
+                        </td>
+                        <td className="td text-xs">{humanise(document.doc_type) || "—"}</td>
+                        <td className="td text-xs text-[#59617E]">
+                          {document.period_key ?? "—"}
+                        </td>
+                        <td className="td">
+                          <Badge tone={documentStatusTone(document.status)}>
+                            {humanise(document.status)}
+                          </Badge>
+                        </td>
+                        <td className="td tabular text-right text-xs text-[#59617E]">
+                          {document.size_bytes === null
+                            ? "—"
+                            : formatBytes(document.size_bytes)}
+                        </td>
+                        <td className="td text-xs">
+                          {document.uploaded_by_name ? (
+                            <span className="text-[#303653]">{document.uploaded_by_name}</span>
+                          ) : (
+                            <span className="text-[#A1A1AA]">Unknown</span>
+                          )}
+                        </td>
+                        <td className="td text-xs text-[#59617E]">
+                          {formatRelative(document.created_at)}
+                        </td>
+                        <td className="td text-right text-xs">
+                          {document.current_version_id ? (
+                            <a
+                              href={`/api/documents/versions/${document.current_version_id}/content`}
+                              className="font-medium text-[#6D3AE8] underline underline-offset-2 hover:underline"
+                              onClick={(event) => event.stopPropagation()}
+                            >
+                              Download
+                            </a>
+                          ) : (
+                            <span className="text-[#A1A1AA]">No file</span>
+                          )}
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {documents.data.items.map((document) => (
-                        <tr
-                          key={document.id}
-                          className="cursor-pointer hover:bg-[#f7f6f3]"
-                          onClick={() => setOpenDocumentId(document.id)}
-                        >
-                          <td className="td">
-                            <span className="font-medium text-slate-900">{document.title}</span>
-                            <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
-                              {document.file_name && (
-                                <span className="text-[11px] text-slate-400">
-                                  {document.file_name}
-                                </span>
-                              )}
-                              {document.version_count > 1 && (
-                                <span className="rounded bg-slate-100 px-1 text-[10px] text-slate-600">
-                                  v{document.version_count}
-                                </span>
-                              )}
-                              {document.is_confidential && (
-                                <Badge tone="danger">Confidential</Badge>
-                              )}
-                              {document.from_client && <Badge tone="info">From client</Badge>}
-                            </div>
-                          </td>
-                          <td className="td text-xs text-slate-600">
-                            {document.client_id ? (
-                              (clientNames.get(document.client_id) ?? "—")
-                            ) : (
-                              <span className="text-slate-400">Unfiled</span>
-                            )}
-                          </td>
-                          <td className="td text-xs">{humanise(document.doc_type) || "—"}</td>
-                          <td className="td text-xs text-slate-500">
-                            {document.period_key ?? "—"}
-                          </td>
-                          <td className="td">
-                            <Badge tone={documentStatusTone(document.status)}>
-                              {humanise(document.status)}
-                            </Badge>
-                          </td>
-                          <td className="td tabular text-right text-xs text-slate-600">
-                            {document.size_bytes === null
-                              ? "—"
-                              : formatBytes(document.size_bytes)}
-                          </td>
-                          <td className="td text-xs">
-                            {document.uploaded_by_name ? (
-                              <span className="text-slate-700">{document.uploaded_by_name}</span>
-                            ) : (
-                              <span className="text-slate-400">Unknown</span>
-                            )}
-                          </td>
-                          <td className="td text-xs text-slate-500">
-                            {formatRelative(document.created_at)}
-                          </td>
-                          <td className="td text-right text-xs">
-                            {document.current_version_id ? (
-                              <a
-                                href={`/api/documents/versions/${document.current_version_id}/content`}
-                                className="font-medium text-slate-700 underline underline-offset-2"
-                                onClick={(event) => event.stopPropagation()}
-                              >
-                                Download
-                              </a>
-                            ) : (
-                              <span className="text-slate-400">No file</span>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                <Pagination
-                  page={page}
-                  limit={limit}
-                  total={documents.data.meta.total}
-                  hasMore={documents.data.meta.has_more}
-                  offset={offset}
-                  onOffsetChange={setOffset}
-                />
-              </>
-            )}
-          </div>
-        </div>
-      </Card>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <Pagination
+                page={page}
+                limit={limit}
+                total={documents.data.meta.total}
+                hasMore={documents.data.meta.has_more}
+                offset={offset}
+                onOffsetChange={setOffset}
+              />
+            </>
+          )}
+        </section>
 
-       <DocumentUploadModal open={uploadOpen} onClose={() => setUploadOpen(false)} />
+        {/* Filters and quick actions */}
+        <aside className="space-y-4">
+
+          <section className="overflow-hidden rounded-2xl border border-[#E4E2F3] bg-white shadow-[0_5px_18px_rgba(40,38,90,.05)]">
+            <div className="flex items-center justify-between border-b border-[#EEF0F7] px-4 py-4">
+              <h2 className="flex items-center gap-2 text-sm font-bold text-[#171A32]">
+                <Icon name="reports" className="h-4 w-4 text-[#713FE6]" />
+                Filters
+              </h2>
+
+              {hasFilters && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    paging.clearFilters();
+                    setClientId("");
+                    setDocType("");
+                    setSearch("");
+                    setConfidentialOnly(false);
+                    setOffset(0);
+                  }}
+                  className="text-[10px] font-semibold text-[#6D3AE8] hover:underline"
+                >
+                  Clear all
+                </button>
+              )}
+            </div>
+
+            <div className="space-y-3 p-4">
+              <label className="block text-[11px] font-semibold text-[#424966]">
+                Search documents
+                <input
+                  className="input mt-1.5 h-10 w-full rounded-xl border-[#E3E5F0] bg-white px-3 text-xs focus:border-[#9A7AEF] focus:ring-4 focus:ring-[#EEE8FF]"
+                  type="search"
+                  value={search}
+                  onChange={(event) => changeFilter(setSearch, event.target.value)}
+                  placeholder="Title, client, type…"
+                />
+              </label>
+
+              <label className="block text-[11px] font-semibold text-[#424966]">
+                Client
+                <Select
+                  label="Client"
+                  value={clientId}
+                  onChange={(value) => changeFilter(setClientId, value)}
+                  placeholder="All clients"
+                  hideLabel
+                  options={(clients.data?.items ?? []).map((entry) => ({
+                    value: entry.id,
+                    label: entry.trade_name || entry.legal_name,
+                  }))}
+                />
+              </label>
+
+              <label className="block text-[11px] font-semibold text-[#424966]">
+                Document type
+                <Select
+                  label="Document type"
+                  value={docType}
+                  onChange={(value) => changeFilter(setDocType, value)}
+                  placeholder="All types"
+                  hideLabel
+                  options={DOC_TYPES.map((entry) => ({ value: entry, label: humanise(entry) }))}
+                />
+              </label>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setConfidentialOnly((current) => !current);
+                  setOffset(0);
+                }}
+                className={cn(
+                  "flex w-full items-center gap-2 rounded-xl border px-3 py-2 text-left text-xs transition",
+                  confidentialOnly
+                    ? "border-rose-200 bg-rose-50 text-rose-700"
+                    : "border-[#E3E5F0] text-[#69718F] hover:bg-[#F5F1FF] hover:border-[#CFC0F8]",
+                )}
+                aria-pressed={confidentialOnly}
+              >
+                <Icon name="eye" className="h-3.5 w-3.5" />
+                Confidential only
+              </button>
+
+              <p className="rounded-lg bg-[#F7F4FF] px-3 py-2 text-[10px] text-[#77718F]">
+                Filters update the document list automatically.
+              </p>
+            </div>
+          </section>
+
+          {/* Quick actions */}
+          <section className="overflow-hidden rounded-2xl border border-[#E4E2F3] bg-white shadow-[0_5px_18px_rgba(40,38,90,.05)]">
+            <div className="flex items-center gap-2 border-b border-[#EEF0F7] bg-gradient-to-r from-[#FBF9FF] to-[#F1EBFF] px-4 py-4">
+              <Icon name="check-circle" className="h-4 w-4 text-[#713FE6]" />
+              <h2 className="text-sm font-bold text-[#171A32]">
+                Quick Actions
+              </h2>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 p-3">
+              <Link
+                href="/documents/new"
+                className="flex min-h-[82px] flex-col items-center justify-center gap-2 rounded-xl border border-[#E8E0FF] bg-[#FBF9FF] px-2 py-3 text-center text-[10px] font-semibold text-[#343653] transition hover:border-[#C9B7FF] hover:bg-[#F4EEFF]"
+              >
+                <Icon name="plus" className="h-5 w-5 text-[#713FE6]" />
+                New Document
+              </Link>
+
+              <button
+                type="button"
+                onClick={() => {
+                  paging.clearFilters();
+                  setClientId("");
+                  setDocType("");
+                  setSearch("");
+                  setConfidentialOnly(false);
+                  setOffset(0);
+                }}
+                className="flex min-h-[82px] flex-col items-center justify-center gap-2 rounded-xl border border-[#E8E0FF] bg-[#FBF9FF] px-2 py-3 text-center text-[10px] font-semibold text-[#343653] transition hover:border-[#C9B7FF] hover:bg-[#F4EEFF]"
+              >
+                <Icon name="check-circle" className="h-5 w-5 text-[#713FE6]" />
+                Reset List
+              </button>
+            </div>
+          </section>
+        </aside>
+      </div>
+
+      <DocumentUploadModal open={uploadOpen} onClose={() => setUploadOpen(false)} />
 
       {requestOpen && (
         <DocumentRequestModal
@@ -638,19 +807,6 @@ export default function DocumentsPage() {
   );
 }
 
-
-/**
- * The client rail beside the list.
- *
- * A client filter rather than a folder tree: a document *is* filed under a client and a
- * financial year, so there is no folder record to nest. Counts come from
- * `/documents/summary`, built from the same conditions function the list uses — so
- * clicking a client narrows the table to exactly the number of documents the rail
- * claimed, never fewer.
- *
- * Only the busiest clients are listed, and the heading says so; a rail that silently
- * showed the first twelve would look like the firm's whole book.
- */
 function ClientRail({
   summary,
   clientId,
@@ -665,8 +821,8 @@ function ClientRail({
   const entries = summary?.by_client ?? [];
 
   return (
-    <aside className="min-w-0 self-start rounded-lg border border-slate-200">
-      <p className="border-b border-slate-100 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+    <aside className="min-w-0 self-start rounded-lg border border-[#E4E6F2] bg-white shadow-[0_5px_18px_rgba(40,38,90,.05)]">
+      <p className="border-b border-[#EEF0F7] px-3 py-2 text-xs font-semibold uppercase tracking-[.1em] text-[#59617E]">
         Clients
       </p>
       <nav className="p-1.5">
@@ -675,17 +831,17 @@ function ClientRail({
           onClick={() => onSelect("")}
           className={cn(
             "flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm",
-            clientId === "" ? "bg-sky-50 font-medium text-sky-800" : "text-slate-700 hover:bg-[#f7f6f3]",
+            clientId === "" ? "bg-[#F0E9FF] font-medium text-[#713FE6]" : "text-[#69718F] hover:bg-[#F8F6FF]",
           )}
         >
-          <Icon name="folder-open" className="h-4 w-4 shrink-0 text-slate-400" />
+          <Icon name="folder-open" className="h-4 w-4 shrink-0 text-[#A1A1AA]" />
           <span className="min-w-0 flex-1 truncate">All documents</span>
-          <span className="tabular shrink-0 text-[11px] text-slate-500">
+          <span className="tabular shrink-0 text-[11px] text-[#59617E]">
             {summary?.total_files ?? 0}
           </span>
         </button>
 
-        {loading && <p className="px-2 py-3 text-xs text-slate-400">Loading…</p>}
+        {loading && <p className="px-2 py-3 text-xs text-[#A1A1AA]">Loading…</p>}
 
         {entries.map((entry) => {
           const isActive = entry.client_id === clientId;
@@ -698,28 +854,28 @@ function ClientRail({
               className={cn(
                 "flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm",
                 isActive
-                  ? "bg-sky-50 font-medium text-sky-800"
-                  : "text-slate-700 hover:bg-[#f7f6f3]",
+                  ? "bg-[#F0E9FF] font-medium text-[#713FE6]"
+                  : "text-[#69718F] hover:bg-[#F8F6FF]",
               )}
             >
               <Icon
                 name={isActive ? "folder-open" : "folder"}
-                className="h-4 w-4 shrink-0 text-slate-400"
+                className="h-4 w-4 shrink-0 text-[#A1A1AA]"
               />
               <span className="min-w-0 flex-1 truncate">{entry.client_name}</span>
-              <span className="tabular shrink-0 text-[11px] text-slate-500">{entry.count}</span>
+              <span className="tabular shrink-0 text-[11px] text-[#59617E]">{entry.count}</span>
             </button>
           );
         })}
 
         {!loading && entries.length === 0 && (
-          <p className="px-2 py-3 text-xs text-slate-400">
+          <p className="px-2 py-3 text-xs text-[#A1A1AA]">
             No documents filed under a client yet.
           </p>
         )}
       </nav>
       {entries.length > 0 && (
-        <p className="border-t border-slate-100 px-3 py-2 text-[11px] text-slate-400">
+        <p className="border-t border-[#EEF0F7] px-3 py-2 text-[11px] text-[#59617E]">
           Busiest {entries.length} client{entries.length === 1 ? "" : "s"} shown.
         </p>
       )}
@@ -765,17 +921,20 @@ function DocumentRequestModal({
         type="button"
         aria-label="Close"
         onClick={onClose}
-        className="fixed inset-0 z-40 cursor-default bg-slate-900/20"
+        className="fixed inset-0 z-40 cursor-default bg-[#171A32]/20"
       />
       <aside
         role="dialog"
         aria-label="Request document from client"
         className="fixed inset-0 z-50 flex items-center justify-center"
       >
-        <div className="w-full max-w-md rounded-lg border border-slate-200 bg-white p-4 shadow-xl">
-          <h3 className="text-sm font-semibold text-slate-900">Request document from client</h3>
+        <div className="w-full max-w-md rounded-2xl border border-[#E4E6F2] bg-white p-5 shadow-[0_20px_40px_rgba(38,35,82,.12)]">
+          <div className="flex items-center gap-2 mb-1">
+            <Icon name="file-text" className="h-4 w-4 text-[#713FE6]" />
+            <h3 className="text-sm font-bold text-[#171A32]">Request document from client</h3>
+          </div>
 
-          <div className="mt-3">
+          <div className="mt-4">
             <Select
               label="Client"
               value={clientId}
@@ -788,13 +947,10 @@ function DocumentRequestModal({
             />
           </div>
 
-          <div className="mt-3">
-            <label className="label" htmlFor="req-title">
-              Title
-            </label>
+          <div className="mt-4">
+            <label className="block text-[11px] font-semibold text-[#424966]">Title</label>
             <input
-              id="req-title"
-              className="input"
+              className="input mt-1.5 h-10 w-full rounded-xl border-[#E3E5F0] bg-white px-3 text-xs focus:border-[#9A7AEF] focus:ring-4 focus:ring-[#EEE8FF]"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g. Bank statements for the quarter"
@@ -803,13 +959,12 @@ function DocumentRequestModal({
             />
           </div>
 
-          <div className="mt-3">
-            <label className="label" htmlFor="req-desc">
+          <div className="mt-4">
+            <label className="block text-[11px] font-semibold text-[#424966]">
               Description (optional)
             </label>
             <textarea
-              id="req-desc"
-              className="input w-full resize-y text-xs"
+              className="input mt-1.5 h-32 w-full resize-y rounded-xl border-[#E3E5F0] bg-white px-3 text-xs focus:border-[#9A7AEF] focus:ring-4 focus:ring-[#EEE8FF]"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="What exactly do you need from them?"
@@ -818,34 +973,40 @@ function DocumentRequestModal({
             />
           </div>
 
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            <input
-              type="date"
-              className="input text-xs"
-              value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
-              aria-label="Due date"
-            />
-            <input
-              type="text"
-              className="input text-xs"
-              value={docType}
-              onChange={(e) => setDocType(e.target.value)}
-              placeholder="Document type (optional)"
-              aria-label="Document type"
-            />
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[11px] font-semibold text-[#424966]">Due date</label>
+              <input
+                type="date"
+                className="input mt-1.5 h-10 w-full rounded-xl border-[#E3E5F0] bg-white px-3 text-xs focus:border-[#9A7AEF] focus:ring-4 focus:ring-[#EEE8FF]"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+                aria-label="Due date"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-semibold text-[#424966]">
+                Document type (optional)
+              </label>
+              <input
+                type="text"
+                className="input mt-1.5 h-10 w-full rounded-xl border-[#E3E5F0] bg-white px-3 text-xs focus:border-[#9A7AEF] focus:ring-4 focus:ring-[#EEE8FF]"
+                value={docType}
+                onChange={(e) => setDocType(e.target.value)}
+                placeholder="Document type"
+                aria-label="Document type"
+              />
+            </div>
           </div>
 
           {isError && error && (
-            <p role="alert" className="mt-2 text-xs text-rose-600">
-              {error}
-            </p>
+            <p role="alert" className="mt-3 text-xs text-rose-700">{error}</p>
           )}
 
-          <div className="mt-4 flex justify-end gap-2">
+          <div className="mt-5 flex justify-end gap-2">
             <button
               type="button"
-              className="btn-ghost text-xs"
+              className="rounded-xl px-4 py-2 text-sm font-medium text-[#69718F] transition hover:bg-[#F3F3FA] hover:text-[#252B47]"
               onClick={onClose}
               disabled={isPending}
             >
@@ -853,7 +1014,7 @@ function DocumentRequestModal({
             </button>
             <button
               type="button"
-              className="btn-primary text-xs"
+              className="rounded-xl bg-gradient-to-r from-[#7543E9] to-[#5B31CC] px-4 py-2 text-sm font-medium text-white shadow-[0_5px_14px_rgba(104,61,213,.22)] transition hover:-translate-y-0.5 hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed"
               disabled={!canSubmit}
               onClick={() => {
                 onSubmit({
