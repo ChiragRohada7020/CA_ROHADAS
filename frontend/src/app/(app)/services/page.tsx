@@ -14,6 +14,7 @@ import {
   EmptyState,
   ErrorState,
   LoadingState,
+  Modal,
   Pagination,
   Skeleton,
   StatCard,
@@ -31,6 +32,22 @@ import type {
   ServiceRow,
   ServiceSummary,
 } from "@/lib/types";
+
+type ShortcutModifiers = { ctrl: boolean; alt: boolean; shift: boolean; meta: boolean };
+
+type Shortcut = { modifiers: ShortcutModifiers; key: string; target: string };
+
+const defaultShortcuts: Record<string, Shortcut> = {
+  "1": { modifiers: { ctrl: true, alt: false, shift: true, meta: false }, key: "1", target: "add" },
+  "2": { modifiers: { ctrl: true, alt: false, shift: true, meta: false }, key: "2", target: "all" },
+  "3": { modifiers: { ctrl: true, alt: false, shift: true, meta: false }, key: "3", target: "taxation" },
+  "4": { modifiers: { ctrl: true, alt: false, shift: true, meta: false }, key: "4", target: "gst" },
+  "5": { modifiers: { ctrl: true, alt: false, shift: true, meta: false }, key: "5", target: "audit" },
+  "6": { modifiers: { ctrl: true, alt: false, shift: true, meta: false }, key: "6", target: "roc" },
+  "7": { modifiers: { ctrl: true, alt: false, shift: true, meta: false }, key: "7", target: "other" },
+  "8": { modifiers: { ctrl: true, alt: false, shift: true, meta: false }, key: "8", target: "search" },
+  "9": { modifiers: { ctrl: true, alt: false, shift: true, meta: false }, key: "9", target: "clear" },
+};
 
 const TABS: Array<{ key: string; label: string; categories: ServiceCategory[] }> = [
   { key: "all", label: "All Services", categories: [] },
@@ -141,7 +158,7 @@ function SummaryTiles({ summary, pending }: { summary: ServiceSummary | undefine
       {tiles.map((tile) => (
         <div
           key={tile.label}
-          className="relative overflow-hidden rounded-2xl border border-[#E5E4F4] bg-white p-4 shadow-[0_4px_16px_rgba(40,38,90,.045)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_9px_24px_rgba(65,48,130,.09]]"
+          className="relative overflow-hidden rounded-[18px] border border-[#E3E5F4] bg-white p-4 shadow-[0_3px_12px_rgba(40,42,90,.045)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_9px_24px_rgba(65,48,130,.09)]"
         >
           <div className="flex flex-col items-start gap-1">
             <span className="text-[10px] font-semibold text-[#59617E] uppercase tracking-[.1em]">
@@ -277,6 +294,110 @@ export default function ServicesPage() {
   const [bulkMenuOpen, setBulkMenuOpen] = useState(false);
   const bulkMenuRef = useRef<HTMLDivElement>(null);
 
+  // ============================================================================
+  // KEYBOARD SHORTCUTS
+  // ============================================================================
+  const searchRef = useRef<HTMLInputElement>(null);
+  const shortcutsRef = useRef<Record<string, Shortcut>>(defaultShortcuts);
+
+  const [localShortcuts, setLocalShortcuts] = useState<Record<string, Shortcut>>(() => {
+    try {
+      const raw = localStorage.getItem("service-shortcuts");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        return { ...defaultShortcuts, ...parsed };
+      }
+    } catch {}
+    return defaultShortcuts;
+  });
+  const [editingShortcutId, setEditingShortcutId] = useState<string | null>(null);
+  const [showShortcuts, setShowShortcuts] = useState(false);
+
+  function formatShortcut(s: Shortcut): string {
+    const parts: string[] = [];
+    if (s.modifiers.ctrl) parts.push("Ctrl");
+    if (s.modifiers.alt) parts.push("Alt");
+    if (s.modifiers.shift) parts.push("Shift");
+    if (s.modifiers.meta) parts.push("Cmd");
+    parts.push(s.key.toUpperCase());
+    return parts.join("+");
+  }
+
+  function matchesShortcut(event: KeyboardEvent, s: Shortcut): boolean {
+    return (
+      event.ctrlKey === s.modifiers.ctrl &&
+      event.altKey === s.modifiers.alt &&
+      event.shiftKey === s.modifiers.shift &&
+      event.metaKey === s.modifiers.meta &&
+      event.key.toLowerCase() === s.key.toLowerCase()
+    );
+  }
+
+  function handleShortcut(target: string) {
+    switch (target) {
+      case "add":
+        setAdding(true);
+        break;
+      case "all":
+        changeTab("all");
+        break;
+      case "taxation":
+        changeTab("taxation");
+        break;
+      case "gst":
+        changeTab("gst");
+        break;
+      case "audit":
+        changeTab("audit");
+        break;
+      case "roc":
+        changeTab("roc");
+        break;
+      case "other":
+        changeTab("other");
+        break;
+      case "search":
+        searchRef.current?.focus();
+        break;
+      case "clear":
+        paging.clearFilters();
+        setSelected(new Set());
+        break;
+    }
+  }
+
+  // Single keyboard listener added ONCE on mount
+  useEffect(() => {
+    function onKey(event: KeyboardEvent) {
+      const key = event.key.toLowerCase();
+
+      // Ignore modifier-only keys
+      if (["control", "alt", "shift", "meta"].includes(key)) return;
+
+      Object.values(shortcutsRef.current).forEach((s) => {
+        if (matchesShortcut(event, s)) {
+          event.preventDefault();
+          event.stopPropagation();
+          handleShortcut(s.target);
+        }
+      });
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
+
+  // Sync ref with local state whenever it changes
+  useEffect(() => {
+    shortcutsRef.current = localShortcuts;
+  }, [localShortcuts]);
+
+  // Persist shortcuts to localStorage so they survive refreshes
+  useEffect(() => {
+    try {
+      localStorage.setItem("service-shortcuts", JSON.stringify(localShortcuts));
+    } catch {}
+  }, [localShortcuts]);
+
   const activeTab = TABS.find((row) => row.key === tab) ?? TABS[0];
 
   const tabQuery = activeTab.categories.map((value) => `categories=${value}`).join("&");
@@ -405,44 +526,62 @@ export default function ServicesPage() {
   }, [bulkMenuOpen]);
 
   return (
-    <div className="min-h-full space-y-5 bg-[#F7F8FC] p-4 md:p-5 xl:p-6">
-      {/* Page heading */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <div className="mb-2 flex items-center gap-2 text-[10px] font-semibold text-[#777E9B]">
-            <span>Workspace</span>
-            <Icon name="chevron-right" className="h-3 w-3" />
-            <span className="text-[#343A58]">Services</span>
+    <div className="min-h-full space-y-5 bg-[#F8F8FD] p-4 md:space-y-6 md:p-5 xl:p-6">
+      {/* Dashboard-matched page hero */}
+      <section className="relative isolate overflow-hidden rounded-[22px] border border-[#E5DFFC] bg-gradient-to-r from-[#F5F1FF] via-[#EEE9FF] to-[#DFDAFF] px-5 py-5 shadow-[0_5px_20px_rgba(75,53,145,.045)] sm:px-7 sm:py-6">
+        <div aria-hidden className="pointer-events-none absolute -right-10 -top-24 h-64 w-64 rounded-full bg-white/45 blur-3xl" />
+        <div aria-hidden className="pointer-events-none absolute -bottom-24 right-[28%] h-48 w-48 rounded-full bg-[#B9A6FF]/25 blur-3xl" />
+        <div className="relative flex flex-col justify-between gap-5 md:flex-row md:items-center">
+          <div className="min-w-0">
+            <div className="mb-3 flex items-center gap-2 text-[10px] font-semibold tracking-wide text-[#77749A]">
+              <span>Workspace</span>
+              <Icon name="chevron-right" className="h-3 w-3" />
+              <span className="text-[#5D43A1]">Service catalogue</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl border border-white/80 bg-white/75 text-[#6D3AE8] shadow-sm">
+                <Icon name="file-text" className="h-5 w-5" />
+              </span>
+              <div>
+                <h1 className="text-[25px] font-extrabold leading-tight tracking-[-.045em] text-[#171A32] sm:text-[29px]">
+                  Services
+                </h1>
+                <p className="mt-1 max-w-2xl text-[12px] leading-5 text-[#6F7190] sm:text-[13px]">
+                  Manage your service catalogue, client assignments and recurring work from one place.
+                </p>
+              </div>
+            </div>
           </div>
-
-          <h1 className="text-[28px] font-bold tracking-[-.045em] text-[#171A32]">
-            Services
-          </h1>
-
-          <p className="mt-1 text-sm text-[#737A96]">
-            Manage your service catalogue, client assignments and recurring work.
-          </p>
+          <div className="relative flex shrink-0 flex-wrap items-center gap-2">
+            <div className="hidden items-center gap-2 rounded-xl border border-white/80 bg-white/55 px-3 py-2 text-[10px] font-semibold text-[#6D5A9B] sm:flex">
+              <span className="size-1.5 rounded-full bg-[#32A879]" />
+              Catalogue overview
+            </div>
+            <button
+              type="button"
+              className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-gradient-to-r from-[#7543E9] to-[#5B31CC] px-5 py-2.5 text-[12px] font-bold text-white shadow-[0_7px_18px_rgba(104,61,213,.24)] transition hover:-translate-y-0.5 hover:shadow-lg focus:outline-none focus:ring-4 focus:ring-[#7543E9]/20"
+              onClick={() => setAdding(true)}
+            >
+              <Icon name="plus" className="h-4 w-4" />
+              Add service
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowShortcuts(true)}
+              className="inline-flex items-center gap-2 rounded-xl border border-[#ECEAF4] bg-[#FCFBFF] px-3 py-2.5 text-xs font-semibold text-[#454B68] hover:bg-[#F5F0FF] hover:border-[#CFC0F8] transition"
+            >
+              <Icon name="settings" className="h-3 w-3" />
+              Shortcuts
+            </button>
+          </div>
         </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#7543E9] to-[#5B31CC] px-5 py-3 text-sm font-semibold text-white shadow-[0_7px_18px_rgba(104,61,213,.22)] transition hover:-translate-y-0.5 hover:shadow-lg"
-            onClick={() => setAdding(true)}
-          >
-            <Icon name="plus" className="h-4 w-4" />
-            Add service
-          </button>
-        </div>
-      </div>
+      </section>
 
       {/* Summary tiles */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <SummaryTiles summary={s} pending={summary.isPending} />
-      </div>
+      <SummaryTiles summary={s} pending={summary.isPending} />
 
       {adding && (
-        <section className="overflow-hidden rounded-2xl border border-[#E4E6F2] bg-white shadow-[0_8px_28px_rgba(38,35,82,.055)]">
+        <section className="overflow-hidden rounded-[20px] border border-[#E3E5F4] bg-white shadow-[0_4px_18px_rgba(40,42,90,.045)]">
           <div className="flex items-center justify-between border-b border-[#EEF0F7] bg-[#F8F6FF] px-4 py-3">
             <div className="flex items-center gap-2">
               <Icon name="file-text" className="h-4 w-4 text-[#7543E9]" />
@@ -456,9 +595,9 @@ export default function ServicesPage() {
       )}
 
       {/* Main card */}
-      <section className="overflow-hidden rounded-2xl border border-[#E4E6F2] bg-white shadow-[0_8px_28px_rgba(38,35,82,.055)]">
+      <section className="overflow-hidden rounded-[20px] border border-[#E3E5F4] bg-white shadow-[0_4px_18px_rgba(40,42,90,.045)]">
         {/* Tabs */}
-        <div className="border-b border-[#EEF0F7] bg-white px-4 py-3">
+        <div className="border-b border-[#EEF0F7] bg-[#FCFBFF] px-4 py-3">
           <div className="flex items-center gap-1 overflow-x-auto">
             {TABS.map((entry) => {
               const isActive = entry.key === tab;
@@ -496,13 +635,14 @@ export default function ServicesPage() {
           {/* Filters */}
           <div className="grid grid-cols-2 gap-3 border-b border-[#EEF0F7] px-4 py-3 sm:grid-cols-4">
             <div className="col-span-2">
-              <SearchInput
-                value={filters.search ?? ""}
-                onChange={(value) => updateFilter("search", value)}
-                placeholder="Search services…"
-                hideLabel
-                aria-label="Search services"
-              />
+            <SearchInput
+              ref={searchRef}
+              value={filters.search ?? ""}
+              onChange={(value) => updateFilter("search", value)}
+              placeholder="Search services…"
+              hideLabel
+              aria-label="Search services"
+            />
             </div>
             <Select
               label="Category"
@@ -657,7 +797,7 @@ export default function ServicesPage() {
             <div>
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[68rem]">
-                  <thead className="bg-[#F4F2FB]">
+                  <thead className="bg-[#F7F5FC]">
                     <tr>
                       <th className="th w-8">
                         <input
@@ -759,7 +899,7 @@ export default function ServicesPage() {
 
       <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
         {/* Service Categories */}
-        <section className="overflow-hidden rounded-2xl border border-[#E4E6F2] bg-white shadow-[0_8px_28px_rgba(38,35,82,.055)]">
+        <section className="overflow-hidden rounded-[20px] border border-[#E3E5F4] bg-white shadow-[0_4px_18px_rgba(40,42,90,.045)]">
           <div className="flex items-center justify-between border-b border-[#EEF0F7] bg-[#F8F6FF] px-4 py-3">
             <div className="flex items-center gap-2">
               <Icon name="receipt" className="h-4 w-4 text-[#7543E9]" />
@@ -794,7 +934,7 @@ export default function ServicesPage() {
         </section>
 
         {/* Assignment Summary */}
-        <section className="overflow-hidden rounded-2xl border border-[#E4E6F2] bg-white shadow-[0_8px_28px_rgba(38,35,82,.055)]">
+        <section className="overflow-hidden rounded-[20px] border border-[#E3E5F4] bg-white shadow-[0_4px_18px_rgba(40,42,90,.045)]">
           <div className="flex items-center justify-between border-b border-[#EEF0F7] bg-[#F8F6FF] px-4 py-3">
             <div className="flex items-center gap-2">
               <Icon name="clients" className="h-4 w-4 text-[#7543E9]" />
@@ -812,7 +952,7 @@ export default function ServicesPage() {
           <div className="p-4">
             <div className="overflow-x-auto">
               <table className="w-full min-w-[32rem]">
-                <thead className="bg-[#F4F2FB]">
+                <thead className="bg-[#F7F5FC]">
                   <tr>
                     <th className="th">Service</th>
                     <th className="th text-right">Clients</th>
@@ -824,7 +964,7 @@ export default function ServicesPage() {
                   {s?.assignments.slice(0, 6).map((row) => (
                     <tr
                       key={row.service_id}
-                      className="cursor-pointer transition-colors hover:bg-[#FAF8FF]"
+                      className="cursor-pointer transition-colors duration-150 hover:bg-[#FAF8FF]"
                       onClick={() => setOpenServiceId(row.service_id)}
                     >
                       <td className="td">
@@ -885,6 +1025,114 @@ export default function ServicesPage() {
           onClose={() => setOpenServiceId(null)}
         />
       )}
+
+      {/* Shortcuts modal */}
+      <Modal
+        open={showShortcuts}
+        onClose={() => setShowShortcuts(false)}
+        title="Keyboard shortcuts"
+        size="md"
+      >
+        <div className="space-y-4 p-6">
+          <div className="flex items-center justify-between">
+            <button
+              type="button"
+              onClick={() => setShowShortcuts(false)}
+              className="inline-flex items-center gap-2 text-xs font-semibold text-[#737A96] hover:text-[#6637D7]"
+            >
+              <Icon name="arrow-left" className="h-3.5 w-3.5" />
+              Back
+            </button>
+          </div>
+          <p className="text-xs text-[#858BA4]">
+            Click a row, then press any key combination (e.g. <span className="font-semibold">Alt+K</span>, <span className="font-semibold">Ctrl+Shift+S</span>, <span className="font-semibold">F2</span>).
+          </p>
+          <div className="space-y-3">
+            {[
+              { key: "1", label: "Add service", target: "add" },
+              { key: "2", label: "All services", target: "all" },
+              { key: "3", label: "Taxation", target: "taxation" },
+              { key: "4", label: "GST", target: "gst" },
+              { key: "5", label: "Audit", target: "audit" },
+              { key: "6", label: "ROC", target: "roc" },
+              { key: "7", label: "Other", target: "other" },
+              { key: "8", label: "Focus search", target: "search" },
+              { key: "9", label: "Clear filters", target: "clear" },
+            ].map((item) => {
+              const s = shortcutsRef.current[item.key];
+              const isEditing = editingShortcutId === item.key;
+              return (
+                <div key={item.key} className="flex items-center justify-between gap-2">
+                  <span className="text-sm font-medium text-[#252B47]">{item.label}</span>
+                  <div className="flex items-center gap-1">
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        autoFocus
+                        maxLength={1}
+                        className="w-8 h-6 text-center text-xs font-mono border border-[#7042D8] bg-[#F0EAFE] px-1 outline-none focus:ring-1 focus:ring-[#7042D8]/30"
+                        onKeyDown={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          const key = e.key.toLowerCase();
+                          if (["control", "alt", "shift", "meta"].includes(key)) return;
+                          const next = {
+                            ...shortcutsRef.current,
+                            [item.key]: {
+                              modifiers: {
+                                ctrl: e.ctrlKey,
+                                alt: e.altKey,
+                                shift: e.shiftKey,
+                                meta: e.metaKey,
+                              },
+                              key,
+                              target: item.target,
+                            },
+                          };
+                          shortcutsRef.current = next;
+                          setLocalShortcuts(next);
+                          setEditingShortcutId(null);
+                        }}
+                      />
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setEditingShortcutId(item.key)}
+                        className={`flex items-center gap-1 px-3 py-1.5 text-xs font-mono rounded-lg border transition-colors ${isEditing ? "bg-[#F0EAFE] border-[#7042D8] text-[#7042D8]" : "bg-[#FAFAFE] border-[#E3E2F2] text-[#6B7280] hover:border-[#C0ADE8]"}`}
+                      >
+                        {formatShortcut(s)}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const next = {
+                          ...shortcutsRef.current,
+                          [item.key]: {
+                            modifiers: { ctrl: true, alt: false, shift: true, meta: false },
+                            key: item.key,
+                            target: item.target,
+                          },
+                        };
+                        shortcutsRef.current = next;
+                        setLocalShortcuts(next);
+                        setEditingShortcutId(null);
+                      }}
+                      className="text-xs text-[#858BA4] hover:text-[#DC2626] p-1"
+                      title="Reset"
+                    >
+                      ↺
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <p className="text-xs text-[#858BA4]">
+            Use <span className="font-semibold">Tab</span> to move between fields.
+          </p>
+        </div>
+      </Modal>
     </div>
   );
 }

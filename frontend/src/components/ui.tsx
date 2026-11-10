@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Children, cloneElement, createContext, useContext, useEffect, useState } from "react";
+import React, { Children, cloneElement, createContext, forwardRef, useContext, useEffect, useState } from "react";
 import { AlertCircle, AlertTriangle, CheckCircle, Info } from "lucide-react";
 import { cn } from "@/lib/format";
 
@@ -389,17 +389,12 @@ export function Select({
 }
 
 /** ── SearchInput ── */
-export function SearchInput({
-  value,
-  onChange,
-  placeholder = "Search…",
-  hideLabel = false,
-}: {
+export const SearchInput = forwardRef<HTMLInputElement, {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
   hideLabel?: boolean;
-}) {
+}>(({ value, onChange, placeholder = "Search…", hideLabel = false }, ref) => {
   return (
     <label className="block">
       <span className={hideLabel ? "sr-only" : "label mb-1"}>Search</span>
@@ -414,6 +409,7 @@ export function SearchInput({
           </svg>
         </span>
         <input
+          ref={ref}
           className="flex h-10 w-full rounded-lg border border-[#e5e2dc] bg-[#f8f7f4] px-4 py-3 text-sm text-[#1a1814] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#b85c38] pl-8"
           value={value}
           onChange={(event) => onChange(event.target.value)}
@@ -424,7 +420,8 @@ export function SearchInput({
       </span>
     </label>
   );
-}
+});
+SearchInput.displayName = "SearchInput";
 
 /** ── Pagination ── */
 export function Pagination({
