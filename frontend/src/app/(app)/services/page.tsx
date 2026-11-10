@@ -580,19 +580,15 @@ export default function ServicesPage() {
       {/* Summary tiles */}
       <SummaryTiles summary={s} pending={summary.isPending} />
 
-      {adding && (
-        <section className="overflow-hidden rounded-[20px] border border-[#E3E5F4] bg-white shadow-[0_4px_18px_rgba(40,42,90,.045)]">
-          <div className="flex items-center justify-between border-b border-[#EEF0F7] bg-[#F8F6FF] px-4 py-3">
-            <div className="flex items-center gap-2">
-              <Icon name="file-text" className="h-4 w-4 text-[#7543E9]" />
-              <h3 className="text-sm font-bold text-[#171A32]">Add a service</h3>
-            </div>
-          </div>
-          <div className="p-4">
-            <AddServiceForm onDone={() => setAdding(false)} />
-          </div>
-        </section>
-      )}
+      {/* Add service modal */}
+      <Modal
+        open={adding}
+        onClose={() => setAdding(false)}
+        title="Add a service"
+        size="md"
+      >
+        <AddServiceForm onDone={() => setAdding(false)} />
+      </Modal>
 
       {/* Main card */}
       <section className="overflow-hidden rounded-[20px] border border-[#E3E5F4] bg-white shadow-[0_4px_18px_rgba(40,42,90,.045)]">
