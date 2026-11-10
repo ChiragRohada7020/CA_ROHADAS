@@ -3,10 +3,11 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Chip, FormError, PanelRow, SelectField, TextField } from "@/components/form";
 import { Icon } from "@/components/Icon";
+import { Modal } from "@/components/ui";
 import { DescriptionEditor } from "@/components/TaskDescription";
 import { ApiError, api } from "@/lib/api";
 import { cn, formatBytes, humanise } from "@/lib/format";
@@ -35,6 +36,18 @@ const FREQUENCIES: Array<{ value: Frequency; label: string }> = [
 /** Matches `MAX_INLINE_UPLOAD_BYTES` in the backend. */
 const INLINE_LIMIT_BYTES = 4 * 1024 * 1024;
 
+type ShortcutModifiers = { ctrl: boolean; alt: boolean; shift: boolean; meta: boolean };
+
+type Shortcut = { modifiers: ShortcutModifiers; key: string; target: string };
+
+const defaultShortcuts: Record<string, Shortcut> = {
+  "1": { modifiers: { ctrl: true, alt: false, shift: true, meta: false }, key: "1", target: "save" },
+  "2": { modifiers: { ctrl: true, alt: false, shift: true, meta: false }, key: "2", target: "cancel" },
+  "3": { modifiers: { ctrl: true, alt: false, shift: true, meta: false }, key: "3", target: "title" },
+  "4": { modifiers: { ctrl: true, alt: false, shift: true, meta: false }, key: "4", target: "client" },
+  "5": { modifiers: { ctrl: true, alt: false, shift: true, meta: false }, key: "5", target: "priority" },
+};
+
 /**
  * Raising a task — same shape as the task screen that follows it.
  *
@@ -50,6 +63,99 @@ export default function NewTaskPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // ============================================================================
+  // KEYBOARD SHORTCUTS
+  // ============================================================================
+  const titleRef = useRef<HTMLInputElement>(null);
+  const clientRef = useRef<HTMLSelectElement>(null);
+  const priorityRef = useRef<HTMLSelectElement>(null);
+  const shortcutsRef = useRef<Record<string, Shortcut>>(defaultShortcuts);
+
+  const [localShortcuts, setLocalShortcuts] = useState<Record<string, Shortcut>>(() => {
+    try {
+      const raw = localStorage.getItem("task-new-shortcuts");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        return { ...defaultShortcuts, ...parsed };
+      }
+    } catch {}
+    return defaultShortcuts;
+  });
+  const [editingShortcutId, setEditingShortcutId] = useState<string | null>(null);
+  const [showShortcuts, setShowShortcuts] = useState(false);
+
+  function formatShortcut(s: Shortcut): string {
+    const parts: string[] = [];
+    if (s.modifiers.ctrl) parts.push("Ctrl");
+    if (s.modifiers.alt) parts.push("Alt");
+    if (s.modifiers.shift) parts.push("Shift");
+    if (s.modifiers.meta) parts.push("Cmd");
+    parts.push(s.key.toUpperCase());
+    return parts.join("+");
+  }
+
+  function matchesShortcut(event: KeyboardEvent, s: Shortcut): boolean {
+    return (
+      event.ctrlKey === s.modifiers.ctrl &&
+      event.altKey === s.modifiers.alt &&
+      event.shiftKey === s.modifiers.shift &&
+      event.metaKey === s.modifiers.meta &&
+      event.key.toLowerCase() === s.key.toLowerCase()
+    );
+  }
+
+  function handleShortcut(target: string) {
+    switch (target) {
+      case "save":
+        (document.getElementById("new-task-form") as HTMLFormElement)?.requestSubmit();
+        break;
+      case "cancel":
+        router.push("/tasks");
+        break;
+      case "title":
+        titleRef.current?.focus();
+        break;
+      case "client":
+        clientRef.current?.focus();
+        break;
+      case "priority":
+        priorityRef.current?.focus();
+        break;
+    }
+  }
+
+  // Single keyboard listener added ONCE on mount
+  useEffect(() => {
+    function onKey(event: KeyboardEvent) {
+      const key = event.key.toLowerCase();
+
+      // Ignore modifier-only keys
+      if (["control", "alt", "shift", "meta"].includes(key)) return;
+
+      Object.values(shortcutsRef.current).forEach((s) => {
+        if (matchesShortcut(event, s)) {
+          event.preventDefault();
+          event.stopPropagation();
+          handleShortcut(s.target);
+        }
+      });
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
+
+  // Sync ref with local state whenever it changes
+  useEffect(() => {
+    shortcutsRef.current = localShortcuts;
+  }, [localShortcuts]);
+
+  // Persist shortcuts to localStorage so they survive refreshes
+  useEffect(() => {
+    try {
+      localStorage.setItem("task-new-shortcuts", JSON.stringify(localShortcuts));
+    } catch {}
+  }, [localShortcuts]);
 
   const [title, setTitle] = useState("");
   const [clientId, setClientId] = useState("");
@@ -198,7 +304,8 @@ const [reviewerId, setReviewerId] = useState("");
   const ready = clientId !== "" && title.trim().length >= 2;
 
   return (
-    <form onSubmit={handleSubmit} className="mx-auto w-full max-w-[1600px] space-y-5 pb-8">
+    <>
+      <form id="new-task-form" onSubmit={handleSubmit} className="mx-auto w-full max-w-[1600px] space-y-5 pb-8">
       <section className="relative isolate overflow-hidden rounded-2xl border border-violet-500/20 bg-gradient-to-r from-[#4c1d95] via-[#6d28d9] to-[#8b5cf6] px-5 py-5 text-white shadow-[0_12px_30px_-18px_rgba(76,29,149,0.65)] sm:px-6">
         <div className="pointer-events-none absolute -right-12 -top-20 size-56 rounded-full bg-white/10 blur-3xl" />
         <div className="relative flex flex-wrap items-center justify-between gap-4">
@@ -219,6 +326,14 @@ const [reviewerId, setReviewerId] = useState("");
           <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white">
             <span className="size-1.5 rounded-full bg-emerald-300" /> New task
           </span>
+          <button
+            type="button"
+            onClick={() => setShowShortcuts(true)}
+            className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-3 py-2.5 text-xs font-semibold text-white hover:bg-white/20 transition"
+          >
+            <Icon name="settings" className="h-3 w-3" />
+            Shortcuts
+          </button>
         </div>
       </section>
 
@@ -233,6 +348,7 @@ const [reviewerId, setReviewerId] = useState("");
         </div>
         <input
           id="new-task-title"
+          ref={titleRef}
           className="w-full border-0 border-b border-slate-200 bg-transparent px-0 py-2 text-lg font-semibold tracking-tight text-slate-900 outline-none transition placeholder:text-slate-300 focus:border-violet-500 focus:ring-0 sm:text-xl"
           value={title}
           onChange={(event) => setTitle(event.target.value)}
@@ -432,6 +548,7 @@ const [reviewerId, setReviewerId] = useState("");
               <PanelRow label="Client" hint="Required">
                 <select
                   className="input w-full rounded-xl border-slate-200 bg-white py-2.5 text-sm shadow-sm transition duration-200 hover:border-violet-300 focus:border-violet-400 focus:ring-4 focus:ring-violet-100"
+                  ref={clientRef}
                   value={clientId}
                   aria-label="Client"
                   required
@@ -590,6 +707,7 @@ const [reviewerId, setReviewerId] = useState("");
               <PanelRow label="Priority">
                 <select
                   className="input w-full rounded-xl border-slate-200 bg-white py-2.5 text-sm shadow-sm transition duration-200 hover:border-violet-300 focus:border-violet-400 focus:ring-4 focus:ring-violet-100"
+                  ref={priorityRef}
                   value={priority}
                   aria-label="Priority"
                   onChange={(event) => setPriority(event.target.value as Priority)}
@@ -705,6 +823,105 @@ const [reviewerId, setReviewerId] = useState("");
           </div>
         </div>
       </div>
-    </form>
+      </form>
+
+      <Modal open={showShortcuts} onClose={() => setShowShortcuts(false)} title="Keyboard shortcuts" size="md">
+        <div className="space-y-4 p-6">
+          <div className="flex items-center justify-between">
+            <button
+              type="button"
+              onClick={() => setShowShortcuts(false)}
+              className="inline-flex items-center gap-2 text-xs font-semibold text-[#737A96] hover:text-[#6637D7]"
+            >
+              <Icon name="arrow-left" className="h-3.5 w-3.5" />
+              Back
+            </button>
+          </div>
+          <p className="text-xs text-[#858BA4]">
+            Click a row, then press any key combination (e.g. <span className="font-semibold">Alt+K</span>, <span className="font-semibold">Ctrl+Shift+S</span>, <span className="font-semibold">F2</span>).
+          </p>
+          <div className="space-y-3">
+            {[
+              { key: "1", label: "Create task", target: "save" },
+              { key: "2", label: "Cancel", target: "cancel" },
+              { key: "3", label: "Focus title", target: "title" },
+              { key: "4", label: "Focus client", target: "client" },
+              { key: "5", label: "Focus priority", target: "priority" },
+            ].map((item) => {
+              const s = shortcutsRef.current[item.key];
+              const isEditing = editingShortcutId === item.key;
+              return (
+                <div key={item.key} className="flex items-center justify-between gap-2">
+                  <span className="text-sm font-medium text-[#252B47]">{item.label}</span>
+                  <div className="flex items-center gap-1">
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        autoFocus
+                        maxLength={1}
+                        className="w-8 h-6 text-center text-xs font-mono border border-[#7042D8] bg-[#F0EAFE] px-1 outline-none focus:ring-1 focus:ring-[#7042D8]/30"
+                        onKeyDown={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          const key = e.key.toLowerCase();
+                          if (["control", "alt", "shift", "meta"].includes(key)) return;
+                          const next = {
+                            ...shortcutsRef.current,
+                            [item.key]: {
+                              modifiers: {
+                                ctrl: e.ctrlKey,
+                                alt: e.altKey,
+                                shift: e.shiftKey,
+                                meta: e.metaKey,
+                              },
+                              key,
+                              target: item.target,
+                            },
+                          };
+                          shortcutsRef.current = next;
+                          setLocalShortcuts(next);
+                          setEditingShortcutId(null);
+                        }}
+                      />
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setEditingShortcutId(item.key)}
+                        className={`flex items-center gap-1 px-3 py-1.5 text-xs font-mono rounded-lg border transition-colors ${isEditing ? "bg-[#F0EAFE] border-[#7042D8] text-[#7042D8]" : "bg-[#FAFAFE] border-[#E3E2F2] text-[#6B7280] hover:border-[#C0ADE8]"}`}
+                      >
+                        {formatShortcut(s)}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const next = {
+                          ...shortcutsRef.current,
+                          [item.key]: {
+                            modifiers: { ctrl: true, alt: false, shift: true, meta: false },
+                            key: item.key,
+                            target: item.target,
+                          },
+                        };
+                        shortcutsRef.current = next;
+                        setLocalShortcuts(next);
+                        setEditingShortcutId(null);
+                      }}
+                      className="text-xs text-[#858BA4] hover:text-[#DC2626] p-1"
+                      title="Reset"
+                    >
+                      ↺
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <p className="text-xs text-[#858BA4]">
+            Use <span className="font-semibold">Tab</span> to move between fields.
+          </p>
+        </div>
+      </Modal>
+    </>
   );
 }
