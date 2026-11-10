@@ -384,6 +384,7 @@ function RowActionsMenu({ task, onOpen }: { task: TaskListItem; onOpen: () => vo
   const ref = useRef<HTMLDivElement>(null);
   const { canSee } = usePermissions();
   const canDelete = canSee("task.delete");
+  const canEdit = canSee("task.update");
   const queryClient = useQueryClient();
 
   const handleDelete = async () => {
@@ -453,6 +454,19 @@ function RowActionsMenu({ task, onOpen }: { task: TaskListItem; onOpen: () => vo
             <Icon name="envelope" className="h-3 w-3" />
             Email task link
           </a>
+          {canEdit && (
+            <a
+              href={`/tasks/${task.id}`}
+              className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-[#101B3D] hover:bg-[#f7f6f3]"
+              onClick={(e) => {
+                e.stopPropagation();
+                setOpen(false);
+              }}
+            >
+              <Icon name="pencil" className="h-3 w-3" />
+              Edit task
+            </a>
+          )}
           {canDelete && (
             <button
               type="button"
