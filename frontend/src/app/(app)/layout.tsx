@@ -210,7 +210,7 @@ function TopBar({
       }
       try {
         const data = await api.get<{ items: SearchResult[] }>(
-          `/clients/search?q=${encodeURIComponent(debouncedQuery.trim())}&limit=10`,
+          `/search?q=${encodeURIComponent(debouncedQuery.trim())}&limit=10`,
         );
         setResults(data.items);
       } catch {
