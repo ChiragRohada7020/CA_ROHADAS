@@ -438,7 +438,8 @@ export default function TaskDetailPage() {
   const [titleDraft, setTitleDraft] = useState("");
   const [editingDescription, setEditingDescription] = useState(false);
   const [descriptionDraft, setDescriptionDraft] = useState("");
-  const [editingAssignments, setEditingAssignments] = useState(false);
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [showChecklistModal, setShowChecklistModal] = useState(false);
   const [editingStepId, setEditingStepId] = useState<string | null>(null);
   const [stepNameDraft, setStepNameDraft] = useState("");
   const [newStepName, setNewStepName] = useState("");
@@ -784,7 +785,7 @@ export default function TaskDetailPage() {
                 <button
                   type="button"
                   className="p-1.5 cursor-pointer text-[#9CA3AF] hover:text-[#6D3AE8] hover:bg-[#F5F1FF] rounded-lg transition"
-                  onClick={() => setEditingAssignments((current) => !current)}
+                  onClick={() => setShowAssignModal(true)}
                   aria-label="Edit assignees"
                 >
                   <Icon name="pencil" className="h-4 w-4 text-[#6D3AE8]" />
@@ -810,14 +811,9 @@ export default function TaskDetailPage() {
                     </div>
                   </div>
                 );
-              })}
-            </div>
-          </section>
-          {canAssign && editingAssignments && (
-            <section className="mt-4 overflow-hidden rounded-2xl border border-[#E4E6F2] bg-white shadow-[0_8px_28px_rgba(38,35,82,.055)]">
-              <AssignPanel task={row} onChanged={invalidate} />
-            </section>
-          )}
+            })}
+          </div>
+        </section>
         </>
       )}
   
@@ -923,7 +919,7 @@ export default function TaskDetailPage() {
                 <button
                   type="button"
                   className="p-1.5 cursor-pointer text-[#9CA3AF] hover:text-[#6D3AE8] hover:bg-[#F5F1FF] rounded-lg transition"
-                  onClick={() => setEditingStepId(null)}
+                  onClick={() => setShowChecklistModal(true)}
                   aria-label="Edit checklist"
                 >
                   <Icon name="pencil" className="h-4 w-4 text-[#6D3AE8]" />
@@ -1274,6 +1270,120 @@ export default function TaskDetailPage() {
           </div>
         )}
       </section>
+
+      {/* Assignee edit modal */}
+      <Modal
+        open={showAssignModal}
+        onClose={() => setShowAssignModal(false)}
+        title="Edit assignees"
+        size="lg"
+      >
+        <AssignPanel task={row} onChanged={invalidate} />
+      </Modal>
+
+      {/* Checklist edit modal */}
+      <Modal
+        open={showChecklistModal}
+        onClose={() => setShowChecklistModal(false)}
+        title="Edit checklist"
+        size="lg"
+      >
+        <div className="space-y-4">
+          <p className="text-xs text-[#737A96]">
+            Steps determine the task&rsquo;s progress. Check a step when done, edit its name, or mark it mandatory.
+          </p>
+          {row.steps.length === 0 ? (
+            <EmptyState message="This task has no steps yet." />
+          ) : (
+            <div className="space-y-2">
+              {row.steps.map((step) => (
+                <div
+                  key={step.id}
+                  className="flex items-start justify-between gap-3 px-3 py-2.5 rounded-lg border border-[#EEF0F7]"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="tabular text-xs text-[#737A96]">{step.sequence}.</span>
+                      <span
+                        className={cn(
+                          step.status === "completed"
+                            ? "text-[#737A96] line-through"
+                            : "text-[#171A32]",
+                        )}
+                      >
+                        {step.name}
+                      </span>
+                      <Badge tone={stepStatusTone(step.status)} className="text-[10px]">
+                        {humanise(step.status)}
+                      </Badge>
+                      <button
+                        type="button"
+                        className="text-xs text-[#9CA3AF] hover:text-[#DC2626] p-1"
+                        onClick={() => {
+                          updateStep.mutate({
+                            stepId: step.id,
+                            status: step.status === "completed" ? "pending" : "completed",
+                          });
+                        }}
+                        aria-label="Toggle step status"
+                      >
+                        <Icon
+                          name={step.status === "completed" ? "check-circle" : "circle-dot"}
+                          className="h-3 w-3"
+                        />
+                      </button>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 mt-2">
+                      <label className="flex items-center gap-1 text-[10px] text-[#737A96]">
+                        <input
+                          type="checkbox"
+                          checked={step.is_mandatory}
+                          onChange={() => {
+                            updateStepName.mutate({
+                              stepId: step.id,
+                              name: step.name,
+                              is_mandatory: !step.is_mandatory,
+                            });
+                          }}
+                        />
+                        {step.is_mandatory ? "Mandatory" : "Optional"}
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="pt-3 border-t border-[#EEF0F7]">
+            <div className="flex items-center gap-2">
+              <input
+                id="new-step-input"
+                className="flex-1 input min-w-0 rounded-xl border-[#E3E5F0] bg-white px-3 py-2 text-xs focus:border-[#9A7AEF] focus:ring-4 focus:ring-[#EEE8FF]"
+                value={newStepName}
+                placeholder="Add a new step…"
+                onChange={(e) => setNewStepName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && newStepName.trim()) {
+                    addStep.mutate(newStepName.trim());
+                    setNewStepName("");
+                  }
+                }}
+              />
+              <button
+                type="button"
+                className="rounded-lg bg-gradient-to-r from-[#7543E9] to-[#5B31CC] px-4 py-2 text-xs font-semibold text-white hover:-translate-y-0.5 hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed"
+                disabled={!newStepName.trim() || addStep.isPending}
+                onClick={() => {
+                  addStep.mutate(newStepName.trim());
+                  setNewStepName("");
+                }}
+              >
+                {addStep.isPending ? "Adding…" : "Add step"}
+              </button>
+            </div>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
