@@ -141,19 +141,21 @@ function SummaryTiles({ summary, pending }: { summary: ServiceSummary | undefine
       {tiles.map((tile) => (
         <div
           key={tile.label}
-          className="group relative overflow-hidden rounded-2xl border border-[#E5E4F4] bg-white p-4 shadow-[0_4px_16px_rgba(40,38,90,.045)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_9px_24px_rgba(65,48,130,.09]]"
+          className="relative overflow-hidden rounded-2xl border border-[#E5E4F4] bg-white p-4 shadow-[0_4px_16px_rgba(40,38,90,.045)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_9px_24px_rgba(65,48,130,.09]]"
         >
-          <div className="flex items-center gap-3">
-            <span className={cn("grid h-12 w-12 shrink-0 place-items-center rounded-xl", TONE_BG[tile.tone])}>
-              <Icon name={tile.icon as any} className="h-6 w-6" />
+          <div className="flex flex-col items-start gap-1">
+            <span className="text-[10px] font-semibold text-[#59617E] uppercase tracking-[.1em]">
+              {tile.label}
             </span>
-            <div className="min-w-0">
-              <span className="text-[11px] font-semibold text-[#59617E]">{tile.label}</span>
-              <span className="tabular-nums text-[25px] font-bold leading-none tracking-[-.04em] text-[#171A32]">
-                {tile.value}
-              </span>
-              <span className="mt-1 text-[10px] text-[#9298AE]">{tile.hint}</span>
-            </div>
+            <span className="tabular-nums text-[22px] font-bold leading-none tracking-[-.02em] text-[#171A32]">
+              {tile.value}
+            </span>
+            <span className="text-[10px] text-[#9298AE]">{tile.hint}</span>
+          </div>
+          <div className="flex size-10 items-center justify-center rounded-lg absolute -right-2 -top-2">
+            <span className={cn("grid h-8 w-8 place-items-center rounded-lg", TONE_BG[tile.tone])}>
+              <Icon name={tile.icon as any} className="h-4 w-4" />
+            </span>
           </div>
           <span className="pointer-events-none absolute -bottom-5 -right-3 h-16 w-16 rounded-full bg-[#F2EEFF] opacity-70 blur-xl" />
         </div>
