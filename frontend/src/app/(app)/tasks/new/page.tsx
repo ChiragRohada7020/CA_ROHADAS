@@ -46,6 +46,9 @@ const defaultShortcuts: Record<string, Shortcut> = {
   "3": { modifiers: { ctrl: true, alt: false, shift: true, meta: false }, key: "3", target: "title" },
   "4": { modifiers: { ctrl: true, alt: false, shift: true, meta: false }, key: "4", target: "client" },
   "5": { modifiers: { ctrl: true, alt: false, shift: true, meta: false }, key: "5", target: "priority" },
+  "6": { modifiers: { ctrl: true, alt: false, shift: true, meta: false }, key: "6", target: "step" },
+  "7": { modifiers: { ctrl: true, alt: false, shift: true, meta: false }, key: "7", target: "tag" },
+  "8": { modifiers: { ctrl: true, alt: false, shift: true, meta: false }, key: "8", target: "attach" },
 };
 
 /**
@@ -70,6 +73,8 @@ export default function NewTaskPage() {
   const titleRef = useRef<HTMLInputElement>(null);
   const clientRef = useRef<HTMLSelectElement>(null);
   const priorityRef = useRef<HTMLSelectElement>(null);
+  const stepRef = useRef<HTMLInputElement>(null);
+  const tagRef = useRef<HTMLInputElement>(null);
   const shortcutsRef = useRef<Record<string, Shortcut>>(defaultShortcuts);
 
   const [localShortcuts, setLocalShortcuts] = useState<Record<string, Shortcut>>(() => {
@@ -121,6 +126,15 @@ export default function NewTaskPage() {
         break;
       case "priority":
         priorityRef.current?.focus();
+        break;
+      case "step":
+        stepRef.current?.focus();
+        break;
+      case "tag":
+        tagRef.current?.focus();
+        break;
+      case "attach":
+        fileInputRef.current?.click();
         break;
     }
   }
@@ -407,6 +421,7 @@ const [reviewerId, setReviewerId] = useState("");
               </div>
               <div className="flex items-center gap-2">
                 <input
+                  ref={stepRef}
                   className="input min-w-0 flex-1 rounded-xl border-slate-200 text-sm focus:border-violet-400 focus:ring-4 focus:ring-violet-100"
                   value={stepInput}
                   placeholder="New step name…"
@@ -777,6 +792,7 @@ const [reviewerId, setReviewerId] = useState("");
                     </span>
                   ))}
                   <input
+                    ref={tagRef}
                     className="w-24 border-0 border-b border-dashed border-violet-200 bg-transparent px-1 py-1 text-[11px] outline-none focus:border-violet-500"
                     value={tagInput}
                     placeholder="+ tag"
@@ -847,6 +863,9 @@ const [reviewerId, setReviewerId] = useState("");
               { key: "3", label: "Focus title", target: "title" },
               { key: "4", label: "Focus client", target: "client" },
               { key: "5", label: "Focus priority", target: "priority" },
+              { key: "6", label: "Focus checklist step", target: "step" },
+              { key: "7", label: "Focus tag input", target: "tag" },
+              { key: "8", label: "Add attachment", target: "attach" },
             ].map((item) => {
               const s = shortcutsRef.current[item.key];
               const isEditing = editingShortcutId === item.key;
