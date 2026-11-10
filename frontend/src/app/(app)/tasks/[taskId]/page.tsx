@@ -1278,7 +1278,21 @@ export default function TaskDetailPage() {
         title="Edit assignees"
         size="lg"
       >
-        <AssignPanel task={row} onChanged={invalidate} />
+        <div className="space-y-4">
+          <p className="text-xs text-[#737A96]">
+            Choose who is responsible for each role. Reassignment closes the previous holder's record and opens a new one — nothing is deleted.
+          </p>
+          <AssignPanel task={row} onChanged={invalidate} />
+        </div>
+        <div className="mt-5 flex justify-end gap-2">
+          <button
+            type="button"
+            className="rounded-lg border border-[#ECEAF4] bg-[#FCFBFF] px-4 py-2.5 text-xs font-semibold text-[#454B68] hover:bg-[#F5F0FF] hover:border-[#CFC0F8] transition"
+            onClick={() => setShowAssignModal(false)}
+          >
+            Cancel
+          </button>
+        </div>
       </Modal>
 
       {/* Checklist edit modal */}
