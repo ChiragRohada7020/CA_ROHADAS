@@ -3,16 +3,19 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { AppSidebar } from "@/components/AppSidebar";
 import { Icon, type IconName } from "@/components/Icon";
 import { Avatar } from "@/components/charts";
 import { NotificationBell } from "@/components/NotificationBell";
-import { ApiError, api } from "@/lib/api";
-import { cn } from "@/lib/format";
+import { ApiError, api, buildQuery } from "@/lib/api";
+import { cn, formatDate } from "@/lib/format";
+import { useDebouncedValue } from "@/lib/hooks";
 import { useSession, useSignOut } from "@/lib/session";
 import type { FinancialYearRow, FirmBillingSettings } from "@/lib/types";
+
+type SearchResult = { type: string; id: string; title: string; subtitle: string; url: string };
 
 /**
  * The application shell: a firm-branded sidebar and a working top bar.
@@ -189,7 +192,40 @@ function TopBar({
   onMobileMenu: () => void;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [addOpen, setAddOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [results, setResults] = useState<SearchResult[]>([]);
+  const [open, setOpen] = useState(false);
+  const searchRef = useRef<HTMLInputElement>(null);
+  const [highlighted, setHighlighted] = useState(-1);
+
+  const debouncedQuery = useDebouncedValue(searchQuery, 250);
+
+  useEffect(() => {
+    async function run() {
+      if (!debouncedQuery.trim()) {
+        setResults([]);
+        return;
+      }
+      try {
+        const data = await api.get<{ items: SearchResult[] }>(
+          `/clients/search?q=${encodeURIComponent(debouncedQuery.trim())}&limit=10`,
+        );
+        setResults(data.items);
+      } catch {
+        setResults([]);
+      }
+    }
+    void run();
+  }, [debouncedQuery]);
+
+  function handleResult(result: SearchResult) {
+    setSearchQuery("");
+    setResults([]);
+    setOpen(false);
+    router.push(result.url);
+  }
 
   // Close the menu on Escape and on route change — a menu that survives a navigation
   // looks like it belongs to the new page.
@@ -201,6 +237,52 @@ function TopBar({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [addOpen]);
+
+  // Close search dropdown on route change
+  useEffect(() => {
+    setOpen(false);
+    setResults([]);
+  }, [pathname]);
+
+  // Global keyboard handling inside TopBar
+  useEffect(() => {
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setOpen(false);
+        setSearchQuery("");
+        setResults([]);
+        if (searchRef.current) searchRef.current.blur();
+      }
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        setHighlighted((h) => (h + 1) % Math.max(results.length, 1));
+      }
+      if (event.key === "ArrowUp") {
+        event.preventDefault();
+        setHighlighted((h) => (h - 1 + Math.max(results.length, 1)) % Math.max(results.length, 1));
+      }
+      if (event.key === "Enter" && results[highlighted] && open) {
+        event.preventDefault();
+        handleResult(results[highlighted]);
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [results, open, highlighted]);
+
+  const RESULT_ICON: Record<string, IconName> = {
+    client: "clients",
+    task: "tasks",
+    document: "file-text",
+    invoice: "receipt",
+  };
+
+  const RESULT_TONE: Record<string, string> = {
+    client: "bg-[#EBEEFF] text-[#5B31CC]",
+    task: "bg-[#F0E9FF] text-[#7543E9]",
+    document: "bg-[#F0FAF4] text-[#39845A]",
+    invoice: "bg-[#FFF1DF] text-[#D97736]",
+  };
 
   return (
     <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-slate-200 bg-white px-4 py-3">
@@ -221,21 +303,55 @@ function TopBar({
         <h1 className="truncate text-base font-semibold tracking-tight text-slate-900">{title}</h1>
       </div>
 
-      {/*
-        Global search is not built. It is shown, disabled and labelled rather than
-        omitted, because the sidebar already establishes that convention for modules
-        that do not exist yet — and a search box that silently does nothing would be
-        worse than one that says so.
-      */}
-      <div
-         className="hidden max-w-md flex-1 items-center gap-2 rounded-lg border border-slate-200 bg-[#f7f6f3] px-3 py-2 text-sm text-slate-400 md:flex"
-         title="Global search is not built yet"
-       >
-        <Icon name="search" className="h-4 w-4" />
-        <span className="truncate">Search clients, tasks, documents…</span>
-        <span className="ml-auto rounded bg-white px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-slate-500 ring-1 ring-inset ring-slate-200">
-          next
-        </span>
+      <div className="relative min-w-0 flex-1">
+        <input
+          ref={searchRef}
+          type="search"
+          value={searchQuery}
+          onChange={(e) => {
+            setSearchQuery(e.target.value);
+            setOpen(true);
+          }}
+          onFocus={() => setOpen(true)}
+          onBlur={() => setTimeout(() => setOpen(false), 150)}
+          placeholder="Search clients, tasks, documents…"
+          className="w-full rounded-lg border border-slate-200 bg-[#f7f6f3] px-3 py-2 text-sm placeholder-slate-400 focus:outline-none focus:border-[#7543E9] focus:ring-1 focus:ring-[#7543E9]/20 md:max-w-[340px]"
+          aria-label="Global search"
+        />
+        {open && debouncedQuery.trim() && (
+          <div
+            role="listbox"
+            className="absolute z-30 mt-1 w-full max-w-[340px] rounded-xl border border-slate-200 bg-white shadow-[0_10px_28px_rgba(38,35,82,.08)]"
+          >
+            {results.length === 0 ? (
+              <div role="option" className="px-3 py-2 text-xs text-slate-500">
+                No results
+              </div>
+            ) : (
+              results.map((result, index) => (
+                <button
+                  key={result.id}
+                  role="option"
+                  aria-selected={highlighted === index}
+                  type="button"
+                  onClick={() => handleResult(result)}
+                  className={cn(
+                    "flex items-center gap-2.5 px-3 py-2 text-sm transition-colors",
+                    highlighted === index ? "bg-[#F0E9FF] text-[#7543E9]" : "text-slate-700 hover:bg-[#f7f6f3]",
+                  )}
+                >
+                  <span className={cn("size-5 shrink-0 rounded-md", RESULT_TONE[result.type])}>
+                    <Icon name={RESULT_ICON[result.type] ?? "search"} className="h-2.5 w-2.5" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-xs font-medium truncate text-slate-800">{result.title}</div>
+                    <div className="text-[10px] truncate text-slate-500">{result.subtitle}</div>
+                  </div>
+                </button>
+              ))
+            )}
+          </div>
+        )}
       </div>
 
       <div className="relative">
