@@ -791,17 +791,17 @@ export default function TaskDetailPage() {
               <div className="flex items-center gap-2">
                 <Icon name="user-round" className="h-4 w-4 text-[#7543E9]" />
                 <h3 className="text-sm font-bold text-[#171A32]">Assignees</h3>
+                {canAssign && (
+                  <button
+                    type="button"
+                    className="ml-2 p-1.5 cursor-pointer text-[#9CA3AF] hover:text-[#6D3AE8] hover:bg-[#F5F1FF] rounded-lg transition"
+                    onClick={() => setShowAssignModal(true)}
+                    aria-label="Edit assignees"
+                  >
+                    <Icon name="pencil" className="h-4 w-4 text-[#6D3AE8]" />
+                  </button>
+                )}
               </div>
-              {canAssign && (
-                <button
-                  type="button"
-                  className="p-1.5 cursor-pointer text-[#9CA3AF] hover:text-[#6D3AE8] hover:bg-[#F5F1FF] rounded-lg transition"
-                  onClick={() => setShowAssignModal(true)}
-                  aria-label="Edit assignees"
-                >
-                  <Icon name="pencil" className="h-4 w-4 text-[#6D3AE8]" />
-                </button>
-              )}
             </div>
             <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
               {ASSIGNMENT_ROLES.map((role) => {
@@ -925,17 +925,17 @@ export default function TaskDetailPage() {
               <div className="flex items-center gap-2">
                 <Icon name="check-circle" className="h-4 w-4 text-[#16A34A]" />
                 <h3 className="text-sm font-bold text-[#171A32]">Checklist</h3>
+                {canEdit && (
+                  <button
+                    type="button"
+                    className="ml-2 p-1.5 cursor-pointer text-[#9CA3AF] hover:text-[#6D3AE8] hover:bg-[#F5F1FF] rounded-lg transition"
+                    onClick={() => setShowChecklistModal(true)}
+                    aria-label="Edit checklist"
+                  >
+                    <Icon name="pencil" className="h-4 w-4 text-[#6D3AE8]" />
+                  </button>
+                )}
               </div>
-              {canEdit && (
-                <button
-                  type="button"
-                  className="p-1.5 cursor-pointer text-[#9CA3AF] hover:text-[#6D3AE8] hover:bg-[#F5F1FF] rounded-lg transition"
-                  onClick={() => setShowChecklistModal(true)}
-                  aria-label="Edit checklist"
-                >
-                  <Icon name="pencil" className="h-4 w-4 text-[#6D3AE8]" />
-                </button>
-              )}
               <div className="flex items-center gap-2">
                 {templates.data && templates.data.items.length > 0 && (
                   <button
