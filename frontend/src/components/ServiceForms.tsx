@@ -155,16 +155,26 @@ export function AddServiceForm({ onDone }: { onDone: () => void }) {
 
   return (
     <form
-      className="space-y-4 rounded-lg border border-slate-200 bg-white p-4"
+      className="space-y-6 rounded-2xl border border-[#E5E2F2] bg-white p-5 shadow-[0_3px_14px_rgba(40,42,90,.045)] sm:p-6"
       onSubmit={(event) => {
         event.preventDefault();
         create.mutate();
       }}
     >
-      <h2 className="text-sm font-semibold text-slate-900">Add a service</h2>
+      <div className="flex items-start gap-3 border-b border-[#EEF0F7] pb-4">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#F2EDFF] text-[#6D3AE8]">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" className="h-5 w-5">
+            <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+          </svg>
+        </span>
+        <div className="min-w-0">
+          <h2 className="text-base font-semibold tracking-tight text-[#171A32]">Add a service</h2>
+          <p className="mt-1 text-xs leading-5 text-[#858BA5]">Define the service, billing defaults and optional task checklist.</p>
+        </div>
+      </div>
       {create.isError && <FormError error={create.error} />}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
         <TextField
           label="Name"
           value={name}
@@ -225,7 +235,7 @@ export function AddServiceForm({ onDone }: { onDone: () => void }) {
         />
       )}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
         <SelectField
           label="Billing method"
           value={feeModel}
@@ -258,7 +268,18 @@ export function AddServiceForm({ onDone }: { onDone: () => void }) {
         hint="Define the task template and its steps now, so recurring work generates correctly from day one."
       />
       {addChecklist && (
-        <div className="space-y-4 rounded-lg border border-slate-200 p-4">
+        <div className="space-y-4 rounded-2xl border border-[#E6E1F5] bg-[#FCFBFF] p-4 sm:p-5">
+          <div className="flex items-center gap-2 border-b border-[#EEEAF8] pb-3">
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#F0EBFF] text-[#6D3AE8]">
+              <svg aria-hidden="true" viewBox="0 0 20 20" fill="none" className="h-4 w-4">
+                <path d="M7 4.5h9M7 10h9M7 15.5h9M3.5 4.5h.01M3.5 10h.01M3.5 15.5h.01" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+              </svg>
+            </span>
+            <div>
+              <h3 className="text-sm font-semibold text-[#252A48]">Checklist setup</h3>
+              <p className="text-xs text-[#9298AE]">Add the steps that should be followed for this service.</p>
+            </div>
+          </div>
           <TextField
             label="Checklist name"
             value={checklistName}
@@ -288,6 +309,7 @@ export function AddServiceForm({ onDone }: { onDone: () => void }) {
             type="button"
             variant="ghost"
             size="sm"
+            className="border border-dashed border-[#D8D0EF] text-[#6D3AE8] hover:bg-[#F5F1FF]"
             onClick={() => setSteps((prev) => [...prev, newStep()])}
           >
             + Add step
@@ -316,8 +338,13 @@ interface StepEditorProps {
 
 function StepEditor({ index, step, isOnly, onChange, onRemove }: StepEditorProps) {
   return (
-    <div className="space-y-3 rounded-lg border border-slate-100 bg-white p-3">
+    <div className="space-y-4 rounded-xl border border-[#E7E4F2] bg-white p-4 shadow-[0_2px_8px_rgba(40,42,90,.035)]">
       <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 flex-1 items-start gap-3">
+          <span className="mt-6 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#F2EDFF] text-xs font-semibold text-[#6D3AE8]">
+            {index + 1}
+          </span>
+          <div className="min-w-0 flex-1">
         <TextField
           label={`Step ${index + 1}`}
           value={step.name}
@@ -326,6 +353,8 @@ function StepEditor({ index, step, isOnly, onChange, onRemove }: StepEditorProps
           required
           maxLength={250}
         />
+          </div>
+        </div>
         {!isOnly && (
           <Button
             type="button"
@@ -444,15 +473,26 @@ export function EditServiceForm({
 
   return (
     <form
-      className="space-y-4 p-4"
+      className="space-y-6 p-5 sm:p-6"
       onSubmit={(event) => {
         event.preventDefault();
         update.mutate();
       }}
     >
+      <div className="flex items-start gap-3 border-b border-[#EEF0F7] pb-4">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#F2EDFF] text-[#6D3AE8]">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" className="h-5 w-5">
+            <path d="m14 5 5 5M4 20l4.2-.8L19 8.4a2.12 2.12 0 0 0-3-3L5.2 16.2 4 20Z" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </span>
+        <div>
+          <h2 className="text-base font-semibold tracking-tight text-[#171A32]">Edit service</h2>
+          <p className="mt-1 text-xs leading-5 text-[#858BA5]">Update service details, defaults and availability.</p>
+        </div>
+      </div>
       {update.isError && <FormError error={update.error} />}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
         <TextField label="Name" value={name} onChange={setName} required maxLength={150} />
         <SelectField
           label="Category"
@@ -500,7 +540,7 @@ export function EditServiceForm({
         />
       )}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
         <SelectField
           label="Billing method"
           value={feeModel}

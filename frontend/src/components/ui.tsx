@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import React, { Children, cloneElement, createContext, forwardRef, useContext, useEffect, useState } from "react";
-import { AlertCircle, AlertTriangle, CheckCircle, Info, CirclePlus, X } from "lucide-react";
+import { AlertCircle, AlertTriangle, CheckCircle, Info, X } from "lucide-react";
+import { Icon } from "@/components/Icon";
 import { cn } from "@/lib/format";
 
 /** ── Button ── */
@@ -26,12 +27,12 @@ export function Button({
   asChild?: boolean;
 } & React.ButtonHTMLAttributes<HTMLButtonElement>) {
   const variantClass: Record<string, string> = {
-    primary: "bg-[#b85c38] text-white hover:bg-[#9a4a2d] shadow-sm",
-    secondary: "bg-transparent text-[#1a1814] hover:bg-[#f0ede8]",
-    ghost: "bg-transparent text-[#1a1814] hover:bg-[#f0ede8]",
-    outline: "border border-[#e5e2dc] bg-transparent text-[#1a1814] hover:bg-[#f0ede8]",
+    primary: "bg-gradient-to-r from-[#7543E9] to-[#5B31CC] text-white shadow-[0_4px_12px_rgba(104,61,213,.22)] hover:-translate-y-0.5 hover:shadow-lg",
+    secondary: "bg-transparent text-[#171A32] hover:bg-[#F5F1FF]",
+    ghost: "bg-transparent text-[#171A32] hover:bg-[#F5F1FF]",
+    outline: "border border-[#E3E5F4] bg-transparent text-[#171A32] hover:bg-[#F5F1FF]",
     danger: "bg-[#ef4444] text-white hover:bg-[#dc2626]",
-    subtle: "bg-transparent text-[#1a1814] hover:bg-[#f0ede8]",
+    subtle: "bg-transparent text-[#171A32] hover:bg-[#F5F1FF]",
   };
   const sizeClass: Record<string, string> = {
     sm: "px-2.5 py-1.5 text-xs",
@@ -39,7 +40,7 @@ export function Button({
     lg: "px-4 py-2.5 text-base",
   };
   const cls = cn(
-    "inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b85c38] disabled:cursor-not-allowed disabled:opacity-50",
+    "inline-flex items-center justify-center gap-2 rounded-xl font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6D3AE8]/25 disabled:cursor-not-allowed disabled:opacity-50",
     variantClass[variant],
     sizeClass[size],
     className,
@@ -103,18 +104,18 @@ export function Card({
   style?: React.CSSProperties;
 }) {
   return (
-    <section className={cn("rounded-xl border border-[#e5e2dc] bg-white text-[#1a1814] shadow-sm", className)} style={style}>
+    <section className={cn("rounded-[18px] border border-[#E3E5F4] bg-white text-[#171A32] shadow-[0_3px_12px_rgba(40,42,90,.045)]", className)} style={style}>
       {title && (
-        <header className="flex items-center justify-between border-b border-[#e5e2dc] px-6 py-4">
+        <header className="flex items-center justify-between border-b border-[#E3E5F4] px-6 py-4">
           <div className="flex items-center gap-2">
             {icon && (
-              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#f0ede8] text-[#b85c38]">
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#F5F1FF] text-[#6D3AE8]">
                 {icon}
               </span>
             )}
             <div className="min-w-0">
-              <h2 className="text-base font-semibold text-[#1a1814]">{title}</h2>
-              {subtitle && <p className="text-sm text-[#6b6357]">{subtitle}</p>}
+              <h2 className="text-base font-semibold text-[#171A32]">{title}</h2>
+              {subtitle && <p className="text-sm text-[#747B98]">{subtitle}</p>}
             </div>
           </div>
           {action}
@@ -128,15 +129,15 @@ export function Card({
 /** ── Badge ── */
 export function Badge({ tone, children, className }: { tone: string; children: React.ReactNode; className?: string }) {
   const toneClass: Record<string, string> = {
-    default: "border-[#b85c38]/20 bg-[#b85c38]/10 text-[#b85c38]",
-    secondary: "border-[#e5e2dc]/20 bg-[#e5e2dc]/10 text-[#6b6357]",
+    default: "border-[#6D3AE8]/20 bg-[#6D3AE8]/10 text-[#6D3AE8]",
+    secondary: "border-[#E3E5F4]/20 bg-[#E3E5F4]/10 text-[#747B98]",
     destructive: "border-[#ef4444]/20 bg-[#ef4444]/10 text-[#ef4444]",
     success: "border-[#16a36a]/20 bg-[#16a36a]/10 text-[#16a36a]",
     warning: "border-[#f59e0b]/20 bg-[#f59e0b]/10 text-[#f59e0b]",
     danger: "border-[#ef4444]/20 bg-[#ef4444]/10 text-[#ef4444]",
     info: "border-[#2583eb]/20 bg-[#2583eb]/10 text-[#2583eb]",
-    neutral: "border-[#e5e2dc]/20 bg-[#e5e2dc]/10 text-[#6b6357]",
-    progress: "border-[#b85c38]/20 bg-[#b85c38]/10 text-[#b85c38]",
+    neutral: "border-[#E3E5F4]/20 bg-[#E3E5F4]/10 text-[#747B98]",
+    progress: "border-[#6D3AE8]/20 bg-[#6D3AE8]/10 text-[#6D3AE8]",
   };
   return (
     <span
@@ -154,6 +155,7 @@ export function Badge({ tone, children, className }: { tone: string; children: R
 /** ── StatCard ── */
 export function StatCard({
   title,
+  label,
   value,
   hint,
   tone = "neutral",
@@ -167,19 +169,19 @@ export function StatCard({
   emphasis?: boolean;
   icon?: React.ReactNode;
 } & { title?: string }) {
-  const label = title || value !== undefined ? "" : "";
+  const displayLabel = title ?? label ?? "";
   const accent: Record<string, string> = {
-    neutral: "text-[#1a1814]",
+    neutral: "text-[#171A32]",
     info: "text-[#2583eb]",
-    progress: "text-[#b85c38]",
+    progress: "text-[#6D3AE8]",
     warning: "text-[#f59e0b]",
     danger: "text-[#ef4444]",
     success: "text-[#16a36a]",
   };
   const chip: Record<string, string> = {
-    neutral: "bg-[#f0ede8] text-[#b85c38]",
+    neutral: "bg-[#F5F1FF] text-[#6D3AE8]",
     info: "bg-[#eaf3ff] text-[#2583eb]",
-    progress: "bg-[#b85c38]/10 text-[#b85c38]",
+    progress: "bg-[#6D3AE8]/10 text-[#6D3AE8]",
     warning: "bg-[#fff5df] text-[#f59e0b]",
     danger: "bg-[#feecec] text-[#ef4444]",
     success: "bg-[#e8f8f0] text-[#16a36a]",
@@ -187,7 +189,7 @@ export function StatCard({
 
   if (icon) {
     return (
-      <div className="rounded-xl border border-[#e5e2dc] bg-white text-[#1a1814] shadow-sm flex items-start gap-3 p-4">
+      <div className="rounded-[18px] border border-[#E3E5F4] bg-white text-[#171A32] shadow-[0_3px_12px_rgba(40,42,90,.045)] flex items-start gap-3 p-4">
         <span
           aria-hidden
           className={cn(
@@ -198,25 +200,25 @@ export function StatCard({
           {icon}
         </span>
         <div className="min-w-0">
-          <p className="text-[10px] font-medium text-[#6b6357]">{title}</p>
+          <p className="text-[10px] font-medium text-[#747B98]">{displayLabel}</p>
           <p className={cn("tabular mt-0.5 text-xl font-semibold leading-tight truncate whitespace-nowrap overflow-hidden", accent[tone] || accent.neutral)}>
             {value}
           </p>
-          {hint && <p className="mt-0.5 text-[11px] text-[#6b6357]">{hint}</p>}
+          {hint && <p className="mt-0.5 text-[11px] text-[#747B98]">{hint}</p>}
         </div>
       </div>
     );
   }
 
   return (
-    <div className="rounded-xl border border-[#e5e2dc] bg-white text-[#1a1814] shadow-sm p-4">
-      <p className="text-xs font-semibold text-[#6b6357] uppercase tracking-wider">
-        {title}
+    <div className="rounded-[18px] border border-[#E3E5F4] bg-white text-[#171A32] shadow-[0_3px_12px_rgba(40,42,90,.045)] p-4">
+      <p className="text-xs font-semibold text-[#747B98] uppercase tracking-wider">
+        {displayLabel}
       </p>
-      <p className={cn("tabular mt-1 text-2xl font-bold text-[#1a1814]")}>
+      <p className={cn("tabular mt-1 text-2xl font-bold text-[#171A32]")}>
         {value}
       </p>
-      {hint && <p className="mt-1 text-sm text-[#6b6357]">{hint}</p>}
+      {hint && <p className="mt-1 text-sm text-[#747B98]">{hint}</p>}
       {emphasis && value !== 0 && (
         <span className="mt-2 inline-block h-1 w-8 rounded-full bg-current opacity-40" />
       )}
@@ -237,7 +239,7 @@ export function Input({
       {label && <span className="label mb-1">{label}</span>}
       <input
         className={cn(
-          "flex h-10 w-full rounded-lg border border-[#e5e2dc] bg-[#f8f7f4] px-4 py-3 text-sm text-[#1a1814] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#b85c38] disabled:cursor-not-allowed disabled:opacity-50",
+          "flex h-10 w-full rounded-lg border border-[#E3E5F4] bg-white px-4 py-3 text-sm text-[#171A32] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#6D3AE8]/25 disabled:cursor-not-allowed disabled:opacity-50",
           error && "border-[#ef4444]",
           className,
         )}
@@ -246,7 +248,7 @@ export function Input({
       {error ? (
         <p className="mt-1 text-xs text-[#ef4444]">{error}</p>
       ) : hint ? (
-        <p className="mt-1 text-xs text-[#6b6357]">{hint}</p>
+        <p className="mt-1 text-xs text-[#747B98]">{hint}</p>
       ) : null}
     </label>
   );
@@ -265,7 +267,7 @@ export function Textarea({
       {label && <span className="label mb-1">{label}</span>}
       <textarea
         className={cn(
-          "flex min-h-[80px] w-full rounded-lg border border-[#e5e2dc] bg-[#f8f7f4] px-4 py-3 text-sm text-[#1a1814] shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b85c38] disabled:cursor-not-allowed disabled:opacity-50",
+          "flex min-h-[80px] w-full rounded-lg border border-[#E3E5F4] bg-white px-4 py-3 text-sm text-[#171A32] shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6D3AE8]/25 disabled:cursor-not-allowed disabled:opacity-50",
           error && "border-[#ef4444]",
           className,
         )}
@@ -274,7 +276,7 @@ export function Textarea({
       {error ? (
         <p className="mt-1 text-xs text-[#ef4444]">{error}</p>
       ) : hint ? (
-        <p className="mt-1 text-xs text-[#6b6357]">{hint}</p>
+        <p className="mt-1 text-xs text-[#747B98]">{hint}</p>
       ) : null}
     </label>
   );
@@ -282,19 +284,19 @@ export function Textarea({
 
 /** ── Table primitives ── */
 export function Table({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <table className={cn("w-full text-sm caption-bottom text-[#1a1814]", className)}>{children}</table>;
+  return <table className={cn("w-full text-sm caption-bottom text-[#171A32]", className)}>{children}</table>;
 }
 export function TableHeader({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <thead className={cn("border-b border-[#e5e2dc]", className)}>{children}</thead>;
+  return <thead className={cn("border-b border-[#E3E5F4]", className)}>{children}</thead>;
 }
 export function TableBody({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <tbody className={cn("divide-y divide-[#e5e2dc]", className)}>{children}</tbody>;
+  return <tbody className={cn("divide-y divide-[#E3E5F4]", className)}>{children}</tbody>;
 }
 export function TableRow({ children, className, clickable, ...props }: { children: React.ReactNode; className?: string; clickable?: boolean } & React.HTMLAttributes<HTMLTableRowElement>) {
   return (
     <tr
       className={cn(
-        "transition-colors hover:bg-[#f0ede8]",
+        "transition-colors duration-150 hover:bg-[#FAF8FF]",
         clickable && "cursor-pointer",
         className,
       )}
@@ -308,7 +310,7 @@ export function TableHead({ children, className, ...props }: { children?: React.
   return (
     <th
       className={cn(
-        "h-11 px-4 text-left align-middle font-medium text-[#6b6357] text-xs uppercase tracking-[0.08em]",
+        "h-11 px-4 text-left align-middle font-medium text-[#747B98] text-xs uppercase tracking-[0.08em]",
         className,
       )}
       {...props}
@@ -318,13 +320,13 @@ export function TableHead({ children, className, ...props }: { children?: React.
   );
 }
 export function TableCell({ children, className, ...props }: { children?: React.ReactNode; className?: string } & React.TdHTMLAttributes<HTMLTableCellElement>) {
-  return <td className={cn("p-4 align-middle text-[#1a1814]", className)} {...props}>{children}</td>;
+  return <td className={cn("p-4 align-middle text-[#171A32]", className)} {...props}>{children}</td>;
 }
 
 /** ── Tabs ── */
 export function Tabs({ tabs, value, onChange }: { tabs: Array<{ value: string; label: string }>; value: string; onChange: (v: string) => void }) {
   return (
-    <div className="inline-flex items-center justify-center gap-1 rounded-lg border border-[#e5e2dc] bg-[#f0ede8]/30 p-1">
+    <div className="inline-flex items-center justify-center gap-1 rounded-lg border border-[#E3E5F4] bg-[#F5F1FF]/30 p-1">
       {tabs.map((t) => (
         <button
           key={t.value}
@@ -333,9 +335,9 @@ export function Tabs({ tabs, value, onChange }: { tabs: Array<{ value: string; l
           className={cn(
             "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
             value === t.value
-              ? "bg-[#b85c38] text-white"
-              : "text-[#6b6357] hover:bg-[#f0ede8] hover:text-[#1a1814]",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b85c38]",
+              ? "bg-[#6D3AE8] text-white"
+              : "text-[#747B98] hover:bg-[#F5F1FF] hover:text-[#171A32]",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6D3AE8]/25",
           )}
         >
           {t.label}
@@ -365,7 +367,7 @@ export function Select({
     <label className="block">
       {label && !hideLabel && <span className="label mb-1">{label}</span>}
       <select
-        className="flex h-10 w-full items-center justify-between rounded-lg border border-[#e5e2dc] bg-[#f8f7f4] px-4 py-3 text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#b85c38] disabled:cursor-not-allowed disabled:opacity-50 appearance-none"
+        className="flex h-10 w-full items-center justify-between rounded-lg border border-[#E3E5F4] bg-[#FCFBFF] px-4 py-3 text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#6D3AE8]/25 disabled:cursor-not-allowed disabled:opacity-50 appearance-none"
         value={value}
         onChange={(event) => onChange(event.target.value)}
         aria-label={label}
@@ -400,7 +402,7 @@ export const SearchInput = forwardRef<HTMLInputElement, {
       <span className={hideLabel ? "sr-only" : "label mb-1"}>Search</span>
       <span className="relative block">
         <span
-          className="pointer-events-none absolute inset-y-0 left-2.5 flex items-center text-[#6b6357]"
+          className="pointer-events-none absolute inset-y-0 left-2.5 flex items-center text-[#747B98]"
           aria-hidden
         >
           <svg viewBox="0 0 20 20" className="size-4" fill="none" stroke="currentColor" strokeWidth="1.6">
@@ -410,7 +412,7 @@ export const SearchInput = forwardRef<HTMLInputElement, {
         </span>
         <input
           ref={ref}
-          className="flex h-10 w-full rounded-lg border border-[#e5e2dc] bg-[#f8f7f4] px-4 py-3 text-sm text-[#1a1814] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#b85c38] pl-8"
+          className="flex h-10 w-full rounded-lg border border-[#E3E5F4] bg-white px-4 py-3 text-sm text-[#171A32] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#6D3AE8]/25 pl-8"
           value={value}
           onChange={(event) => onChange(event.target.value)}
           placeholder={placeholder}
@@ -444,23 +446,23 @@ export function Pagination({
   const last = Math.min(offset + limit, total);
 
   return (
-    <div className="flex items-center justify-between gap-3 border-t border-[#e5e2dc] px-4 py-3">
-      <p className="tabular text-xs text-[#6b6357]">
+    <div className="flex items-center justify-between gap-3 border-t border-[#E3E5F4] px-4 py-3">
+      <p className="tabular text-xs text-[#747B98]">
         Showing {first}–{last} of {total}
       </p>
       <div className="flex items-center gap-2">
         <button
           type="button"
-          className="inline-flex items-center justify-center gap-2 rounded-lg px-5 py-2.5 text-sm font-medium border border-[#e5e2dc] bg-white text-[#1a1814] hover:bg-[#f0ede8] disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex items-center justify-center gap-2 rounded-lg px-5 py-2.5 text-sm font-medium border border-[#E3E5F4] bg-white text-[#171A32] hover:bg-[#F5F1FF] disabled:cursor-not-allowed disabled:opacity-50"
           disabled={offset === 0}
           onClick={() => onOffsetChange(Math.max(0, offset - limit))}
         >
           Previous
         </button>
-        <span className="tabular text-xs text-[#6b6357]">Page {page}</span>
+        <span className="tabular text-xs text-[#747B98]">Page {page}</span>
         <button
           type="button"
-          className="inline-flex items-center justify-center gap-2 rounded-lg px-5 py-2.5 text-sm font-medium border border-[#e5e2dc] bg-white text-[#1a1814] hover:bg-[#f0ede8] disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex items-center justify-center gap-2 rounded-lg px-5 py-2.5 text-sm font-medium border border-[#E3E5F4] bg-white text-[#171A32] hover:bg-[#F5F1FF] disabled:cursor-not-allowed disabled:opacity-50"
           disabled={!hasMore}
           onClick={() => onOffsetChange(offset + limit)}
         >
@@ -495,12 +497,12 @@ export function ConfirmDialog({
 }) {
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 bg-[#1a1814]/30 backdrop-blur-sm">
-      <div className="fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border border-[#e5e2dc] bg-white p-6 shadow-lg rounded-xl">
+    <div className="fixed inset-0 z-50 bg-[#171A32]/35 backdrop-blur-[3px]">
+      <div className="fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border border-[#E3E5F4] bg-white p-6 shadow-lg rounded-xl">
         <div className="flex flex-col space-y-1.5 px-6 py-1.5 text-center sm:text-left">
-          <h3 className="text-xl font-semibold leading-none tracking-tight text-[#1a1814]">{title}</h3>
+          <h3 className="text-xl font-semibold leading-none tracking-tight text-[#171A32]">{title}</h3>
         </div>
-        <div className="mt-3 text-sm text-[#1a1814]">{description}</div>
+        <div className="mt-3 text-sm text-[#171A32]">{description}</div>
         <div className="mt-6 flex flex-row-reverse gap-2 px-6 py-1.5 sm:pb-6">
           <Button variant="outline" size="sm" onClick={onClose} disabled={loading}>
             {cancelText}
@@ -516,7 +518,7 @@ export function ConfirmDialog({
 
 /** ── Skeleton ── */
 export function Skeleton({ className, variant = "rectangular" }: { className?: string; variant?: "text" | "circular" | "rectangular" }) {
-  const base = "animate-pulse rounded-md bg-[#e5e2dc]";
+  const base = "animate-pulse rounded-md bg-[#E3E5F4]";
   const shape =
     variant === "circular"
       ? "rounded-full"
@@ -539,8 +541,8 @@ export function EmptyState({
   if (title) {
     return (
       <div className="px-4 py-10 text-center">
-        <p className="text-lg font-semibold text-[#1a1814]">{title}</p>
-        <p className="mx-auto mt-2 max-w-md text-sm text-[#6b6357]">
+        <p className="text-lg font-semibold text-[#171A32]">{title}</p>
+        <p className="mx-auto mt-2 max-w-md text-sm text-[#747B98]">
           {message}
         </p>
         {action && <div className="mt-6 flex justify-center">{action}</div>}
@@ -549,7 +551,7 @@ export function EmptyState({
   }
   return (
     <div className="px-4 py-8 text-center">
-      <p className="text-sm text-[#6b6357]">{message}</p>
+      <p className="text-sm text-[#747B98]">{message}</p>
       {action && <div className="mt-6 flex justify-center">{action}</div>}
     </div>
   );
@@ -574,7 +576,7 @@ export function ErrorState({
 /** ── LoadingState ── */
 export function LoadingState({ label = "Loading…" }: { label?: string }) {
   return (
-    <p className="px-4 py-8 text-center text-sm text-[#6b6357]">{label}</p>
+    <p className="px-4 py-8 text-center text-sm text-[#747B98]">{label}</p>
   );
 }
 
@@ -590,15 +592,15 @@ export function ProgressBar({
 }) {
   const clamped = Math.min(100, Math.max(0, percent));
   const toneColor: Record<string, string> = {
-    default: "bg-[#b85c38]",
+    default: "bg-[#6D3AE8]",
     success: "bg-[#16a36a]",
     warning: "bg-[#f59e0b]",
     danger: "bg-[#ef4444]",
     info: "bg-[#2583eb]",
-    progress: "bg-[#b85c38]",
+    progress: "bg-[#6D3AE8]",
   };
   return (
-    <div className={cn("h-1.5 w-full overflow-hidden rounded-full bg-[#e5e2dc]/30", className)}>
+    <div className={cn("h-1.5 w-full overflow-hidden rounded-full bg-[#E3E5F4]/30", className)}>
       <div className={cn("h-full rounded-full transition-all duration-300", toneColor[tone] || toneColor.progress)} style={{ width: `${clamped}%` }} />
     </div>
   );
@@ -617,8 +619,8 @@ export function PageHeader({
   return (
     <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
       <div className="flex flex-col gap-1">
-        {subtitle && <p className="text-sm text-[#6b6357]">{subtitle}</p>}
-        {title && <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-[#1a1814]">{title}</h1>}
+        {subtitle && <p className="text-sm text-[#747B98]">{subtitle}</p>}
+        {title && <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-[#171A32]">{title}</h1>}
       </div>
       {action && <div className="flex items-center gap-3">{action}</div>}
     </div>
@@ -637,12 +639,14 @@ export function Modal({
   open,
   onClose,
   title,
+  icon,
   size = "md",
   children,
 }: {
   open: boolean;
   onClose: () => void;
   title: string;
+  icon?: string;
   size?: "md" | "lg" | "xl";
   children: React.ReactNode;
 }) {
@@ -665,33 +669,37 @@ export function Modal({
   const width = { sm: "max-w-sm", md: "max-w-lg", lg: "max-w-xl", xl: "max-w-5xl" }[size];
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#1a1814]/30 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 bg-[#171A32]/35 backdrop-blur-[3px]">
       <div
         role="dialog"
         aria-modal="true"
         aria-label={title}
         className={cn(
-          "fixed left-[50%] top-[50%] z-50 grid w-full translate-x-[-50%] translate-y-[-50%] gap-0 border border-[#e5e2dc] bg-white shadow-lg rounded-[24px]",
+          "fixed left-[50%] top-[50%] z-50 grid max-h-[90vh] w-full translate-x-[-50%] translate-y-[-50%] gap-0 overflow-y-auto border border-[#E3E5F4] bg-white shadow-[0_16px_48px_rgba(40,42,90,.16)] rounded-[20px]",
           width,
         )}
       >
-        <header className="flex items-center justify-between border-b border-[#e5e2dc] bg-gradient-to-r from-[#F0E9FF] to-[#EDE9FF] px-6 py-3.5 rounded-t-[20px]">
-          <div className="flex items-center gap-2">
-            <span className="flex size-4 items-center justify-center rounded-full bg-[#F5F0FF] text-[#7543E9]">
-              <CirclePlus className="h-2 w-2" />
-            </span>
-            <h2 className="text-sm font-semibold leading-none tracking-tight text-[#1a1814]">{title}</h2>
+        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[#EEF0F7] bg-[#FCFBFF] px-4 py-3.5 sm:px-5 rounded-t-[20px]">
+          <div className="flex items-center gap-3">
+            {icon && (
+              <span className="flex size-9 items-center justify-center rounded-xl border border-[#E9E3FF] bg-[#F1ECFF] text-[#6D3AE8]">
+                <Icon name={icon as any} className="h-4 w-4" />
+              </span>
+            )}
+            <div>
+              <h2 className="text-[14px] font-bold tracking-[-.02em] text-[#171A32]">{title}</h2>
+            </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="rounded p-1.5 text-[#6b7280] hover:bg-[#f7f6f3] hover:text-[#1a1814] transition"
+            className="rounded-lg p-1.5 text-[#6B7280] hover:bg-[#F5F1FF] hover:text-[#171A32] transition"
             aria-label="Close"
           >
-            <X className="h-3 w-3" />
+            <X className="h-3.5 w-3.5" />
           </button>
         </header>
-        <div className="pb-6 px-6">{children}</div>
+        <div className="pb-6 px-4 sm:px-5">{children}</div>
       </div>
     </div>
   );
@@ -716,13 +724,13 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       <div className="fixed bottom-4 right-4 z-[60] flex flex-col gap-2">
         {toasts.map((t) => (
           <div key={t.id} className={cn(
-            "relative flex items-center gap-4 rounded-md border bg-white p-4 shadow-lg border-[#e5e2dc]",
+            "relative flex items-center gap-4 rounded-2xl border bg-white p-4 shadow-[0_8px_28px_rgba(38,35,82,.10)] border-[#E3E5F4]",
             t.type === "success" && "border-[#16a36a] bg-[#e8f8f0] text-[#16a36a]",
             t.type === "error" && "border-[#ef4444] bg-[#feecec] text-[#ef4444]",
             t.type === "warning" && "border-[#f59e0b] bg-[#fff5df] text-[#f59e0b]",
             t.type === "info" && "border-[#2583eb] bg-[#eaf3ff] text-[#2583eb]",
           )}>
-            <span className="flex shrink-0 items-center justify-center rounded-full bg-[#f8f7f4]/50 p-1.5">
+            <span className="flex shrink-0 items-center justify-center rounded-full bg-[#FCFBFF]/50 p-1.5">
               {t.type === "success" && <CheckCircle className="h-4 w-4 text-[#16a36a]" />}
               {t.type === "error" && <AlertCircle className="h-4 w-4 text-[#ef4444]" />}
               {t.type === "warning" && <AlertTriangle className="h-4 w-4 text-[#f59e0b]" />}

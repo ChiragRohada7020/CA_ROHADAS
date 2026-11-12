@@ -585,6 +585,7 @@ export default function ServicesPage() {
         open={adding}
         onClose={() => setAdding(false)}
         title="Add a service"
+        icon="plus"
         size="md"
       >
         <AddServiceForm onDone={() => setAdding(false)} />

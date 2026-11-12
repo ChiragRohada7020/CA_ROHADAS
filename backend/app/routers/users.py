@@ -856,7 +856,7 @@ async def get_my_shortcuts(
         return {}
 
 
-@router.put("/users/me/shortcuts")
+@router.patch("/users/me/shortcuts")
 async def put_my_shortcuts(
     request: Request,
     db: Any = Depends(get_db),
